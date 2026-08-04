@@ -744,3 +744,20 @@ table.data .ops { display: flex; gap: 6px; flex-wrap: wrap; }
 .muted{color:var(--text-3);font-size:12px}
 .tab{cursor:pointer}
 .btn:disabled{opacity:.5;cursor:not-allowed}
+
+.detail-box {
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  padding: 8px 10px;
+  min-height: 32px;
+}
+.field-input[readonly] {
+  background: var(--bg-soft);
+  color: var(--text);
+  cursor: default;
+}
+.form-grid .alert.span-2,
+.form-grid .form-field.span-2 {
+  grid-column: span 2;
+}

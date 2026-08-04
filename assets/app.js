@@ -970,8 +970,80 @@
     }
 
     if (type === 'view-po' || type === 'view-so' || type === 'view-rt' || type === 'view-bind') {
-      title = '详情';
-      body = `<pre style="white-space:pre-wrap;font-size:12px;margin:0">${escapeHtml(JSON.stringify(payload.data, null, 2))}</pre>`;
+      const d = payload.data || {};
+      const field = (label, value, span2 = false) => `
+        <div class="form-field${span2 ? ' span-2' : ''}">
+          <label>${escapeHtml(label)}</label>
+          <input class="field-input" readonly value="${escapeHtml(value ?? '—')}" />
+        </div>`;
+      const area = (label, html) => `
+        <div class="form-field span-2">
+          <label>${escapeHtml(label)}</label>
+          <div class="detail-box">${html}</div>
+        </div>`;
+
+      if (type === 'view-po') {
+        const stMap = { pending: '待审核', approved: '已通过', rejected: '已驳回' };
+        const lines = (d.lines || []).map((l) => `${productName(l.productId)} / ${l.size} × ${l.qty}`).join('；') || '—';
+        title = `采购单详情 · ${d.no || ''}`;
+        body = `<div class="form-grid">
+          ${field('采购单号', d.no)}
+          ${field('状态', stMap[d.status] || d.status)}
+          ${field('一级代理', l1Name(d.l1Id))}
+          ${field('申请时间', d.createdAt)}
+          ${field('商品明细', lines, true)}
+          ${field('审核号段', (d.segments || []).join('；') || '—', true)}
+        </div>`;
+      } else if (type === 'view-so') {
+        const stMap = { scanning: '扫码中', done: '已完成' };
+        const sns = (d.scanned || []);
+        title = `销售单详情 · ${d.no || ''}`;
+        body = `<div class="form-grid">
+          ${field('销售单号', d.no)}
+          ${field('状态', stMap[d.status] || d.status)}
+          ${field('一级代理', l1Name(d.l1Id))}
+          ${field('二级代理', l2Name(d.l2Id))}
+          ${field('计划数量', d.planTotal ?? (d.planned ? Object.values(d.planned).reduce((a, b) => a + b, 0) : '—'))}
+          ${field('已扫数量', sns.length)}
+          ${field('创建时间', d.createdAt, true)}
+          ${area('扫码 SN 清单', sns.length
+            ? `<div class="sn-list">${sns.map((sn) => `<div>${escapeHtml(sn)}</div>`).join('')}</div>`
+            : '<span class="muted">暂无扫码记录</span>')}
+        </div>`;
+      } else if (type === 'view-rt') {
+        const typeMap = { user: '用户退货', l2_to_l1: '二级退一级', l1_to_factory: '一级退原厂' };
+        const stMap = { pending: '待审核', approved: '已通过', rejected: '已驳回' };
+        title = `退货单详情 · ${d.no || ''}`;
+        body = `<div class="form-grid">
+          ${field('退货单号', d.no)}
+          ${field('状态', stMap[d.status] || d.status)}
+          ${field('类型', d.typeLabel || typeMap[d.type] || d.type)}
+          ${field('发起方', d.fromName)}
+          ${field('创建时间', d.createdAt, true)}
+          ${area('退货 SN', (d.sns || []).length
+            ? `<div class="sn-list">${(d.sns || []).map((sn) => `<div>${escapeHtml(sn)}</div>`).join('')}</div>`
+            : '<span class="muted">无</span>')}
+        </div>`;
+      } else {
+        // view-bind: SN row or tip object
+        const sn = d.sn || '—';
+        const user = d.user || null;
+        const tip = d.tip || '';
+        title = `用户绑定详情 · ${sn}`;
+        body = `<div class="form-grid">
+          ${tip ? `<div class="alert alert-info span-2" style="grid-column:1/-1;margin-bottom:4px">${escapeHtml(tip)}</div>` : ''}
+          ${field('SN码', sn)}
+          ${field('状态', d.status === 'bound' ? '已绑用户' : (d.reIn ? '再入库待绑' : (d.status || '—')))}
+          ${field('一级代理', d.l1Id ? l1Name(d.l1Id) : '—')}
+          ${field('二级代理', d.l2Id ? l2Name(d.l2Id) : '—')}
+          ${field('商品', d.productId ? `${productName(d.productId)} / ${d.size || ''}` : '—')}
+          ${field('绑定IP地区', d.bindIpRegion || '—')}
+          ${field('手机号', user?.phone || '—')}
+          ${field('手机归属地', user?.phoneLoc || '—')}
+          ${field('用户地址', user?.addr || '—', true)}
+          ${d.prevUser ? field('原绑定用户(归档)', `${d.prevUser.phone || ''} ${d.prevUser.addr || ''}`, true) : ''}
+        </div>`;
+      }
       foot = `<button class="btn btn-primary" data-action="close-modal">关闭</button>`;
     }
 
