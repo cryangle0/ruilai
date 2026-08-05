@@ -187,13 +187,17 @@
 
   const LOGIN_OPTIONS = [
     { role: 'admin', entry: 'desktop', label: '平台管理员' },
-    { role: 'l1', entry: 'desktop', label: '一级(桌面)' },
-    { role: 'l2', entry: 'desktop', label: '二级(桌面)' },
-    { role: 'sub', entry: 'desktop', label: '子账号(桌面)' },
-    { role: 'user', entry: 'mini', label: '小程序·用户' },
-    { role: 'l1', entry: 'mini', label: '小程序·一级' },
-    { role: 'l2', entry: 'mini', label: '小程序·二级' },
-    { role: 'sub', entry: 'mini', label: '小程序·子账号' },
+    { role: 'l1', entry: 'desktop', label: '一级代理' },
+    { role: 'l2', entry: 'desktop', label: '二级代理' },
+    { role: 'sub', entry: 'desktop', label: '子账号' },
+    { role: 'user', entry: 'mini', label: '小程序' },
+  ];
+
+  const MINI_ROLES = [
+    { role: 'user', label: '用户' },
+    { role: 'l1', label: '一级' },
+    { role: 'l2', label: '二级' },
+    { role: 'sub', label: '子账号' },
   ];
 
   function currentL1Id() {
@@ -2082,7 +2086,9 @@
       <div class="form-field"><label>登录身份（含小程序端）</label>
         <div class="role-pills">
           ${LOGIN_OPTIONS.map((o) => {
-            const on = ui.role === o.role && ui.entry === o.entry;
+            const on = o.entry === 'mini'
+              ? ui.entry === 'mini'
+              : (ui.role === o.role && ui.entry === 'desktop');
             return `<button type="button" class="role-pill ${on ? 'active' : ''} ${o.entry === 'mini' ? 'mini' : ''}" data-login="${o.role}|${o.entry}">${o.label}</button>`;
           }).join('')}
         </div>
@@ -2097,10 +2103,15 @@
   function renderMini() {
     const tabs = miniTabs();
     const pageFn = PAGES[ui.route] || pageMiniScan;
-    const role = ROLES[ui.role];
+    const role = ROLES[ui.role] || ROLES.user;
     return `<div class="mini-stage">
       <div class="mini-phone">
-        <div class="mini-phone-bar"><span>锐涞小程序</span><span class="muted">${escapeHtml(role.name)}</span></div>
+        <div class="mini-phone-bar">
+          <span>锐涞小程序</span>
+          <div class="mini-role-switch">
+            ${MINI_ROLES.map((r) => `<button type="button" class="mini-role-chip ${ui.role === r.role ? 'on' : ''}" data-action="mini-switch-role" data-role="${r.role}">${r.label}</button>`).join('')}
+          </div>
+        </div>
         <div class="mini-phone-body">
           <div class="mini-scroll">${pageFn()}</div>
         </div>
@@ -2110,7 +2121,7 @@
           </button>`).join('')}
         </nav>
       </div>
-      <p class="mini-stage-hint">手机框模拟微信小程序 · 数据与后台/代理端同步（localStorage）</p>
+      <p class="mini-stage-hint">一个小程序入口 · 顶栏切换身份 · 数据与后台同步</p>
     </div>
     ${modalContent()}
     <div class="toast-wrap">${ui.toast ? `<div class="toast ${ui.toast.kind}">${escapeHtml(ui.toast.msg)}</div>` : ''}</div>`;
@@ -2452,13 +2463,29 @@
         break;
       }
       case 'mini-to-desktop': {
-        if (ui.role === 'user') return toast('用户端请继续使用小程序；代理请重新登录对应身份', 'warn');
+        if (ui.role === 'user') return toast('用户端请继续使用小程序；代理请退出后选桌面身份登录', 'warn');
         ui.mode = 'agent';
         ui.entry = 'desktop';
         sessionStorage.setItem('ruilai_mode', 'agent');
         sessionStorage.setItem('ruilai_entry', 'desktop');
         ui.route = 'agent-home';
         location.hash = ui.route;
+        render();
+        break;
+      }
+      case 'mini-switch-role': {
+        const role = el.getAttribute('data-role');
+        if (!MINI_ROLES.some((r) => r.role === role)) break;
+        ui.role = role;
+        ui.entry = 'mini';
+        ui.mode = 'mini';
+        sessionStorage.setItem('ruilai_role', ui.role);
+        sessionStorage.setItem('ruilai_entry', 'mini');
+        sessionStorage.setItem('ruilai_mode', 'mini');
+        ui.route = 'mini-scan';
+        location.hash = ui.route;
+        ui.modal = null;
+        toast(`已切换为${ROLES[role].name}`);
         render();
         break;
       }
