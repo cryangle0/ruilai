@@ -164,8 +164,9 @@
 
   const ui = {
     loggedIn: sessionStorage.getItem('ruilai_logged') === '1',
-    role: sessionStorage.getItem('ruilai_role') || 'admin', // admin | l1 | l2 | sub
-    mode: sessionStorage.getItem('ruilai_mode') || 'admin',
+    role: sessionStorage.getItem('ruilai_role') || 'admin', // admin | l1 | l2 | sub | user
+    entry: sessionStorage.getItem('ruilai_entry') || 'desktop', // desktop | mini
+    mode: sessionStorage.getItem('ruilai_mode') || 'admin', // admin | agent | mini
     route: (location.hash.replace(/^#/, '') || 'home'),
     modal: null, // { type, payload }
     drawer: null,
@@ -181,7 +182,19 @@
     l1: { name: '华东锐涞总代', avatar: '一', account: 'agent_hd', l1Id: 'L1A' },
     l2: { name: '杭州城西专营', avatar: '二', account: 'agent_hz', l2Id: 'L2A', l1Id: 'L1A' },
     sub: { name: '仓管小陈(子账号)', avatar: '子', account: 'hd_scan_01', l1Id: 'L1A' },
+    user: { name: '终端用户', avatar: '用', account: 'user_demo' },
   };
+
+  const LOGIN_OPTIONS = [
+    { role: 'admin', entry: 'desktop', label: '平台管理员' },
+    { role: 'l1', entry: 'desktop', label: '一级(桌面)' },
+    { role: 'l2', entry: 'desktop', label: '二级(桌面)' },
+    { role: 'sub', entry: 'desktop', label: '子账号(桌面)' },
+    { role: 'user', entry: 'mini', label: '小程序·用户' },
+    { role: 'l1', entry: 'mini', label: '小程序·一级' },
+    { role: 'l2', entry: 'mini', label: '小程序·二级' },
+    { role: 'sub', entry: 'mini', label: '小程序·子账号' },
+  ];
 
   function currentL1Id() {
     return ROLES[ui.role]?.l1Id || null;
@@ -316,6 +329,69 @@
     const n = Number(days) || 30;
     const ts = parseTime(timeStr);
     return Date.now() - ts <= n * 86400000;
+  }
+
+  function snStatusMeta(row) {
+    if (!row) return { label: '未知', tone: 'gray' };
+    if (row.status === 'warehouse') return { label: '待入库', tone: 'gray' };
+    if (row.status === 'l1') return { label: '一级在库', tone: 'green' };
+    if (row.status === 'factory') return { label: '已退原厂', tone: 'gray' };
+    if (row.status === 'bound') return { label: '已绑用户', tone: 'orange' };
+    if (row.status === 'l2' && row.reIn && row.resale) return { label: '可再销售', tone: 'blue' };
+    if (row.status === 'l2' && row.reIn) return { label: '再入库待标记', tone: 'orange' };
+    if (row.status === 'l2') return { label: '二级在库', tone: 'blue' };
+    return { label: row.status, tone: 'gray' };
+  }
+
+  function pushSnEvent(row, title, desc, type = 'op') {
+    if (!row) return;
+    row.events = row.events || [];
+    row.events.push({ time: nowStr(), title, desc: desc || '', type });
+  }
+
+  function getSnLifecycle(row) {
+    if (!row) return [];
+    const ev = [...(row.events || [])];
+    const y = row.sn.slice(2, 6);
+    const m = row.sn.slice(6, 8);
+    const d = row.sn.slice(8, 10);
+    const base = (/^\d{8}$/.test(`${y}${m}${d}`)) ? `${y}-${m}-${d}` : '2026-08-01';
+    const has = (title) => ev.some((e) => e.title === title);
+    if (!has('生成并导入码库')) {
+      ev.push({ time: `${base} 09:00`, title: '生成并导入码库', desc: `${productName(row.productId)} / ${row.size} · 一级 ${l1Name(row.l1Id)}`, type: 'import' });
+    }
+    if (row.status !== 'warehouse' && !has('采购审核入库')) {
+      ev.push({ time: `${base} 10:30`, title: '采购审核入库', desc: '进入一级代理库存', type: 'purchase' });
+    }
+    if ((row.l2Id || row.status === 'l2' || row.status === 'bound') && !ev.some((e) => e.type === 'sales' || e.title.includes('销售'))) {
+      const so = db.sales.find((s) => (s.scanned || []).includes(row.sn));
+      ev.push({ time: so?.createdAt || `${base} 15:00`, title: '销售转入二级', desc: `${so ? so.no + ' · ' : ''}${l2Name(row.l2Id)}`, type: 'sales' });
+    }
+    if ((row.status === 'bound' || row.bindAt) && !ev.some((e) => e.type === 'bind' || e.title.includes('绑定'))) {
+      ev.push({ time: row.bindAt || `${base} 18:00`, title: '用户绑定激活', desc: `${row.user?.phone || '—'} · IP ${row.bindIpRegion || '—'}`, type: 'bind' });
+    }
+    db.returns.filter((r) => (r.sns || []).includes(row.sn)).forEach((r) => {
+      if (!ev.some((e) => e.desc && e.desc.includes(r.no))) {
+        ev.push({ time: r.createdAt, title: r.typeLabel || '退货', desc: r.no, type: 'return' });
+      }
+    });
+    if (row.resale && !has('标记再销售')) {
+      ev.push({ time: nowStr(), title: '标记再销售', desc: '可再次绑定用户', type: 'resale' });
+    }
+    if (row.status === 'factory' && !has('退回原厂')) {
+      ev.push({ time: nowStr(), title: '退回原厂', desc: '库存退出渠道', type: 'factory' });
+    }
+    db.exceptions.filter((e) => e.target === row.sn || String(e.target || '').includes(row.sn)).forEach((e) => {
+      if (!ev.some((x) => x.time === e.time && x.title.includes(e.type))) {
+        ev.push({ time: e.time, title: `异常：${e.type}`, desc: e.detail, type: 'exception' });
+      }
+    });
+    db.stockLogs.filter((h) => h.ref === row.sn).forEach((h) => {
+      if (!ev.some((x) => x.time === h.time && x.title === h.reason)) {
+        ev.push({ time: h.time, title: h.reason, desc: `库存 ${h.delta > 0 ? '+' : ''}${h.delta}`, type: 'stock' });
+      }
+    });
+    return ev.sort((a, b) => parseTime(b.time) - parseTime(a.time));
   }
 
   function parseOneSegment(seg) {
@@ -455,6 +531,8 @@
     role: '角色与权限', log: '系统日志', 'agent-home': '代理商首页', 'agent-purchase': '采购单申请',
     'agent-sales': '销售单', 'agent-stock': '库存管理', 'agent-bind-user': '用户绑定',
     'agent-aftersale': '售后管理', 'agent-sub': '子账号管理', 'agent-l2-mine': '我的二级代理',
+    'mini-scan': '扫码', 'mini-binds': '我的绑定', 'mini-life': '生命周期',
+    'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存', 'mini-aftersale': '售后', 'mini-mine': '我的',
   };
 
   /* ---------- UI helpers ---------- */
@@ -980,6 +1058,218 @@
       ${table(['账号','姓名','权限','状态','操作'], rows)}`;
   }
 
+  function miniTabs() {
+    if (ui.role === 'user') {
+      return [
+        { id: 'mini-scan', title: '扫码', icon: '⌁' },
+        { id: 'mini-binds', title: '我的绑定', icon: '☺' },
+        { id: 'mini-life', title: '履历', icon: '☰' },
+      ];
+    }
+    if (ui.role === 'l2') {
+      return [
+        { id: 'mini-scan', title: '扫码', icon: '⌁' },
+        { id: 'mini-stock', title: '库存', icon: '▦' },
+        { id: 'mini-aftersale', title: '售后', icon: '↩' },
+        { id: 'mini-mine', title: '我的', icon: '◎' },
+      ];
+    }
+    if (ui.role === 'sub') {
+      return [
+        { id: 'mini-scan', title: '扫码', icon: '⌁' },
+        { id: 'mini-sales', title: '销售', icon: '▥' },
+        { id: 'mini-mine', title: '我的', icon: '◎' },
+      ];
+    }
+    // l1
+    return [
+      { id: 'mini-scan', title: '扫码', icon: '⌁' },
+      { id: 'mini-purchase', title: '采购', icon: '▤' },
+      { id: 'mini-sales', title: '销售', icon: '▥' },
+      { id: 'mini-stock', title: '库存', icon: '▦' },
+      { id: 'mini-mine', title: '我的', icon: '◎' },
+    ];
+  }
+
+  function renderMiniSnCard(sn) {
+    const row = db.sns.find((s) => s.sn === sn);
+    if (!row) return `<div class="alert alert-warn">未找到 SN ${escapeHtml(sn)}</div>`;
+    const st = snStatusMeta(row);
+    const life = getSnLifecycle(row).slice(0, 12);
+    const actions = [];
+    if (ui.role === 'user') {
+      if (row.status === 'l2' || (row.reIn && row.resale)) actions.push(['mini-user-bind', '自助激活绑定', 'primary']);
+      if (row.status === 'bound') actions.push(['view-bind', '查看绑定信息', '']);
+    }
+    if (ui.role === 'l2') {
+      if (row.status === 'l2' || (row.reIn && row.resale)) actions.push(['mini-agent-bind', '绑定用户', 'primary']);
+      if (row.status === 'bound') actions.push(['mini-user-return-sn', '用户退货', '']);
+      if (row.reIn && !row.resale) actions.push(['mark-resale', '标记再销售', 'primary']);
+    }
+    if (ui.role === 'l1' || ui.role === 'sub') {
+      if (row.status === 'l1') actions.push(['create-so', '去销售出库', 'primary']);
+      if (row.status === 'warehouse') actions.push(['', '待后台号段审核入库', '']);
+    }
+    if (ui.role === 'l1' && row.status === 'l2') actions.push(['mini-agent-bind', '代绑用户', '']);
+    return `
+      <div class="mini-sn-card">
+        <div class="mini-sn-hd">
+          <div class="num mini-sn-code">${escapeHtml(row.sn)}</div>
+          ${tag(st.label, st.tone)}
+        </div>
+        <div class="mini-sn-meta">
+          <div><span>商品</span>${escapeHtml(productName(row.productId))} / ${row.size}</div>
+          <div><span>一级</span>${escapeHtml(l1Name(row.l1Id))}</div>
+          <div><span>二级</span>${escapeHtml(row.l2Id ? l2Name(row.l2Id) : '—')}</div>
+          <div><span>用户</span>${escapeHtml(row.user ? `${row.user.phone} · ${row.user.addr}` : (row.reIn ? '再入库(原用户已隐藏)' : '—'))}</div>
+        </div>
+        ${actions.length ? `<div class="mini-actions">${actions.map(([act, lab, kind]) => act
+          ? `<button class="btn btn-sm ${kind === 'primary' ? 'btn-primary' : ''}" data-action="${act}" data-sn="${row.sn}">${lab}</button>`
+          : `<span class="muted">${lab}</span>`).join('')}</div>` : ''}
+        <h3 class="mini-section-title">全生命周期</h3>
+        <div class="mini-timeline">
+          ${life.map((e) => `<div class="mini-tl-item type-${e.type || 'op'}">
+            <div class="mini-tl-dot"></div>
+            <div class="mini-tl-body">
+              <div class="mini-tl-title">${escapeHtml(e.title)}</div>
+              <div class="mini-tl-desc">${escapeHtml(e.desc || '')}</div>
+              <div class="mini-tl-time num">${escapeHtml(e.time)}</div>
+            </div>
+          </div>`).join('') || '<div class="empty-hint">暂无履历</div>'}
+        </div>
+      </div>`;
+  }
+
+  function pageMiniScan() {
+    const hint = ui.role === 'user'
+      ? '扫码查验真伪与全链路履历；在库二级商品可自助激活'
+      : ui.role === 'l2' ? '扫码绑定用户、查看履历、处理再销售'
+        : ui.role === 'sub' ? '扫码加入销售单（由主账号确认）' : '扫码查看履历，在库 SN 可发起销售出库';
+    return `
+      <div class="mini-page-title">SN 扫码</div>
+      <p class="mini-page-desc">${hint}</p>
+      <button class="mini-scan-btn" data-action="mini-do-scan"><span class="mini-scan-ico">⌁</span>模拟扫码</button>
+      <div class="form-field" style="margin-top:12px">
+        <input class="field-input" id="mini-sn-input" placeholder="或输入 SN，如 RL202607200001" value="${escapeHtml(ui.form.miniSn || '')}" />
+      </div>
+      <button class="btn btn-primary btn-block" data-action="mini-lookup-sn">查询并打开履历</button>
+      <div style="margin-top:14px">${ui.form.miniViewSn ? renderMiniSnCard(ui.form.miniViewSn) : '<div class="empty-hint">扫码或输入 SN 后展示生命周期</div>'}</div>`;
+  }
+
+  function pageMiniBinds() {
+    const list = db.sns.filter((s) => s.status === 'bound' && s.user).slice(-30).reverse();
+    return `
+      <div class="mini-page-title">我的绑定</div>
+      <p class="mini-page-desc">已激活的 SN（演示展示渠道内绑定记录）</p>
+      <div class="mini-list">${list.map((s) => `
+        <button class="mini-list-item" data-action="mini-open-sn" data-sn="${s.sn}">
+          <div class="num">${s.sn}</div>
+          <div class="muted">${escapeHtml(productName(s.productId))} / ${s.size}</div>
+          <div class="muted">${escapeHtml(s.user.phone)} · ${escapeHtml(s.bindIpRegion || '')}</div>
+        </button>`).join('') || '<div class="empty-hint">暂无绑定</div>'}</div>`;
+  }
+
+  function pageMiniLife() {
+    const sn = ui.form.miniViewSn || ui.form.miniSn;
+    if (!sn) {
+      return `<div class="mini-page-title">生命周期</div><p class="mini-page-desc">请先在「扫码」页查询 SN</p>
+        <button class="btn btn-primary btn-block" data-go="mini-scan">去扫码</button>`;
+    }
+    return `<div class="mini-page-title">生命周期</div>${renderMiniSnCard(sn)}`;
+  }
+
+  function pageMiniPurchase() {
+    const l1 = currentL1Id();
+    const list = db.purchases.filter((p) => p.l1Id === l1).slice().reverse();
+    const stMap = { pending: ['待审核', 'orange'], approved: ['已入库', 'green'], rejected: ['已驳回', 'red'] };
+    return `<div class="mini-page-title">采购申请</div><p class="mini-page-desc">小程序提交，后台审核号段后入库</p>
+      <button class="btn btn-primary btn-block" data-action="apply-po" style="margin-bottom:12px">+ 新建采购申请</button>
+      <div class="mini-list">${list.map((p) => {
+        const st = stMap[p.status] || [p.status, 'gray'];
+        const detail = p.lines.map((l) => `${productName(l.productId)}/${l.size}×${l.qty}`).join('，');
+        return `<button class="mini-list-item" data-action="view-po" data-id="${p.id}">
+          <div class="num">${p.no}</div><div>${escapeHtml(detail)}</div>
+          <div>${tag(st[0], st[1])} <span class="muted">${escapeHtml(p.createdAt)}</span></div>
+        </button>`;
+      }).join('') || '<div class="empty-hint">暂无采购单</div>'}</div>`;
+  }
+
+  function pageMiniSales() {
+    const l1 = currentL1Id();
+    const l2 = currentL2Id();
+    let list = db.sales.slice().reverse();
+    if (ui.role === 'l2') list = list.filter((s) => s.l2Id === l2);
+    else list = list.filter((s) => s.l1Id === l1);
+    const canCreate = ui.role === 'l1' || ui.role === 'sub';
+    return `<div class="mini-page-title">销售出库</div><p class="mini-page-desc">选二级 → 扫码 → 按尺码核对 → 确认转移</p>
+      ${ui.role === 'l1' ? '<button class="btn btn-primary btn-block" data-action="create-so" style="margin-bottom:12px">+ 创建销售单</button>' : ''}
+      ${ui.role === 'sub' ? '<div class="alert alert-info">子账号请打开扫码中单据继续扫，由主账号确认</div>' : ''}
+      <div class="mini-list">${list.map((s) => `<div class="mini-list-item">
+        <div class="num">${s.no}</div>
+        <div>${escapeHtml(l2Name(s.l2Id))} · ${(s.scanned || []).length}${s.planTotal ? ' / ' + s.planTotal : ''} 件</div>
+        <div>${s.status === 'done' ? tag('已完成', 'green') : tag('扫码中', 'blue')}
+          ${s.status !== 'done' && canCreate ? `<button class="btn btn-sm btn-primary" data-action="continue-so" data-id="${s.id}">继续扫码</button>` : ''}
+          <button class="btn btn-sm" data-action="view-so" data-id="${s.id}">详情</button>
+        </div>
+      </div>`).join('') || '<div class="empty-hint">暂无销售单</div>'}</div>`;
+  }
+
+  function pageMiniStock() {
+    const isL2 = ui.role === 'l2';
+    const rows = isL2 ? getStockRows('l2', currentL2Id()) : getStockRows('l1', currentL1Id());
+    return `<div class="mini-page-title">库存</div><p class="mini-page-desc">当前可用库存；完整 SN 履历请用扫码查询</p>
+      <div class="mini-list">${rows.map((r) => `<div class="mini-list-item">
+        <div>${escapeHtml(productName(r.productId))} / ${r.size}</div>
+        <div class="num" style="font-size:20px;font-weight:800">${r.qty}</div>
+        <button class="btn btn-sm" data-action="stock-hist" data-type="${isL2 ? 'l2' : 'l1'}" data-id="${isL2 ? currentL2Id() : currentL1Id()}" data-pid="${r.productId}" data-size="${r.size}">流水</button>
+      </div>`).join('') || '<div class="empty-hint">暂无库存</div>'}</div>
+      <button class="btn btn-block" data-go="mini-scan" style="margin-top:12px">去扫码查 SN 履历</button>`;
+  }
+
+  function pageMiniAftersale() {
+    return `<div class="mini-page-title">售后</div><p class="mini-page-desc">退货再入库 → 标记再销售 → 再绑</p>
+      <div class="mini-actions" style="margin-bottom:12px">
+        <button class="btn" data-action="user-return">用户退货</button>
+        <button class="btn btn-primary" data-action="agent-return">代理退货</button>
+      </div>
+      ${pageAgentAftersale().includes('退货再销售') ? '' : ''}
+      ${(() => {
+        const resaleList = db.sns.filter((s) => (s.reIn || s.resale) && (ui.role === 'l2' ? s.l2Id === currentL2Id() : s.l1Id === currentL1Id()));
+        const mineReturns = db.returns.filter((r) => ui.role === 'l2' ? r.fromId === currentL2Id() : (r.fromId === currentL1Id() || r.approverId === currentL1Id())).slice(0, 15);
+        return `
+          <h3 class="mini-section-title">再销售</h3>
+          <div class="mini-list">${resaleList.map((s) => `<div class="mini-list-item">
+            <div class="num">${s.sn}</div>
+            <div>${s.resale ? tag('可再销售', 'green') : tag('待标记', 'orange')}</div>
+            ${!s.resale ? `<button class="btn btn-sm btn-primary" data-action="mark-resale" data-sn="${s.sn}">标记再销售</button>` : `<button class="btn btn-sm" data-action="mini-open-sn" data-sn="${s.sn}">查看</button>`}
+          </div>`).join('') || '<div class="empty-hint">暂无</div>'}</div>
+          <h3 class="mini-section-title">退货单</h3>
+          <div class="mini-list">${mineReturns.map((r) => `<button class="mini-list-item" data-action="view-rt" data-id="${r.id}">
+            <div class="num">${r.no}</div><div>${escapeHtml(r.typeLabel || r.type)}</div>
+            <div>${r.status === 'pending' ? tag('待审', 'orange') : tag(r.status === 'approved' ? '已通过' : r.status, 'green')}</div>
+          </button>`).join('') || '<div class="empty-hint">暂无</div>'}</div>`;
+      })()}`;
+  }
+
+  function pageMiniMine() {
+    const notes = (db.notifications || []).filter((n) => !n.read).length;
+    return `
+      <div class="mini-page-title">我的</div>
+      <div class="mini-profile">
+        <div class="user-avatar" style="width:48px;height:48px;font-size:18px">${ROLES[ui.role].avatar}</div>
+        <div><strong>${escapeHtml(ROLES[ui.role].name)}</strong><div class="muted">${escapeHtml(ROLES[ui.role].account)} · 小程序端</div></div>
+      </div>
+      <div class="form-field"><label>演示 IP 地区（绑定/激活用）</label>
+        <select class="field-input" id="demo-ip">${ALL_REGIONS.map((r) => `<option value="${r}" ${db.demoIpRegion === r ? 'selected' : ''}>${r}</option>`).join('')}</select>
+      </div>
+      <div class="mini-list" style="margin-top:12px">
+        <div class="mini-list-item"><span>未读通知</span><strong>${notes}</strong></div>
+        <div class="mini-list-item muted">号段审核 / 电子围栏 / 角色配置请在管理后台完成</div>
+      </div>
+      <button class="btn btn-block" data-action="mini-to-desktop" style="margin-top:12px">切换到桌面端</button>
+      <button class="btn btn-block btn-primary" data-action="logout" style="margin-top:8px">退出登录</button>`;
+  }
+
   const PAGES = {
     home: pageHome, 'agent-l1': pageAgentL1, 'agent-l2': pageAgentL2, 'agent-bind': pageAgentBind,
     'agent-pending': pageAgentPending, sn: pageSN, product: pageProduct, purchase: pagePurchase,
@@ -987,6 +1277,9 @@
     role: pageRole, log: pageLog, 'agent-home': pageAgentHome, 'agent-purchase': pageAgentPurchase,
     'agent-sales': pageAgentSales, 'agent-stock': pageAgentStock, 'agent-bind-user': pageAgentBindUser,
     'agent-aftersale': pageAgentAftersale, 'agent-sub': pageAgentSub, 'agent-l2-mine': pageAgentL2,
+    'mini-scan': pageMiniScan, 'mini-binds': pageMiniBinds, 'mini-life': pageMiniLife,
+    'mini-purchase': pageMiniPurchase, 'mini-sales': pageMiniSales, 'mini-stock': pageMiniStock,
+    'mini-aftersale': pageMiniAftersale, 'mini-mine': pageMiniMine,
   };
 
   /* ---------- Modals ---------- */
@@ -1454,7 +1747,9 @@
     for (let i = 0; i < qty; i++) {
       const sn = `RL${todayCompact()}${batch}${String(start + i).padStart(4, '0')}`;
       if (db.sns.some((s) => s.sn === sn)) continue;
-      db.sns.push({ sn, productId, size, l1Id, l2Id: null, status: 'warehouse', user: null, prevUser: null, reIn: false, resale: false, bindAt: null, bindIpRegion: null });
+      const row = { sn, productId, size, l1Id, l2Id: null, status: 'warehouse', user: null, prevUser: null, reIn: false, resale: false, bindAt: null, bindIpRegion: null, events: [] };
+      pushSnEvent(row, '生成并导入码库', `${productName(productId)} / ${size} · ${l1Name(l1Id)}`, 'import');
+      db.sns.push(row);
       added++;
     }
     addLog(`导入SN ${added} 条 → ${l1Name(l1Id)} / ${size}`);
@@ -1516,6 +1811,10 @@
     });
     p.status = 'approved';
     p.segments = inputs.map((x) => x.value.trim());
+    allSn.forEach(({ list }) => list.forEach((sn) => {
+      const row = db.sns.find((s) => s.sn === sn);
+      pushSnEvent(row, '采购审核入库', `${p.no} → 一级库存`, 'purchase');
+    }));
     addLog(`审核通过采购单 ${p.no}`);
     saveStore();
     closeModal();
@@ -1581,6 +1880,7 @@
       const row = db.sns.find((s) => s.sn === sn);
       row.status = 'l2';
       row.l2Id = l2Id;
+      pushSnEvent(row, '销售转入二级', `→ ${l2Name(l2Id)}`, 'sales');
     });
     Object.entries(incoming).forEach(([key, qty]) => {
       const [productId, size] = key.split('_');
@@ -1613,33 +1913,36 @@
     const sn = ($('#f-sn')?.value || ui.modal.draft.sn || '').trim().toUpperCase();
     const row = db.sns.find((s) => s.sn === sn);
     if (!row) return toast('SN不存在', 'err');
-    // must be at current agent stock
-    if (ui.role === 'l2') {
-      if (row.l2Id !== currentL2Id() || (row.status !== 'l2' && !(row.reIn && row.status !== 'bound'))) {
-        if (!(row.l2Id === currentL2Id() && (row.status === 'l2' || row.reIn))) return toast('SN不在当前二级可绑库存', 'err');
+    if (ui.role === 'user') {
+      if (row.status === 'bound' && !row.reIn) {
+        openModal('view-bind', { data: { ...row, tip: '该 SN 已激活绑定' } });
+        return;
       }
-      if (row.status === 'bound' && !row.reIn) return toast('该SN已绑定用户；若未退货再次扫码应展示用户信息', 'warn');
-    } else {
+      if (!(row.status === 'l2' || (row.reIn && row.resale))) return toast('该 SN 当前不可自助激活', 'err');
+      if (row.reIn && !row.resale) return toast('请等待经销商标记再销售', 'err');
+    } else if (ui.role === 'l2') {
+      if (!(row.l2Id === currentL2Id() && (row.status === 'l2' || row.reIn))) return toast('SN不在当前二级可绑库存', 'err');
+      if (row.status === 'bound' && !row.reIn) {
+        openModal('view-bind', { data: { sn: row.sn, user: row.user, tip: '未产生退货记录，展示当前绑定用户' } });
+        return;
+      }
+    } else if (ui.role === 'l1' || ui.role === 'sub') {
       if (!row.l2Id || row.l1Id !== currentL1Id()) return toast('请使用已分到二级的SN进行用户绑定', 'err');
-    }
-    if (row.status === 'bound' && !row.reIn) {
-      openModal('view-bind', { data: { sn: row.sn, user: row.user, tip: '未产生退货记录，展示当前绑定用户' } });
-      return;
+      if (row.status === 'bound' && !row.reIn) {
+        openModal('view-bind', { data: { sn: row.sn, user: row.user, tip: '未产生退货记录，展示当前绑定用户' } });
+        return;
+      }
     }
     if (row.reIn && !row.resale) {
       return toast('该SN退货再入库后，请先在售后管理「标记再销售」', 'err');
     }
-    const agent = ui.role === 'l2'
-      ? db.agentsL2.find((a) => a.id === currentL2Id())
-      : db.agentsL2.find((a) => a.id === row.l2Id);
+    const agent = db.agentsL2.find((a) => a.id === (ui.role === 'l2' ? currentL2Id() : row.l2Id));
     const l1 = db.agentsL1.find((a) => a.id === row.l1Id);
-    // auth: l2 uses areas (city->province rough), l1 uses mainArea when still at l1 - but bind is after sales so l2
     let authAreas = [];
     if (agent) {
-      // map city to province
       authAreas = Object.entries(CITY_MAP).filter(([, cities]) => cities.some((c) => (agent.areas || []).includes(c))).map(([p]) => p);
       if (!authAreas.length) authAreas = l1 ? [l1.mainArea, ...l1.areas] : [];
-    } else if (l1) authAreas = [l1.mainArea];
+    } else if (l1) authAreas = [l1.mainArea, ...(l1.areas || [])];
     const ipOk = authAreas.includes(db.demoIpRegion);
     ui.modal.draft = { ...ui.modal.draft, sn, authAreas, ipOk, rowId: sn };
     ui.modal.step = 2;
@@ -1674,9 +1977,17 @@
       id: uid('H'), agentType: 'l2', agentId: row.l2Id, productId: row.productId, size: row.size,
       delta: -1, reason: wasResale ? '再销售绑定出库' : '用户绑定出库(销量)', time: nowStr(), ref: row.sn,
     });
+    pushSnEvent(row, wasResale ? '再销售绑定激活' : '用户绑定激活',
+      `${phone} · IP ${db.demoIpRegion}${!ui.modal.draft.ipOk ? ' · 跨区' : ''}`, 'bind');
     addLog(`绑定用户 ${row.sn}${wasResale ? '（再销售）' : ''}${!ui.modal.draft.ipOk ? '（跨区激活）' : ''}`);
     saveStore();
-    closeModal();
+    ui.modal = null;
+    if (ui.mode === 'mini') {
+      ui.form.miniViewSn = row.sn;
+      ui.form.miniSn = row.sn;
+      ui.route = ui.role === 'user' ? 'mini-life' : 'mini-scan';
+      location.hash = ui.route;
+    }
     toast(warn ? '已绑定，已写入异常预警' : (wasResale ? '再销售绑定成功' : '用户绑定成功'), warn ? 'warn' : undefined);
   }
 
@@ -1697,9 +2008,14 @@
       fromId: row.l2Id, fromName: l2Name(row.l2Id), sns: [sn], status: 'approved', createdAt: nowStr(), resaleReady: false,
     });
     db.stockLogs.unshift({ id: uid('H'), agentType: 'l2', agentId: row.l2Id, productId: row.productId, size: row.size, delta: 1, reason: '用户退货再入库', time: nowStr(), ref: no });
+    pushSnEvent(row, '用户退货再入库', no, 'return');
     addLog(`用户退货 ${sn}`);
     saveStore();
     closeModal();
+    if (ui.mode === 'mini') {
+      ui.form.miniViewSn = sn;
+      ui.route = 'mini-scan';
+    }
     toast('已再入库，请在售后中「标记再销售」后可再次绑定');
   }
 
@@ -1760,23 +2076,48 @@
   function $(sel) { return document.querySelector(sel); }
 
   function renderLogin() {
-    return `<div class="login-wrap"><div class="login-card">
+    return `<div class="login-wrap"><div class="login-card login-card--wide">
       <div class="login-brand"><img src="assets/logo.svg" alt="" /><h1>锐涞经销商管理系统</h1></div>
-      <p class="login-sub">可走查完整交互原型 · 数据保存在浏览器本地</p>
-      <div class="form-field"><label>登录身份</label>
+      <p class="login-sub">可走查完整交互原型 · 含小程序端 SN 全生命周期</p>
+      <div class="form-field"><label>登录身份（含小程序端）</label>
         <div class="role-pills">
-          ${[['admin','平台管理员'],['l1','一级代理'],['l2','二级代理'],['sub','一级子账号']].map(([k,t])=>
-            `<button type="button" class="role-pill ${ui.role===k?'active':''}" data-role="${k}">${t}</button>`).join('')}
+          ${LOGIN_OPTIONS.map((o) => {
+            const on = ui.role === o.role && ui.entry === o.entry;
+            return `<button type="button" class="role-pill ${on ? 'active' : ''} ${o.entry === 'mini' ? 'mini' : ''}" data-login="${o.role}|${o.entry}">${o.label}</button>`;
+          }).join('')}
         </div>
       </div>
-      <div class="form-field"><label>账号</label><input value="${ROLES[ui.role]?.account||''}" readonly /></div>
+      <div class="form-field"><label>账号</label><input value="${ROLES[ui.role]?.account || ''}" readonly /></div>
       <div class="form-field"><label>密码</label><input type="password" value="******" readonly /></div>
-      <button class="btn btn-primary btn-block" id="btn-login">进入系统</button>
+      <button class="btn btn-primary btn-block" id="btn-login">${ui.entry === 'mini' ? '进入小程序' : '进入系统'}</button>
       <button class="btn btn-block" data-action="reset-demo" style="margin-top:8px">重置演示数据</button>
     </div></div>`;
   }
 
+  function renderMini() {
+    const tabs = miniTabs();
+    const pageFn = PAGES[ui.route] || pageMiniScan;
+    const role = ROLES[ui.role];
+    return `<div class="mini-stage">
+      <div class="mini-phone">
+        <div class="mini-phone-bar"><span>锐涞小程序</span><span class="muted">${escapeHtml(role.name)}</span></div>
+        <div class="mini-phone-body">
+          <div class="mini-scroll">${pageFn()}</div>
+        </div>
+        <nav class="mini-tabbar">
+          ${tabs.map((t) => `<button type="button" class="mini-tab ${ui.route === t.id ? 'active' : ''}" data-go="${t.id}">
+            <span class="mini-tab-ico">${t.icon}</span><span>${t.title}</span>
+          </button>`).join('')}
+        </nav>
+      </div>
+      <p class="mini-stage-hint">手机框模拟微信小程序 · 数据与后台/代理端同步（localStorage）</p>
+    </div>
+    ${modalContent()}
+    <div class="toast-wrap">${ui.toast ? `<div class="toast ${ui.toast.kind}">${escapeHtml(ui.toast.msg)}</div>` : ''}</div>`;
+  }
+
   function renderApp() {
+    if (ui.mode === 'mini') return renderMini();
     const menus = filterMenusByPerm(ui.mode === 'admin' ? adminMenus() : agentMenus());
     const title = TITLES[ui.route] || '页面';
     const pageFn = PAGES[ui.route] || (ui.mode === 'admin' ? pageHome : pageAgentHome);
@@ -1788,8 +2129,9 @@
         <div class="brand" data-go="${ui.mode==='admin'?'home':'agent-home'}"><img src="assets/logo.svg" alt="" /><span>锐涞经销商管理系统</span></div>
         <div class="topbar-right">
           <div class="mode-switch">
-            <button type="button" class="${ui.mode==='admin'?'active':''}" data-mode="admin" ${ui.role!=='admin'?'':''}>管理后台</button>
+            <button type="button" class="${ui.mode==='admin'?'active':''}" data-mode="admin">管理后台</button>
             <button type="button" class="${ui.mode==='agent'?'active':''}" data-mode="agent">代理前端</button>
+            <button type="button" class="${ui.mode==='mini'?'active':''}" data-mode="mini">小程序</button>
           </div>
           <div class="notify-wrap">
             <button type="button" class="notify-btn" data-action="toggle-notify" title="消息通知">🔔${unread?`<span class="notify-badge">${unread}</span>`:''}</button>
@@ -1829,18 +2171,32 @@
 
   function navigate(id) {
     if (!PAGES[id]) return;
-    // role guards
     if (ui.mode === 'agent') {
       if (ui.role === 'l2' && ['agent-purchase','agent-sub','agent-l2-mine'].includes(id)) return toast('二级代理无此菜单权限', 'err');
       if (ui.role === 'sub' && !['agent-home','agent-sales'].includes(id)) return toast('子账号仅可访问销售扫码', 'err');
     }
+    if (ui.mode === 'mini') {
+      const allowed = miniTabs().map((t) => t.id);
+      if (!allowed.includes(id) && !id.startsWith('mini-')) return toast('当前小程序角色无此页', 'err');
+      if (ui.role === 'user' && !['mini-scan', 'mini-binds', 'mini-life'].includes(id)) return toast('用户端无此功能', 'err');
+      if (ui.role === 'sub' && !['mini-scan', 'mini-sales', 'mini-mine'].includes(id)) return toast('子账号仅销售扫码', 'err');
+    }
     ui.route = id;
     location.hash = id;
     ui.modal = null;
+    ui.notifyOpen = false;
     render();
   }
 
   function bindEvents() {
+    document.querySelectorAll('[data-login]').forEach((el) => el.addEventListener('click', () => {
+      const [role, entry] = el.getAttribute('data-login').split('|');
+      ui.role = role;
+      ui.entry = entry || 'desktop';
+      sessionStorage.setItem('ruilai_role', ui.role);
+      sessionStorage.setItem('ruilai_entry', ui.entry);
+      render();
+    }));
     document.querySelectorAll('[data-role]').forEach((el) => el.addEventListener('click', () => {
       ui.role = el.getAttribute('data-role');
       sessionStorage.setItem('ruilai_role', ui.role);
@@ -1849,23 +2205,35 @@
     $('#btn-login')?.addEventListener('click', () => {
       ui.loggedIn = true;
       sessionStorage.setItem('ruilai_logged', '1');
-      ui.mode = ui.role === 'admin' ? 'admin' : 'agent';
+      if (ui.entry === 'mini' || ui.role === 'user') {
+        ui.mode = 'mini';
+        ui.entry = 'mini';
+        ui.route = 'mini-scan';
+      } else {
+        ui.mode = ui.role === 'admin' ? 'admin' : 'agent';
+        ui.route = ui.mode === 'admin' ? 'home' : 'agent-home';
+      }
       sessionStorage.setItem('ruilai_mode', ui.mode);
-      ui.route = ui.mode === 'admin' ? 'home' : 'agent-home';
+      sessionStorage.setItem('ruilai_entry', ui.entry);
       location.hash = ui.route;
-      addLog('登录系统', 'login');
-      toast(`已以 ${ROLES[ui.role].name} 登录`);
+      addLog(ui.mode === 'mini' ? '登录小程序' : '登录系统', 'login');
+      toast(`已以 ${ROLES[ui.role].name}${ui.mode === 'mini' ? '（小程序）' : ''} 登录`);
       render();
     });
     document.querySelectorAll('[data-mode]').forEach((el) => el.addEventListener('click', () => {
       const mode = el.getAttribute('data-mode');
       if (mode === 'admin' && ui.role !== 'admin') {
-        // allow peek with warning
         toast('当前身份非平台管理员，仅演示切换后台只读浏览', 'warn');
       }
+      if (mode === 'mini' && ui.role === 'admin') {
+        toast('管理员请使用后台；小程序请选用户/代理身份', 'warn');
+        return;
+      }
       ui.mode = mode;
+      ui.entry = mode === 'mini' ? 'mini' : 'desktop';
       sessionStorage.setItem('ruilai_mode', mode);
-      ui.route = mode === 'admin' ? 'home' : 'agent-home';
+      sessionStorage.setItem('ruilai_entry', ui.entry);
+      ui.route = mode === 'admin' ? 'home' : mode === 'mini' ? 'mini-scan' : 'agent-home';
       location.hash = ui.route;
       render();
     }));
@@ -2021,9 +2389,78 @@
         row.resale = true;
         const rt = db.returns.find((r) => (r.sns || []).includes(sn) && r.type === 'user');
         if (rt) rt.resaleReady = true;
+        pushSnEvent(row, '标记再销售', '可再次绑定用户', 'resale');
         addLog(`标记再销售 ${sn}`);
         pushNotify('再销售就绪', `${sn} 已标记可再销售`, ui.role === 'l2' ? '二级' : '一级');
         saveStore(); toast('已标记再销售，可扫码绑定'); render(); break;
+      }
+      case 'mini-do-scan': {
+        let cand = null;
+        if (ui.role === 'user') {
+          cand = db.sns.find((s) => s.status === 'l2' && !s.reIn) || db.sns.find((s) => s.status === 'bound');
+        } else if (ui.role === 'l2') {
+          cand = db.sns.find((s) => s.l2Id === currentL2Id() && (s.status === 'l2' || s.reIn))
+            || db.sns.find((s) => s.l2Id === currentL2Id() && s.status === 'bound');
+        } else {
+          cand = db.sns.find((s) => s.l1Id === currentL1Id() && s.status === 'l1')
+            || db.sns.find((s) => s.l1Id === currentL1Id() && s.status === 'warehouse');
+        }
+        if (!cand) return toast('演示库暂无合适 SN，请手动输入', 'warn');
+        ui.form.miniSn = cand.sn;
+        ui.form.miniViewSn = cand.sn;
+        toast(`已模拟扫到 ${cand.sn}`);
+        render();
+        break;
+      }
+      case 'mini-lookup-sn': {
+        const sn = ($('#mini-sn-input')?.value || ui.form.miniSn || '').trim().toUpperCase();
+        if (!sn) return toast('请输入 SN', 'err');
+        if (!db.sns.find((s) => s.sn === sn)) return toast('SN不存在', 'err');
+        ui.form.miniSn = sn;
+        ui.form.miniViewSn = sn;
+        if (ui.role === 'user') ui.route = 'mini-life';
+        render();
+        break;
+      }
+      case 'mini-open-sn': {
+        const sn = el.getAttribute('data-sn');
+        ui.form.miniSn = sn;
+        ui.form.miniViewSn = sn;
+        ui.route = ui.role === 'user' ? 'mini-life' : 'mini-scan';
+        location.hash = ui.route;
+        render();
+        break;
+      }
+      case 'mini-user-bind':
+      case 'mini-agent-bind': {
+        const sn = el.getAttribute('data-sn');
+        ui.modal = { type: 'bind-user', payload: {}, step: 1, draft: { sn } };
+        render();
+        // auto advance validation
+        setTimeout(() => bindNextFromSn(), 0);
+        break;
+      }
+      case 'mini-user-return-sn': {
+        const sn = el.getAttribute('data-sn');
+        ui.modal = { type: 'user-return', payload: {}, step: 1, draft: { sn } };
+        render();
+        setTimeout(() => {
+          const inp = $('#f-sn');
+          if (inp) inp.value = sn;
+          doUserReturn();
+        }, 0);
+        break;
+      }
+      case 'mini-to-desktop': {
+        if (ui.role === 'user') return toast('用户端请继续使用小程序；代理请重新登录对应身份', 'warn');
+        ui.mode = 'agent';
+        ui.entry = 'desktop';
+        sessionStorage.setItem('ruilai_mode', 'agent');
+        sessionStorage.setItem('ruilai_entry', 'desktop');
+        ui.route = 'agent-home';
+        location.hash = ui.route;
+        render();
+        break;
       }
       case 'save-acc-role': {
         const acc = db.accounts.find((a) => a.id === id);
