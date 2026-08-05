@@ -732,8 +732,10 @@ table.data .ops { display: flex; gap: 6px; flex-wrap: wrap; }
 .sn-list div{padding:6px 10px;border-bottom:1px solid var(--divider);font-size:12px;font-family:var(--font-num);display:flex;justify-content:space-between}
 .check-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .check-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-soft)}
-.segment-rows{display:flex;flex-direction:column;gap:8px}
-.segment-row{display:grid;grid-template-columns:90px 1fr 1fr 32px;gap:8px;align-items:center}
+.segment-rows{display:flex;flex-direction:column;gap:14px}
+.segment-block{border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--bg-soft);display:flex;flex-direction:column;gap:8px}
+.segment-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.segment-row .field-input{flex:1;min-width:200px}
 .err-text{color:var(--danger);font-size:12px;margin-top:6px}
 .ok-text{color:var(--success);font-size:12px;margin-top:6px}
 .drawer-mask{position:fixed;inset:0;background:rgba(26,28,25,.35);z-index:90;display:flex;justify-content:flex-end}
