@@ -448,7 +448,10 @@
   function activeLineId() { return db.activeProductLineId || 'PL-MED'; }
   function kitProducts() {
     const line = activeLineId();
-    return db.products.filter((p) => p.type === 'kit' && (p.productLineId || 'PL-MED') === line && (p.status === '上架' || line !== 'PL-MED'));
+    const byLine = db.products.filter((p) => p.type === 'kit' && (p.productLineId || 'PL-MED') === line && (p.status === '上架' || line !== 'PL-MED'));
+    // 预留产品线无上架 SKU 时回退到医疗版，避免出货/导入弹窗空商品
+    if (byLine.length) return byLine;
+    return db.products.filter((p) => p.type === 'kit' && p.status === '上架');
   }
   function partProducts() {
     return db.products.filter((p) => p.type === 'part' && (p.productLineId || 'PL-MED') === activeLineId());
@@ -1863,7 +1866,7 @@
           <div class="form-field"><label>尺寸</label><select class="field-input" id="f-size">${BAND_SIZES.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
           <div class="form-field"><label>腰带</label><select class="field-input" id="f-belt">${BELTS.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
           <div class="form-field span-2"><label>上传 Excel / CSV</label><input type="file" class="field-input" id="f-seg-file" accept=".xlsx,.xls,.csv,.txt" /></div>
-          <div class="form-field span-2"><label>段号列表（可粘贴或由文件填充）</label><textarea class="field-input" id="f-seg-paste" rows="8" placeholder="每行一段"></textarea></div>
+          <div class="form-field span-2"><label>段号列表（可粘贴或由文件填充）</label><textarea class="field-input" id="f-seg-paste" rows="8" placeholder="每行一段">${escapeHtml(ui.form.segPaste || '')}</textarea></div>
         </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="import-sn-seg-ok">导入待入库</button>`;
     } else if (type === 'gen-sn') {
@@ -2456,7 +2459,9 @@
         }
         closeModal(); break;
       }
-      case 'open-import-sn-seg': openModal('import-sn-seg', {}); break;
+      case 'open-import-sn-seg':
+        ui.form.segPaste = '';
+        openModal('import-sn-seg', {}); break;
       case 'open-gen-sn': openModal('gen-sn', {}); break;
       case 'gen-sn-ok': {
         const qty = Math.min(200, Math.max(1, Number($('#f-qty')?.value) || 0));
@@ -2477,9 +2482,10 @@
       }
       case 'import-sn-seg-ok': {
         const meta = { l1Id: $('#f-l1')?.value, productId: $('#f-pid')?.value, size: $('#f-size')?.value, belt: $('#f-belt')?.value };
-        const text = $('#f-seg-paste')?.value || '';
+        const text = $('#f-seg-paste')?.value || ui.form.segPaste || '';
         const result = importSnSegmentsFromText(text, meta);
         if (result.err) return toast(result.err, 'err');
+        ui.form.segPaste = '';
         addLog(`批量导入SN段号 +${result.added}`);
         saveStore(); closeModal(); toast(`导入 ${result.added} 条${result.skipped ? `，跳过 ${result.skipped}` : ''}`); break;
       }
@@ -2845,8 +2851,9 @@
       const name = file.name.toLowerCase();
       const fill = (text) => {
         const lines = extractSegLines(text);
+        ui.form.segPaste = lines.join('\n');
         const ta = $('#f-seg-paste');
-        if (ta) ta.value = lines.join('\n');
+        if (ta) ta.value = ui.form.segPaste;
         toast(`已从 ${file.name} 识别 ${lines.length} 行`);
       };
       if (name.endsWith('.csv') || name.endsWith('.txt')) {
