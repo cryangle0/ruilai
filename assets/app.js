@@ -1,6 +1,6 @@
 ﻿(() => {
   /* =========================================================
-   * 锐涞经销商管理系统 · 可走查完整交互原型 v6
+   * 锐涞经销商管理系统 · 可走查完整交互原型 v6.1
    * ========================================================= */
 
   const BAND_SIZES = ['SS', 'S', 'M', 'L', 'LL'];
@@ -79,11 +79,16 @@
   /* ---------- Seed ---------- */
   function seed() {
     const kitSizes = [...BAND_SIZES];
+    const productLines = [
+      { id: 'PL-MED', code: 'MED', name: '医疗版', active: true, note: '当前主产品线' },
+      { id: 'PL-YOUTH', code: 'YOUTH', name: '青春版', active: false, note: '预留扩展，暂未上线 SKU' },
+    ];
     const products = [
-      { id: 'P1', code: 'P-1001', name: '锐涞经典款套件', type: 'kit', sizes: kitSizes, defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配' },
-      { id: 'P2', code: 'P-1002', name: '锐涞运动款套件', type: 'kit', sizes: kitSizes, defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配' },
-      { id: 'PART-BELT', code: 'PART-BELT', name: '腰带规格', type: 'part', sizes: BELTS, status: '上架', note: '配件·不生成SN' },
-      { id: 'PART-SIL', code: 'PART-SIL', name: '主体硅胶带', type: 'part', sizes: BAND_SIZES, status: '上架', note: '配件·不生成SN' },
+      { id: 'P1', code: 'P-1001', name: '锐涞经典款套件', type: 'kit', productLineId: 'PL-MED', sizes: kitSizes, defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配' },
+      { id: 'P2', code: 'P-1002', name: '锐涞运动款套件', type: 'kit', productLineId: 'PL-MED', sizes: kitSizes, defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配' },
+      { id: 'PART-BELT', code: 'PART-BELT', name: '腰带规格', type: 'part', productLineId: 'PL-MED', sizes: BELTS, status: '上架', note: '配件·不生成SN' },
+      { id: 'PART-SIL', code: 'PART-SIL', name: '主体硅胶带', type: 'part', productLineId: 'PL-MED', sizes: BAND_SIZES, status: '上架', note: '配件·不生成SN' },
+      { id: 'P-Y1', code: 'Y-2001', name: '青春版弹性套件（预留）', type: 'kit', productLineId: 'PL-YOUTH', sizes: kitSizes, defaultBelt: { ...DEFAULT_BELT }, status: '下架', note: '多产品线预留' },
     ];
 
     const agentsL1 = [
@@ -91,30 +96,32 @@
         id: 'L1A', code: 'AG-L1-001', name: '华东锐涞总代', contact: '张伟', phone: '13800001111',
         mainAreas: ['浙江', '上海'], areas: ['浙江', '上海', '江苏'], saleAreas: ['浙江', '上海', '江苏'],
         directAreas: ['杭州市', '宁波市', '上海市', '苏州市'],
-        warnMultiplier: 1.5, status: '启用',
+        warnMultiplier: 1.5, warnMode: 'soft', status: '启用',
         ent: { company: '杭州华东锐涞贸易有限公司', creditCode: '91330100MA27XQ001A', legal: '张伟', phone: '0571-88001234', addr: '杭州市西湖区文三路 100 号' },
       },
       {
         id: 'L1B', code: 'AG-L1-002', name: '华南渠道中心', contact: '李娜', phone: '13900002222',
         mainAreas: ['广东'], areas: ['广东', '福建'], saleAreas: ['广东', '福建'],
         directAreas: ['广州市', '深圳市', '厦门市'],
-        warnMultiplier: 1.5, status: '启用',
+        warnMultiplier: 1.5, warnMode: 'strict', status: '启用',
         ent: { company: '广州华南渠道管理有限公司', creditCode: '91440100MA59XK002B', legal: '李娜', phone: '020-38001234', addr: '广州市天河区体育西路 8 号' },
       },
       {
         id: 'L1C', code: 'AG-L1-003', name: '华北联合代理', contact: '王强', phone: '13600003333',
         mainAreas: ['北京'], areas: ['北京', '河北', '天津'], saleAreas: ['北京', '河北', '天津'],
         directAreas: ['北京市', '天津市', '石家庄市'],
-        warnMultiplier: 2.0, status: '启用',
+        warnMultiplier: 2.0, warnMode: 'strict', status: '启用',
         ent: { company: '北京华北联合商贸有限公司', creditCode: '91110100MA01XT003C', legal: '王强', phone: '010-56001234', addr: '北京市朝阳区建国路 88 号' },
       },
     ];
 
     const agentsL2 = [
       { id: 'L2A', code: 'AG-L2-101', name: '杭州城西专营', type: '法人', parentId: 'L1A', areas: ['杭州市'], status: '启用', pending: false, auditStatus: 'approved', protocolOk: true,
+        warnMultiplier: null, warnMode: null,
         ent: { company: '杭州城西专营商贸有限公司', creditCode: '91330106MA2BXQ101D', legal: '陈晨', phone: '0571-87654321', addr: '杭州市西湖区古墩路 200 号' } },
-      { id: 'L2B', code: 'AG-L2-102', name: '宁波海曙店', type: '个人', parentId: 'L1A', areas: ['宁波市'], status: '启用', pending: false, auditStatus: 'approved', protocolOk: true },
+      { id: 'L2B', code: 'AG-L2-102', name: '宁波海曙店', type: '个人', parentId: 'L1A', areas: ['宁波市'], status: '启用', pending: false, auditStatus: 'approved', protocolOk: true, warnMultiplier: null, warnMode: null },
       { id: 'L2C', code: 'AG-L2-201', name: '广州天河渠道', type: '法人', parentId: 'L1B', areas: ['广州市'], status: '启用', pending: false, auditStatus: 'approved', protocolOk: true,
+        warnMultiplier: 1.2, warnMode: 'strict',
         ent: { company: '广州天河渠道商贸有限公司', creditCode: '91440106MA5CXK201E', legal: '周舟', phone: '020-87001122', addr: '广州市天河区天河路 385 号' } },
       { id: 'L2D', code: 'AG-L2-088', name: '金华法人渠道', type: '法人', parentId: null, areas: [], status: '启用', pending: true, auditStatus: 'approved', prevParentId: 'L1A', prevAreas: ['金华市'], protocolOk: true,
         ent: { company: '金华锐涞渠道有限公司', creditCode: '91330700MA2FXP088F', legal: '吴刚', phone: '0579-82334455', addr: '金华市婺城区双龙南街 300 号' } },
@@ -182,6 +189,13 @@
 
     return {
       exceptionMultiplier: 1.5,
+      exceptionRules: {
+        overOrderRatio: 1.0,   // 二级在库≥出货量×此值 → 超量预警
+        stockTurnover: 1.5,    // 二级在库 > 一级在库×倍数 → 库存异常
+        softAutoClose: false,
+      },
+      activeProductLineId: 'PL-MED',
+      productLines,
       demoIpRegion: '浙江',
       products,
       agentsL1,
@@ -318,17 +332,30 @@
         const parsed = JSON.parse(raw);
         if (!parsed.notifications) parsed.notifications = [];
         if (!parsed.accounts) parsed.accounts = seed().accounts;
+        if (!parsed.productLines) parsed.productLines = seed().productLines;
+        if (!parsed.activeProductLineId) parsed.activeProductLineId = 'PL-MED';
+        if (!parsed.exceptionRules) {
+          parsed.exceptionRules = { overOrderRatio: 1.0, stockTurnover: Number(parsed.exceptionMultiplier) || 1.5, softAutoClose: false };
+        }
         (parsed.sns || []).forEach((s) => {
           if (!s.belt) s.belt = DEFAULT_BELT[s.size] || '腰带M';
           if (!s.tags) s.tags = [];
           if (s.frozen === undefined) s.frozen = s.status === 'frozen';
           if (!s.events) s.events = [];
         });
+        (parsed.products || []).forEach((p) => {
+          if (!p.productLineId) p.productLineId = 'PL-MED';
+        });
         (parsed.agentsL1 || []).forEach((a) => {
           if (!a.mainAreas) a.mainAreas = a.mainArea ? [a.mainArea] : [];
           if (!a.saleAreas) a.saleAreas = a.areas || [];
           if (!a.directAreas) a.directAreas = [];
           if (!a.warnMultiplier) a.warnMultiplier = 1.5;
+          if (!a.warnMode) a.warnMode = 'strict';
+        });
+        (parsed.agentsL2 || []).forEach((a) => {
+          if (a.warnMode === undefined) a.warnMode = null;
+          if (a.warnMultiplier === undefined) a.warnMultiplier = null;
         });
         (parsed.purchases || []).forEach((p) => {
           if (!p.customLines) p.customLines = [];
@@ -418,8 +445,15 @@
   function productName(id) { return db.products.find((p) => p.id === id)?.name || id; }
   function l1Name(id) { return db.agentsL1.find((a) => a.id === id)?.name || '—'; }
   function l2Name(id) { return db.agentsL2.find((a) => a.id === id)?.name || '—'; }
-  function kitProducts() { return db.products.filter((p) => p.type === 'kit'); }
-  function partProducts() { return db.products.filter((p) => p.type === 'part'); }
+  function activeLineId() { return db.activeProductLineId || 'PL-MED'; }
+  function kitProducts() {
+    const line = activeLineId();
+    return db.products.filter((p) => p.type === 'kit' && (p.productLineId || 'PL-MED') === line && (p.status === '上架' || line !== 'PL-MED'));
+  }
+  function partProducts() {
+    return db.products.filter((p) => p.type === 'part' && (p.productLineId || 'PL-MED') === activeLineId());
+  }
+  function lineName(id) { return (db.productLines || []).find((l) => l.id === id)?.name || id; }
 
   function soProductDetail(s) {
     const map = {};
@@ -502,10 +536,26 @@
     db.notifications.unshift({ id: uid('N'), time: nowStr(), title, body, to, read: false });
   }
 
-  function pushException(type, target, detail, dim) {
+  function resolveWarnConfig(l1Id, l2Id) {
+    const l1 = db.agentsL1.find((a) => a.id === l1Id);
+    const l2 = l2Id ? db.agentsL2.find((a) => a.id === l2Id) : null;
+    const mult = Number(l2?.warnMultiplier || l1?.warnMultiplier || db.exceptionMultiplier || 1.5);
+    const mode = l2?.warnMode || l1?.warnMode || 'strict';
+    const rules = db.exceptionRules || { overOrderRatio: 1.0, stockTurnover: mult };
+    return { mult, mode, rules, l1, l2 };
+  }
+
+  function pushException(type, target, detail, dim, opts = {}) {
     const d = dim || exceptionDim({ type });
-    db.exceptions.unshift({ id: uid('EX'), time: nowStr(), type, target, detail, notify: '一级+原厂', status: '未处理', dim: d });
-    pushNotify(`预警：${type}`, `${target} · ${detail}`, '一级+原厂');
+    const mode = opts.mode || 'strict';
+    const status = mode === 'soft' ? '仅记录' : '未处理';
+    db.exceptions.unshift({
+      id: uid('EX'), time: nowStr(), type, target, detail,
+      notify: mode === 'soft' ? '仅记录' : '一级+原厂',
+      status, dim: d, warnMode: mode, explain: '',
+    });
+    if (mode !== 'soft') pushNotify(`预警：${type}`, `${target} · ${detail}`, '一级+原厂');
+    addLog(`${mode === 'soft' ? '软报警记录' : '触发异常'} ${type} · ${target}`, mode === 'soft' ? 'warn' : 'exception');
     saveStore();
   }
 
@@ -597,6 +647,65 @@
   }
   function openExCount() {
     return db.exceptions.filter((e) => e.status === '未处理').length;
+  }
+
+  function getOpenExceptionIdsInFilter() {
+    const dim = ui.tabs.exception || 'nonSn';
+    const f = ui.filters.exception || {};
+    return db.exceptions.filter((e) => {
+      if (e.status !== '未处理') return false;
+      if (exceptionDim(e) !== dim) return false;
+      if (f.status && e.status !== f.status) return false;
+      if (f.from || f.to) {
+        if (!inDateRange(e.time, f.from, f.to)) return false;
+      }
+      if (f.l1) {
+        const name = l1Name(f.l1);
+        const sn = db.sns.find((s) => s.sn === e.target);
+        const hit = (sn && sn.l1Id === f.l1) || String(e.target).includes(name) || String(e.detail || '').includes(name);
+        if (!hit) return false;
+      }
+      return true;
+    }).map((e) => e.id);
+  }
+
+  function extractSegLines(text) {
+    return String(text || '')
+      .split(/\r?\n/)
+      .map((line) => String(line).split(/[\t,;；]/)[0].trim())
+      .filter((c) => c && (/RL/i.test(c) || parseOneSegment(c)));
+  }
+
+  function importSnSegmentsFromText(text, meta) {
+    const lines = extractSegLines(text);
+    if (!lines.length) return { added: 0, skipped: 0, err: '未识别到有效段号' };
+    let added = 0; let skipped = 0;
+    lines.forEach((seg) => {
+      const list = parseSegment(seg);
+      if (!list) { skipped++; return; }
+      list.forEach((sn) => {
+        if (db.sns.some((s) => s.sn === sn)) { skipped++; return; }
+        const row = {
+          sn, productId: meta.productId, size: meta.size, belt: meta.belt,
+          l1Id: meta.l1Id, l2Id: null, status: 'warehouse', tags: [],
+          frozen: false, factoryAt: nowStr(), soldAt: null, returnAt: null, user: null, events: [], reIn: false, resale: false,
+        };
+        pushSnEvent(row, '生成并导入码库', `文件/粘贴导入 · ${l1Name(meta.l1Id)}`, 'import');
+        db.sns.push(row);
+        added++;
+      });
+    });
+    return { added, skipped };
+  }
+
+  function nextInternalSnBatch(qty) {
+    db.seq.snBatch = (db.seq.snBatch || 1) + 1;
+    const prefix = `RL${todayCompact()}`;
+    const existing = db.sns.filter((s) => s.sn.startsWith(prefix)).map((s) => parseInt(s.sn.slice(-4), 10)).filter((n) => !Number.isNaN(n));
+    let start = (existing.length ? Math.max(...existing) : 0) + 1;
+    const list = [];
+    for (let i = 0; i < qty; i++) list.push(prefix + String(start + i).padStart(4, '0'));
+    return list;
   }
   function l1ExCount(l1Id) {
     return db.exceptions.filter((e) => {
@@ -934,9 +1043,23 @@
   function pageProduct() {
     const kits = kitProducts();
     const parts = partProducts();
-    return `${pageHeader('商品库', '套件 = 弹力带 + 腰带；配件不生成 SN')}
-      <div class="alert alert-info">个性化规格：同尺寸弹力带可搭配不同腰带（如 M 配 腰带S），采购时在非标行配置，仍生成 SN。</div>
-      <h3 class="section-title">套件商品</h3>
+    const lines = db.productLines || [];
+    const allKits = db.products.filter((p) => p.type === 'kit');
+    return `${pageHeader('商品库', '套件 = 弹力带 + 腰带；配件不生成 SN · 多产品线预留')}
+      <div class="alert alert-info">个性化规格：同尺寸弹力带可搭配不同腰带（如 M 配 腰带S）。当前产品线：<strong>${escapeHtml(lineName(activeLineId()))}</strong>
+        ${(lines).map((l)=>`<button class="btn btn-sm ${activeLineId()===l.id?'btn-primary':''}" data-action="switch-line" data-id="${l.id}" style="margin-left:6px">${escapeHtml(l.name)}${l.active?'':' ·预留'}</button>`).join('')}
+      </div>
+      <h3 class="section-title">产品线（12.4）</h3>
+      <div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>编码</th><th>名称</th><th>状态</th><th>SKU数</th><th>说明</th></tr></thead>
+        <tbody>${lines.map((l)=>`<tr>
+          <td>${escapeHtml(l.code)}</td><td>${escapeHtml(l.name)}</td>
+          <td>${tag(activeLineId()===l.id?'当前':'预留', activeLineId()===l.id?'green':'gray')}</td>
+          <td class="num">${allKits.filter((p)=> (p.productLineId||'PL-MED')===l.id).length}</td>
+          <td>${escapeHtml(l.note||'')}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <h3 class="section-title" style="margin-top:16px">套件商品（${escapeHtml(lineName(activeLineId()))}）</h3>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>编码</th><th>名称</th><th>弹力带尺寸</th><th>默认腰带</th><th>状态</th><th>说明</th></tr></thead>
         <tbody>${kits.map((p)=>`<tr>
@@ -976,7 +1099,7 @@
       rows = rows.filter((s) => inDateRange(s.soldAt || s.factoryAt || s.returnAt || s.bindAt || '', f.from, f.to));
     }
     rows = rows.slice(0, 200);
-    return `${pageHeader('SN码库', '多维筛选 · 点击行查看生命周期/编辑', '<button class="btn" data-action="open-import-sn-seg">批量导入段号</button>')}
+    return `${pageHeader('SN码库', '多维筛选 · 点击行查看生命周期/编辑', '<button class="btn" data-action="open-gen-sn">系统生成SN</button><button class="btn" data-action="open-import-sn-seg">Excel导入段号</button>')}
       ${filterBar(`
         <input class="field-input" placeholder="SN" data-filter="sn:sn" value="${escapeHtml(f.sn||'')}" />
         <select class="field-input" data-filter="sn:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -1128,6 +1251,7 @@
   function pageException() {
     const dim = ui.tabs.exception || 'nonSn';
     const f = ui.filters.exception || {};
+    const rules = db.exceptionRules || { overOrderRatio: 1.0, stockTurnover: db.exceptionMultiplier || 1.5 };
     let rows = db.exceptions.filter((e) => exceptionDim(e) === dim);
     if (f.status) rows = rows.filter((e) => e.status === f.status);
     if (f.from || f.to) rows = rows.filter((e) => inDateRange(e.time, f.from, f.to));
@@ -1144,7 +1268,9 @@
       stock: db.exceptions.filter((e) => exceptionDim(e) === 'stock' && e.status === '未处理').length,
     };
     const histTotal = db.exceptions.filter((e) => exceptionDim(e) === dim).length;
-    return `${pageHeader('异常管理', '未处理加粗 · 关闭时确认是否已处理')}
+    const openN = getOpenExceptionIdsInFilter().length;
+    return `${pageHeader('异常管理', '未处理加粗 · 离开本页时询问是否已处理')}
+      <div class="alert alert-info">报警标准：超量比 ${rules.overOrderRatio} · 库存周转 ${rules.stockTurnover} · 全局倍数 ${db.exceptionMultiplier}×；一级/二级可单独设「严格/软报警」粒度。离开时若仍有未处理将弹窗确认。</div>
       ${tabsHtml('exception', [
         { id: 'nonSn', title: '非SN异常', badge: counts.nonSn || null },
         { id: 'sn', title: 'SN异常', badge: counts.sn || null },
@@ -1153,25 +1279,28 @@
       <div class="metric-grid" style="margin-bottom:10px">
         <div class="metric-card"><div class="metric-label">当前筛选</div><div class="metric-value num">${rows.length}</div></div>
         <div class="metric-card"><div class="metric-label">本维历史总量</div><div class="metric-value num">${histTotal}</div></div>
+        <div class="metric-card"><div class="metric-label">未处理(当前筛)</div><div class="metric-value num">${openN}</div></div>
         <div class="metric-card"><div class="metric-label">预警倍数</div><div class="metric-value num">${db.exceptionMultiplier}×</div></div>
       </div>
       ${filterBar(`
-        <select class="field-input" data-filter="exception:status"><option value="">状态</option><option value="未处理" ${f.status==='未处理'?'selected':''}>未处理</option><option value="已处理" ${f.status==='已处理'?'selected':''}>已处理</option></select>
+        <select class="field-input" data-filter="exception:status"><option value="">状态</option><option value="未处理" ${f.status==='未处理'?'selected':''}>未处理</option><option value="已处理" ${f.status==='已处理'?'selected':''}>已处理</option><option value="仅记录" ${f.status==='仅记录'?'selected':''}>仅记录</option></select>
         <select class="field-input" data-filter="exception:l1"><option value="">关联一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <input type="date" class="field-input" data-filter="exception:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="exception:to" value="${escapeHtml(f.to||'')}" />
-        <label style="font-size:12px;color:var(--text-2)">预警倍数 <input class="field-input" style="width:80px" type="number" step="0.1" value="${db.exceptionMultiplier}" data-filter="exception:mult" /></label>
-        <button class="btn btn-sm" data-action="save-ex-mult">保存标准</button>
+        <label style="font-size:12px;color:var(--text-2)">全局倍数 <input class="field-input" style="width:70px" type="number" step="0.1" value="${db.exceptionMultiplier}" id="f-ex-mult" /></label>
+        <label style="font-size:12px;color:var(--text-2)">超量比 <input class="field-input" style="width:70px" type="number" step="0.1" value="${rules.overOrderRatio}" id="f-ex-over" /></label>
+        <label style="font-size:12px;color:var(--text-2)">周转比 <input class="field-input" style="width:70px" type="number" step="0.1" value="${rules.stockTurnover}" id="f-ex-turn" /></label>
+        <button class="btn btn-sm" data-action="save-ex-rules">保存标准</button>
       `)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>时间</th><th>类型</th><th>对象</th><th>详情</th><th>一级解释</th><th>状态</th><th>操作</th></tr></thead>
         <tbody>${rows.map((e)=>{
           const bold = e.status === '未处理' ? 'ex-bold' : '';
           return `<tr class="${bold}">
-            <td>${escapeHtml(e.time)}</td><td>${escapeHtml(e.type)}</td>
+            <td>${escapeHtml(e.time)}</td><td>${escapeHtml(e.type)}${e.warnMode==='soft'?tag('软','gray'):''}</td>
             <td>${escapeHtml(e.target)}</td><td>${escapeHtml(e.detail)}</td>
             <td>${escapeHtml(e.explain || '—')}</td>
-            <td>${tag(e.status, e.status==='未处理'?'orange':'green')}</td>
+            <td>${tag(e.status, e.status==='未处理'?'orange':(e.status==='仅记录'?'gray':'green'))}</td>
             <td class="ops">${e.status==='未处理'?`<button class="btn btn-sm" data-action="close-exception" data-id="${e.id}">处理</button>
               ${e.type.includes('超量')?`<button class="btn btn-sm" data-action="edit-ex-explain" data-id="${e.id}">填解释</button>`:''}`:'—'}</td>
           </tr>`;
@@ -1255,14 +1384,27 @@
   }
 
   function pageLog() {
-    return `${pageHeader('操作日志', '审核、改码、调库、异常处理等')}
+    const f = ui.filters.log || {};
+    let rows = db.logs.slice();
+    if (f.q) rows = rows.filter((l) => `${l.action}${l.account}${l.role}`.toLowerCase().includes(f.q.toLowerCase()));
+    if (f.type) rows = rows.filter((l) => (l.type || 'op') === f.type);
+    rows = rows.slice(0, 150);
+    return `${pageHeader('操作日志', '12.1 关键操作留痕：审核 / 改码 / 调库 / 异常 / 导入生成等')}
+      ${filterBar(`
+        <input class="field-input" placeholder="搜索动作/账号" data-filter="log:q" value="${escapeHtml(f.q||'')}" />
+        <select class="field-input" data-filter="log:type">
+          <option value="">全部类型</option>
+          ${['op','login','exception','warn','edit'].map((t)=>`<option value="${t}" ${f.type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>时间</th><th>账号</th><th>角色</th><th>动作</th><th>IP</th><th>结果</th></tr></thead>
-        <tbody>${db.logs.slice(0,100).map((l)=>`<tr>
+        <thead><tr><th>时间</th><th>账号</th><th>角色</th><th>类型</th><th>动作</th><th>IP</th><th>结果</th></tr></thead>
+        <tbody>${rows.map((l)=>`<tr>
           <td>${escapeHtml(l.time)}</td><td>${escapeHtml(l.account)}</td><td>${escapeHtml(l.role)}</td>
+          <td>${tag(l.type||'op')}</td>
           <td>${escapeHtml(l.action)}</td><td>${escapeHtml(l.ip)}</td>
           <td>${tag(l.ok?'成功':'失败', l.ok?'green':'red')}</td>
-        </tr>`).join('')}</tbody>
+        </tr>`).join('') || `<tr><td colspan="7">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -1393,7 +1535,8 @@
         <div><strong>${escapeHtml(r.name)}</strong><div style="font-size:12px;color:var(--text-3)">${escapeHtml(r.account)}</div></div>
       </div>
       ${ui.role === 'l1' ? `
-        <div class="mini-section-title">子账号（仅扫码权限）</div>
+        <div class="mini-section-title">角色与权限 · 子账号（仅扫码）</div>
+        <p class="mini-page-desc">对应后台「角色与权限」能力：一级可在此创建仅扫码子账号。</p>
         <button class="btn btn-primary btn-block" data-action="open-create-sub" style="margin-bottom:8px">+ 创建子账号</button>
         ${subs.map((s)=>`<div class="mini-list-row"><span>${escapeHtml(s.username)} · ${escapeHtml(s.name)}</span><span>${tag(s.status)}</span></div>`).join('') || emptyHint('暂无子账号')}
       ` : ''}
@@ -1536,6 +1679,10 @@
           <div class="form-field span-2"><label>可销售范围</label>${chips(ALL_REGIONS, a.saleAreas||a.areas||[], 'data-toggle-sale')}</div>
           <div class="form-field span-2"><label>直销范围（城市）</label>${chips((a.saleAreas||a.areas||[]).flatMap((r)=>CITY_MAP[r]||[]), a.directAreas||[], 'data-toggle-direct')}</div>
           <div class="form-field"><label>预警倍数</label><input type="number" step="0.1" class="field-input" id="f-warn" value="${a.warnMultiplier||1.5}" /></div>
+          <div class="form-field"><label>报警粒度</label><select class="field-input" id="f-warn-mode">
+            <option value="strict" ${(a.warnMode||'strict')==='strict'?'selected':''}>严格（强制处理）</option>
+            <option value="soft" ${a.warnMode==='soft'?'selected':''}>软报警（仅记录）</option>
+          </select></div>
         </div><h4>企业信息</h4>${entFieldsHtml(a.ent)}`
         : `<div class="detail-grid">
           <div><span>编码</span>${escapeHtml(a.code)}</div>
@@ -1545,6 +1692,7 @@
           <div><span>直销城市</span>${escapeHtml((a.directAreas||[]).join('、'))}</div>
           <div><span>状态</span>${tag(a.status)}</div>
           <div><span>预警倍数</span>${a.warnMultiplier||1.5}</div>
+          <div><span>报警粒度</span>${tag(a.warnMode==='soft'?'软报警':'严格', a.warnMode==='soft'?'gray':'orange')}</div>
         </div>
         <h4>企业信息</h4>
         <div class="detail-grid">
@@ -1578,6 +1726,12 @@
           <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(a.name)}" /></div>
           <div class="form-field"><label>类型</label><input class="field-input" value="${escapeHtml(a.type)}" readonly /></div>
           <div class="form-field span-2"><label>围栏城市</label>${chips(cities.length?cities:['杭州市'], a.areas||[], 'data-toggle-city')}</div>
+          <div class="form-field"><label>独立预警倍数</label><input type="number" step="0.1" class="field-input" id="f-warn" value="${a.warnMultiplier ?? ''}" placeholder="空=继承一级" /></div>
+          <div class="form-field"><label>独立报警粒度</label><select class="field-input" id="f-warn-mode">
+            <option value="" ${!a.warnMode?'selected':''}>继承一级</option>
+            <option value="strict" ${a.warnMode==='strict'?'selected':''}>严格</option>
+            <option value="soft" ${a.warnMode==='soft'?'selected':''}>软报警</option>
+          </select></div>
         </div>${a.type==='法人'?entFieldsHtml(a.ent||{}):''}`
         : `<div class="detail-grid">
           <div><span>编码</span>${escapeHtml(a.code)}</div>
@@ -1585,6 +1739,7 @@
           <div><span>所属一级</span>${escapeHtml(l1Name(a.parentId))}</div>
           <div><span>城市</span>${escapeHtml((a.areas||[]).join('、')||'—')}</div>
           <div><span>状态</span>${tag(a.status)}</div>
+          <div><span>报警</span>${a.warnMultiplier || a.warnMode ? `${a.warnMultiplier || '继承'}× / ${a.warnMode || '继承'}` : '继承一级'}</div>
         </div>${a.ent?`<h4>企业</h4><div class="detail-grid"><div class="span-2">${escapeHtml(a.ent.company||'')}</div></div>`:''}`;
       foot = editing
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-l2">保存</button>`
@@ -1700,16 +1855,35 @@
       </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-so-ok">创建并扫码</button>`;
     } else if (type === 'import-sn-seg') {
-      title = '批量导入 SN 段号（Excel 粘贴）';
-      body = `<div class="alert alert-info">从 Excel 复制段号列粘贴到下方，每行一个号段（如 RL202608010001-RL202608010010）或单个 SN。</div>
+      title = '批量导入 SN 段号';
+      body = `<div class="alert alert-info">支持上传 <strong>.xlsx / .xls / .csv / .txt</strong>，或从 Excel 复制粘贴。每行一个号段（如 RL202608010001-RL202608010010）。</div>
         <div class="form-grid">
           <div class="form-field"><label>所属一级</label><select class="field-input" id="f-l1">${db.agentsL1.map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}</select></div>
           <div class="form-field"><label>商品</label><select class="field-input" id="f-pid">${kitProducts().map((p)=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
           <div class="form-field"><label>尺寸</label><select class="field-input" id="f-size">${BAND_SIZES.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
           <div class="form-field"><label>腰带</label><select class="field-input" id="f-belt">${BELTS.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
-          <div class="form-field span-2"><label>段号列表</label><textarea class="field-input" id="f-seg-paste" rows="8" placeholder="每行一段"></textarea></div>
+          <div class="form-field span-2"><label>上传 Excel / CSV</label><input type="file" class="field-input" id="f-seg-file" accept=".xlsx,.xls,.csv,.txt" /></div>
+          <div class="form-field span-2"><label>段号列表（可粘贴或由文件填充）</label><textarea class="field-input" id="f-seg-paste" rows="8" placeholder="每行一段"></textarea></div>
         </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="import-sn-seg-ok">导入待入库</button>`;
+    } else if (type === 'gen-sn') {
+      title = '系统内部生成 SN（12.3）';
+      body = `<div class="alert alert-info">不再依赖外部系统：按日期流水在本系统生成号段，状态为「原厂在库」。</div>
+        <div class="form-grid">
+          <div class="form-field"><label>所属一级</label><select class="field-input" id="f-l1">${db.agentsL1.map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}</select></div>
+          <div class="form-field"><label>商品</label><select class="field-input" id="f-pid">${kitProducts().map((p)=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
+          <div class="form-field"><label>尺寸</label><select class="field-input" id="f-size">${BAND_SIZES.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+          <div class="form-field"><label>腰带</label><select class="field-input" id="f-belt">${BELTS.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+          <div class="form-field"><label>生成数量</label><input type="number" class="field-input" id="f-qty" value="10" min="1" max="200" /></div>
+        </div>`;
+      foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="gen-sn-ok">生成</button>`;
+    } else if (type === 'leave-exception') {
+      title = '离开异常详情';
+      body = `<p>当前筛选仍有 <strong>${payload.count || 0}</strong> 条<strong>未处理</strong>异常。</p>
+        <p class="muted">选择「已处理并离开」后不再加粗提醒；选择「暂不处理」则保持粗体，其他管理员仍可见。</p>`;
+      foot = `<button class="btn" data-action="leave-ex-stay">取消</button>
+        <button class="btn" data-action="leave-ex-skip">暂不处理，离开</button>
+        <button class="btn btn-primary" data-action="leave-ex-done">已处理并离开</button>`;
     } else if (type === 'ex-explain') {
       const e = db.exceptions.find((x) => x.id === payload.id);
       title = '填写超量下单解释';
@@ -2028,7 +2202,7 @@
     bindEvents();
   }
 
-  function navigate(id) {
+  function doNavigate(id) {
     if (!PAGES[id]) return toast('页面不存在', 'err');
     if (ui.mode === 'mini') {
       const allowed = miniTabs().map((t) => t.id);
@@ -2038,7 +2212,22 @@
     location.hash = id;
     ui.modal = null;
     ui.notifyOpen = false;
+    ui._skipExLeave = false;
+    ui._pendingNav = null;
     render();
+  }
+
+  function navigate(id) {
+    if (ui.route === 'exception' && id !== 'exception' && !ui._skipExLeave && ui.mode === 'admin') {
+      const openIds = getOpenExceptionIdsInFilter();
+      if (openIds.length) {
+        ui._pendingNav = id;
+        openModal('leave-exception', { count: openIds.length, ids: openIds });
+        render();
+        return;
+      }
+    }
+    doNavigate(id);
   }
 
   function persistSession() {
@@ -2108,11 +2297,12 @@
         d.name = $('#f-name')?.value || d.name;
         d.contact = $('#f-contact')?.value || d.contact;
         d.warnMultiplier = Number($('#f-warn')?.value || d.warnMultiplier || 1.5);
+        d.warnMode = $('#f-warn-mode')?.value || d.warnMode || 'strict';
         d.ent = readEntFields();
         d.areas = d.saleAreas || d.areas;
         const i = db.agentsL1.findIndex((x)=>x.id===d.id);
         if (i>=0) db.agentsL1[i] = d;
-        addLog(`编辑一级 ${d.name}`); saveStore(); closeModal(); toast('已保存'); break;
+        addLog(`编辑一级 ${d.name}（报警 ${d.warnMode}/${d.warnMultiplier}）`); saveStore(); closeModal(); toast('已保存'); break;
       }
       case 'create-l1-ok': {
         const d = ui.modal.draft;
@@ -2120,7 +2310,7 @@
         if (!d.name || !(d.mainAreas||[]).length) return toast('请填写名称与主授权区域', 'err');
         d.id = uid('L1'); d.code = `AG-L1-${String(db.agentsL1.length+1).padStart(3,'0')}`;
         d.status = '启用'; d.areas = d.saleAreas || [...d.mainAreas]; d.saleAreas = d.areas;
-        d.directAreas = d.directAreas || []; d.warnMultiplier = 1.5;
+        d.directAreas = d.directAreas || []; d.warnMultiplier = 1.5; d.warnMode = 'strict';
         db.agentsL1.push(d); addLog(`创建一级 ${d.name}`); saveStore(); closeModal(); toast('已创建'); break;
       }
       case 'disable-l1':
@@ -2173,6 +2363,9 @@
       case 'save-l2': {
         const d = ui.modal.draft;
         d.name = $('#f-name')?.value || d.name;
+        const wv = $('#f-warn')?.value;
+        d.warnMultiplier = wv === '' || wv == null ? null : Number(wv);
+        d.warnMode = $('#f-warn-mode')?.value || null;
         if (d.type==='法人') d.ent = readEntFields();
         const i = db.agentsL2.findIndex((x)=>x.id===d.id);
         if (i>=0) db.agentsL2[i] = d;
@@ -2258,36 +2451,65 @@
         if (changes.length) {
           row.tags = [...new Set([...(row.tags||[]), '修改过'])];
           pushSnEvent(row, repaired && !hadRepaired ? '维修更换' : '管理员修改', changes.join('；'), 'edit');
-          addLog(`修改SN ${changes.join('；')}`);
+          addLog(`修改SN ${changes.join('；')}`, 'edit');
           saveStore(); toast('已保存并记日志');
         }
         closeModal(); break;
       }
       case 'open-import-sn-seg': openModal('import-sn-seg', {}); break;
-      case 'import-sn-seg-ok': {
-        const l1Id = $('#f-l1')?.value;
-        const productId = $('#f-pid')?.value;
-        const size = $('#f-size')?.value;
-        const belt = $('#f-belt')?.value;
-        const lines = ($('#f-seg-paste')?.value || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
-        if (!lines.length) return toast('请粘贴段号', 'err');
-        let added = 0; let skipped = 0;
-        lines.forEach((seg) => {
-          const list = parseSegment(seg);
-          if (!list) { skipped++; return; }
-          list.forEach((sn) => {
-            if (db.sns.some((s) => s.sn === sn)) { skipped++; return; }
-            const row = {
-              sn, productId, size, belt, l1Id, l2Id: null, status: 'warehouse', tags: [],
-              frozen: false, factoryAt: nowStr(), soldAt: null, returnAt: null, user: null, events: [], reIn: false, resale: false,
-            };
-            pushSnEvent(row, '生成并导入码库', `Excel粘贴 · ${l1Name(l1Id)}`, 'import');
-            db.sns.push(row);
-            added++;
-          });
+      case 'open-gen-sn': openModal('gen-sn', {}); break;
+      case 'gen-sn-ok': {
+        const qty = Math.min(200, Math.max(1, Number($('#f-qty')?.value) || 0));
+        if (!qty) return toast('请填写数量', 'err');
+        const meta = { l1Id: $('#f-l1')?.value, productId: $('#f-pid')?.value, size: $('#f-size')?.value, belt: $('#f-belt')?.value };
+        const list = nextInternalSnBatch(qty);
+        list.forEach((sn) => {
+          const row = {
+            sn, productId: meta.productId, size: meta.size, belt: meta.belt,
+            l1Id: meta.l1Id, l2Id: null, status: 'warehouse', tags: ['系统生成'],
+            frozen: false, factoryAt: nowStr(), soldAt: null, returnAt: null, user: null, events: [], reIn: false, resale: false,
+          };
+          pushSnEvent(row, '系统内部生成', `${productName(meta.productId)} / ${meta.size}`, 'import');
+          db.sns.push(row);
         });
-        addLog(`批量导入SN段号 +${added}`);
-        saveStore(); closeModal(); toast(`导入 ${added} 条${skipped ? `，跳过 ${skipped}` : ''}`); break;
+        addLog(`系统生成SN ${list[0]}~${list[list.length - 1]} 共${list.length}条`);
+        saveStore(); closeModal(); toast(`已生成 ${list.length} 条 SN`); break;
+      }
+      case 'import-sn-seg-ok': {
+        const meta = { l1Id: $('#f-l1')?.value, productId: $('#f-pid')?.value, size: $('#f-size')?.value, belt: $('#f-belt')?.value };
+        const text = $('#f-seg-paste')?.value || '';
+        const result = importSnSegmentsFromText(text, meta);
+        if (result.err) return toast(result.err, 'err');
+        addLog(`批量导入SN段号 +${result.added}`);
+        saveStore(); closeModal(); toast(`导入 ${result.added} 条${result.skipped ? `，跳过 ${result.skipped}` : ''}`); break;
+      }
+      case 'save-ex-rules': {
+        db.exceptionMultiplier = Number($('#f-ex-mult')?.value || db.exceptionMultiplier || 1.5);
+        db.exceptionRules = db.exceptionRules || {};
+        db.exceptionRules.overOrderRatio = Number($('#f-ex-over')?.value || 1);
+        db.exceptionRules.stockTurnover = Number($('#f-ex-turn')?.value || db.exceptionMultiplier);
+        addLog(`更新异常标准 倍数${db.exceptionMultiplier} 超量比${db.exceptionRules.overOrderRatio} 周转${db.exceptionRules.stockTurnover}`);
+        saveStore(); toast('异常标准已保存'); render(); break;
+      }
+      case 'switch-line': {
+        db.activeProductLineId = id;
+        addLog(`切换产品线 ${lineName(id)}`);
+        saveStore(); toast(`当前产品线：${lineName(id)}`); render(); break;
+      }
+      case 'leave-ex-stay':
+        ui._pendingNav = null; closeModal(); break;
+      case 'leave-ex-skip': {
+        const go = ui._pendingNav; ui._skipExLeave = true; closeModal(); if (go) doNavigate(go); break;
+      }
+      case 'leave-ex-done': {
+        const ids = ui.modal?.payload?.ids || getOpenExceptionIdsInFilter();
+        ids.forEach((eid) => {
+          const e = db.exceptions.find((x) => x.id === eid);
+          if (e && e.status === '未处理') e.status = '已处理';
+        });
+        addLog(`离开异常页：批量标记已处理 ${ids.length} 条`, 'exception');
+        saveStore();
+        const go = ui._pendingNav; ui._skipExLeave = true; closeModal(); if (go) doNavigate(go); break;
       }
       case 'edit-ex-explain': openModal('ex-explain', { id }); break;
       case 'save-ex-explain': {
@@ -2381,12 +2603,12 @@
           id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3,'0')}`, channel: 'distribute',
           l1Id: currentL1Id(), l2Id, productId, planTotal, planBySize, parts, scanned: [], status: 'scanning', createdAt: nowStr(),
         };
-        // 8.6 二级库存充足仍大量出货 → 超量预警（用一级 warnMultiplier）
-        const l1 = db.agentsL1.find((a) => a.id === so.l1Id);
-        const mult = Number(l1?.warnMultiplier || db.exceptionMultiplier || 1.5);
+        // 8.6 / 12.2：按一级+二级报警粒度与超量比触发
+        const cfg = resolveWarnConfig(so.l1Id, l2Id);
+        const overRatio = Number(cfg.rules.overOrderRatio || 1);
         const l2Stock = db.sns.filter((x) => x.l2Id === l2Id && x.status === 'l2' && !x.frozen && x.productId === productId).length;
-        if (l2Stock > 0 && planTotal >= Math.max(1, Math.ceil(l2Stock * (mult - 1)))) {
-          pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（预警倍数 ${mult}），需一级填写解释`, 'nonSn');
+        if (l2Stock > 0 && planTotal >= Math.max(1, Math.ceil(l2Stock * overRatio))) {
+          pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（超量比 ${overRatio}，代理倍数 ${cfg.mult}）`, 'nonSn', { mode: cfg.mode });
         }
         db.sales.unshift(so); saveStore(); openModal('scan-so', { id: so.id }); break;
       }
@@ -2422,13 +2644,12 @@
         });
         s.status = 'done';
         db.stockLogs.unshift({ id: uid('H'), agentType: 'l2', agentId: s.l2Id, productId: s.productId, size: Object.keys(s.planBySize)[0], delta: s.scanned.length, reason: '销售转入', time: nowStr(), ref: s.no });
-        // 销售库存异常：出货后二级库存相对一级周转过快（演示：二级在库 > 一级在库 * 倍数）
-        const l1 = db.agentsL1.find((a) => a.id === s.l1Id);
-        const mult = Number(l1?.warnMultiplier || db.exceptionMultiplier || 1.5);
+        const cfg = resolveWarnConfig(s.l1Id, s.l2Id);
+        const turn = Number(cfg.rules.stockTurnover || cfg.mult || 1.5);
         const l1Left = db.sns.filter((x) => x.l1Id === s.l1Id && x.status === 'l1' && !x.frozen).length;
         const l2Now = db.sns.filter((x) => x.l2Id === s.l2Id && x.status === 'l2' && !x.frozen).length;
-        if (l1Left > 0 && l2Now > l1Left * mult) {
-          pushException('销售库存异常', l2Name(s.l2Id), `二级在库 ${l2Now} 超过一级在库 ${l1Left} × ${mult}`, 'stock');
+        if (l1Left > 0 && l2Now > l1Left * turn) {
+          pushException('销售库存异常', l2Name(s.l2Id), `二级在库 ${l2Now} 超过一级在库 ${l1Left} × 周转比 ${turn}`, 'stock', { mode: cfg.mode });
         }
         addLog(`完成出货 ${s.no}`); saveStore(); closeModal(); toast('出货完成'); break;
       }
@@ -2616,12 +2837,56 @@
         inp.addEventListener('change', () => { syncDraftFromAuditDom(); render(); });
       });
     }
+
+    // Excel / CSV 文件导入填充文本框
+    $('#f-seg-file')?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const name = file.name.toLowerCase();
+      const fill = (text) => {
+        const lines = extractSegLines(text);
+        const ta = $('#f-seg-paste');
+        if (ta) ta.value = lines.join('\n');
+        toast(`已从 ${file.name} 识别 ${lines.length} 行`);
+      };
+      if (name.endsWith('.csv') || name.endsWith('.txt')) {
+        const reader = new FileReader();
+        reader.onload = () => fill(String(reader.result || ''));
+        reader.readAsText(file);
+      } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+        if (typeof XLSX === 'undefined') return toast('Excel 解析库未加载，请用 CSV 或粘贴', 'err');
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const wb = XLSX.read(reader.result, { type: 'array' });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            fill(rows.map((r) => (r || []).join('\t')).join('\n'));
+          } catch (_) {
+            toast('Excel 解析失败', 'err');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        toast('请上传 .xlsx / .xls / .csv / .txt', 'err');
+      }
+    });
   }
 
   /* ---------- Boot ---------- */
   window.addEventListener('hashchange', () => {
     const id = location.hash.replace(/^#/, '');
     if (id && PAGES[id] && ui.loggedIn) {
+      if (ui.route === 'exception' && id !== 'exception' && !ui._skipExLeave && ui.mode === 'admin') {
+        const openIds = getOpenExceptionIdsInFilter();
+        if (openIds.length) {
+          history.replaceState(null, '', `#${ui.route}`);
+          ui._pendingNav = id;
+          openModal('leave-exception', { count: openIds.length, ids: openIds });
+          render();
+          return;
+        }
+      }
       ui.route = id;
       render();
     }
