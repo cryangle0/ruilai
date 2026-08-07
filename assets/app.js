@@ -1427,9 +1427,9 @@
     return `<div class="mini-page-title">扫码</div>
       <p class="mini-page-desc">三种入口：出货 / 直销 / 查询</p>
       <div class="scan-mode-grid">
-        <button type="button" class="scan-mode-card ${mode==='ship'?'on':''}" data-action="set-scan-mode" data-mode="ship"><strong>出货扫码</strong><span>分销给二级</span></button>
-        <button type="button" class="scan-mode-card ${mode==='direct'?'on':''}" data-action="set-scan-mode" data-mode="direct"><strong>直销激活</strong><span>C端绑定</span></button>
-        <button type="button" class="scan-mode-card ${mode==='query'?'on':''}" data-action="set-scan-mode" data-mode="query"><strong>查询扫码</strong><span>拍码查信息</span></button>
+        <button type="button" class="scan-mode-card ${mode==='ship'?'on':''}" data-action="set-scan-mode" data-scan-mode="ship"><strong>出货扫码</strong><span>分销给二级</span></button>
+        <button type="button" class="scan-mode-card ${mode==='direct'?'on':''}" data-action="set-scan-mode" data-scan-mode="direct"><strong>直销激活</strong><span>C端绑定</span></button>
+        <button type="button" class="scan-mode-card ${mode==='query'?'on':''}" data-action="set-scan-mode" data-scan-mode="query"><strong>查询扫码</strong><span>拍码查信息</span></button>
       </div>
       <div style="margin-top:14px">${mode==='ship'?pageMiniShipScan(false):mode==='direct'?pageMiniDirectScan():pageMiniQueryScan()}</div>`;
   }
@@ -2590,7 +2590,7 @@
         persistSession(); render(); break;
       }
       case 'set-scan-mode':
-        ui.scanMode = el.getAttribute('data-mode'); persistSession(); render(); break;
+        ui.scanMode = el.getAttribute('data-scan-mode') || el.getAttribute('data-mode'); persistSession(); render(); break;
       case 'mini-create-so': openModal('create-so', {}); break;
       case 'create-so-ok': {
         const l2Id = $('#f-l2')?.value;
@@ -2783,8 +2783,8 @@
       openModal(act, { id });
     }));
 
-    document.querySelectorAll('[data-mode]').forEach((el) => el.addEventListener('click', () => {
-      // admin only — no agent desktop
+    // 仅顶栏「管理后台」切换；勿绑定扫码卡片的 data-mode=ship|direct|query
+    document.querySelectorAll('.mode-switch [data-mode]').forEach((el) => el.addEventListener('click', () => {
       ui.mode = 'admin';
       persistSession();
       navigate('home');
