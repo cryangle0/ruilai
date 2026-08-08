@@ -419,8 +419,8 @@
     sales: '销售单管理', stock: '库存管理', return: '返货管理', exception: '异常管理',
     stats: '数据统计', role: '角色与权限', log: '操作日志',
     'l1-sales-detail': '一级销售详情', 'l1-return-detail': '一级退货详情',
-    'mini-scan': '扫码', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
-    'mini-aftersale': '售后', 'mini-exception': '异常', 'mini-mine': '我的',
+    'mini-scan': '扫码', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
+    'mini-service': '售后', 'mini-aftersale': '售后', 'mini-exception': '异常', 'mini-mine': '我的',
   };
 
   function currentL1Id() { return ROLES[ui.role]?.l1Id || null; }
@@ -824,28 +824,62 @@
     ];
   }
 
+  const MINI_TAB_ICONS = {
+    scan: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><rect x="7" y="7" width="10" height="10" rx="2"/></svg>',
+    biz: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M4 11h16"/></svg>',
+    stock: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5 12 4l9 4.5-9 4.5L3 8.5z"/><path d="M3 12.5 12 17l9-4.5"/><path d="M3 16.5 12 21l9-4.5"/></svg>',
+    sales: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l3-4 3 2 4-6"/></svg>',
+    service: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7v2.5a2.5 2.5 0 0 0 2.5 2.5H9v-5H7A5 5 0 0 1 17 10h-2v5h1.5A2.5 2.5 0 0 0 19 12.5V10a7 7 0 0 0-7-7z"/><path d="M9 17.5V19a3 3 0 0 0 6 0v-1.5"/></svg>',
+    mine: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 19.5a6.5 6.5 0 0 1 13 0"/></svg>',
+  };
+
   function miniTabs() {
     if (ui.role === 'sub') {
-      return [{ id: 'mini-scan', title: '销售扫码', icon: '▦' }, { id: 'mini-mine', title: '我的', icon: '☺' }];
+      return [
+        { id: 'mini-scan', title: '扫码', icon: 'scan' },
+        { id: 'mini-mine', title: '我的', icon: 'mine' },
+      ];
     }
     if (ui.role === 'l2') {
       return [
-        { id: 'mini-scan', title: '扫码查询', icon: '▦' },
-        { id: 'mini-stock', title: '库存', icon: '▣' },
-        { id: 'mini-sales', title: '销售', icon: '▤' },
-        { id: 'mini-aftersale', title: '售后', icon: '↩' },
-        { id: 'mini-mine', title: '我的', icon: '☺' },
+        { id: 'mini-scan', title: '扫码', icon: 'scan' },
+        { id: 'mini-sales', title: '销售', icon: 'sales' },
+        { id: 'mini-stock', title: '库存', icon: 'stock' },
+        { id: 'mini-service', title: '售后', icon: 'service' },
+        { id: 'mini-mine', title: '我的', icon: 'mine' },
       ];
     }
+    // 一级：5 个规范底栏；采购/销售、退货/异常收入页内分段，能力不变
     return [
-      { id: 'mini-scan', title: '扫码', icon: '▦' },
-      { id: 'mini-purchase', title: '采购', icon: '▤' },
-      { id: 'mini-sales', title: '销售', icon: '▥' },
-      { id: 'mini-stock', title: '库存', icon: '▣' },
-      { id: 'mini-aftersale', title: '售后', icon: '↩' },
-      { id: 'mini-exception', title: '异常', icon: '⚠' },
-      { id: 'mini-mine', title: '我的', icon: '☺' },
+      { id: 'mini-scan', title: '扫码', icon: 'scan' },
+      { id: 'mini-biz', title: '业务', icon: 'biz' },
+      { id: 'mini-stock', title: '库存', icon: 'stock' },
+      { id: 'mini-service', title: '售后', icon: 'service' },
+      { id: 'mini-mine', title: '我的', icon: 'mine' },
     ];
+  }
+
+  function miniAllowedRoutes() {
+    const base = miniTabs().map((t) => t.id);
+    if (ui.role === 'l1') return [...base, 'mini-purchase', 'mini-sales', 'mini-aftersale', 'mini-exception'];
+    if (ui.role === 'l2') return [...base, 'mini-aftersale', 'mini-exception'];
+    return base;
+  }
+
+  function miniTabIsActive(tabId) {
+    const r = ui.route;
+    if (tabId === 'mini-biz') return ['mini-biz', 'mini-purchase', 'mini-sales'].includes(r);
+    if (tabId === 'mini-service') return ['mini-service', 'mini-aftersale', 'mini-exception'].includes(r);
+    if (tabId === 'mini-scan') return r === 'mini-scan';
+    return r === tabId;
+  }
+
+  function miniSegHtml(key, items) {
+    const cur = ui.tabs[key] || items[0]?.id;
+    return `<div class="mini-seg" role="tablist">${items.map((it) => `
+      <button type="button" class="mini-seg-btn ${cur === it.id ? 'on' : ''}" data-tab="${key}:${it.id}" role="tab" aria-selected="${cur === it.id}">
+        ${escapeHtml(it.title)}${it.badge != null ? `<span class="mini-seg-badge">${it.badge}</span>` : ''}
+      </button>`).join('')}</div>`;
   }
 
   /* ---------- Pages: Admin ---------- */
@@ -1461,32 +1495,93 @@
       <button class="btn btn-primary btn-block" data-action="mini-query-sn">查询</button>`;
   }
 
-  function pageMiniPurchase() {
+  function miniPurchaseBody() {
     const list = db.purchases.filter((p) => p.l1Id === currentL1Id());
-    return `<div class="mini-page-title">采购</div>
-      <p class="mini-page-desc">发起采购申请（标准/非标/配件）</p>
+    return `<p class="mini-page-desc">发起采购申请（标准/非标/配件）</p>
       <button class="btn btn-primary btn-block" data-action="mini-create-po">新建采购申请</button>
       <div class="mini-list" style="margin-top:12px">${list.map((p)=>`<div class="mini-list-item">
         <strong>${escapeHtml(p.no)}</strong>
         <span>${tag(PO_STATUS[p.status]||p.status)} ${escapeHtml(p.createdAt)}</span>
         <span>${(p.lines||[]).map((l)=>`${l.size}×${l.qty}`).join('，')}</span>
-      </div>`).join('')}</div>`;
+      </div>`).join('') || emptyHint()}</div>`;
   }
 
-  function pageMiniSales() {
+  function miniSalesBody() {
     if (ui.role === 'l2') {
       const list = db.sales.filter((s) => s.l2Id === currentL2Id());
-      return `<div class="mini-page-title">销售</div>
-        <div class="alert alert-info">向一级发起下单申请：只读提示，当前账号无操作权限</div>
-        <div class="mini-list">${list.map((s)=>`<div class="mini-list-item"><strong>${escapeHtml(s.no)}</strong><span>${escapeHtml(soProductDetail(s))}</span></div>`).join('')||emptyHint()}</div>`;
+      return `<div class="alert alert-info">向一级发起下单申请：只读提示，当前账号无操作权限</div>
+        <div class="mini-list">${list.map((s)=>`<div class="mini-list-item"><strong>${escapeHtml(s.no)}</strong><span>${escapeHtml(soProductDetail(s))}</span></div>`).join('') || emptyHint()}</div>`;
     }
     const list = db.sales.filter((s) => s.l1Id === currentL1Id());
-    return `<div class="mini-page-title">销售</div>
-      <div class="mini-list">${list.map((s)=>`<div class="mini-list-item">
+    return `<div class="mini-list">${list.map((s)=>`<div class="mini-list-item">
         <strong>${escapeHtml(s.no)}</strong>
         <span>${tag(s.channel==='direct'?'直售':'分销')} ${escapeHtml(soProductDetail(s))}</span>
         <span>${(s.scanned||[]).length}/${s.planTotal} · ${escapeHtml(s.status)}</span>
-      </div>`).join('')}</div>`;
+      </div>`).join('') || emptyHint()}</div>`;
+  }
+
+  function miniAftersaleBody() {
+    const list = ui.role === 'l2'
+      ? db.returns.filter((r) => r.fromId === currentL2Id())
+      : db.returns.filter((r) => r.fromId === currentL1Id() || r.approverId === currentL1Id() || (r.sns||[]).some((sn)=>db.sns.find(s=>s.sn===sn&&s.l1Id===currentL1Id())));
+    return `<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:10px">申请退货</button>
+      <div class="mini-list">${list.map((r)=>`<div class="mini-list-item">
+        <strong>${escapeHtml(r.no)}</strong>
+        <span>${tag(r.reasonType||'')} ${escapeHtml(r.reason||'')}</span>
+        <span>${escapeHtml(r.status)} · ${escapeHtml(snsProductDetail(r.sns))}</span>
+      </div>`).join('') || emptyHint()}</div>`;
+  }
+
+  function miniExceptionBody() {
+    const list = db.exceptions.filter((e) => {
+      const sn = db.sns.find((s) => s.sn === e.target);
+      if (ui.role === 'l2') {
+        return (sn && sn.l2Id === currentL2Id()) || String(e.target).includes(l2Name(currentL2Id()));
+      }
+      return (sn && sn.l1Id === currentL1Id()) || String(e.target).includes(l1Name(currentL1Id())) || String(e.detail || '').includes(l1Name(currentL1Id()));
+    });
+    return `<div class="mini-list">${list.map((e)=>`<div class="mini-list-item ${e.status==='未处理'?'ex-bold':''}">
+        <strong>${escapeHtml(e.type)}</strong>
+        <span>${escapeHtml(e.target)}</span>
+        <span>${escapeHtml(e.detail)}</span>
+        <span>解释：${escapeHtml(e.explain || '—')}</span>
+        <span>${tag(e.status)} ${e.type.includes('超量') && ui.role === 'l1' ? `<button class="btn btn-sm" data-action="edit-ex-explain" data-id="${e.id}">填解释</button>` : ''}</span>
+      </div>`).join('') || emptyHint()}</div>`;
+  }
+
+  function pageMiniBiz() {
+    const tab = ui.tabs.miniBiz || 'purchase';
+    return `<div class="mini-page-title">业务</div>
+      <p class="mini-page-desc">采购与销售，能力与原先独立页一致</p>
+      ${miniSegHtml('miniBiz', [{ id: 'purchase', title: '采购' }, { id: 'sales', title: '销售' }])}
+      <div class="mini-seg-panel">${tab === 'sales' ? miniSalesBody() : miniPurchaseBody()}</div>`;
+  }
+
+  function pageMiniService() {
+    const openEx = ui.role === 'l1'
+      ? db.exceptions.filter((e) => e.status === '未处理' && (
+        (db.sns.find((s) => s.sn === e.target)?.l1Id === currentL1Id())
+        || String(e.target).includes(l1Name(currentL1Id()))
+        || String(e.detail || '').includes(l1Name(currentL1Id()))
+      )).length
+      : 0;
+    const items = ui.role === 'l2'
+      ? [{ id: 'return', title: '退货' }]
+      : [{ id: 'return', title: '退货' }, { id: 'exception', title: '异常', badge: openEx || null }];
+    const tab = ui.tabs.miniService || 'return';
+    const cur = items.some((it) => it.id === tab) ? tab : items[0].id;
+    return `<div class="mini-page-title">售后</div>
+      <p class="mini-page-desc">${ui.role === 'l2' ? '退货记录与申请' : '退货与异常处理'}</p>
+      ${items.length > 1 ? miniSegHtml('miniService', items) : ''}
+      <div class="mini-seg-panel">${cur === 'exception' ? miniExceptionBody() : miniAftersaleBody()}</div>`;
+  }
+
+  function pageMiniPurchase() {
+    return `<div class="mini-page-title">采购</div>${miniPurchaseBody()}`;
+  }
+
+  function pageMiniSales() {
+    return `<div class="mini-page-title">销售</div>${miniSalesBody()}`;
   }
 
   function pageMiniStock() {
@@ -1501,33 +1596,8 @@
       </div>`).join('')||emptyHint('暂无库存')}</div>`;
   }
 
-  function pageMiniAftersale() {
-    const list = ui.role === 'l2'
-      ? db.returns.filter((r) => r.fromId === currentL2Id())
-      : db.returns.filter((r) => r.fromId === currentL1Id() || r.approverId === currentL1Id() || (r.sns||[]).some((sn)=>db.sns.find(s=>s.sn===sn&&s.l1Id===currentL1Id())));
-    return `<div class="mini-page-title">售后</div>
-      <button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:10px">申请退货</button>
-      <div class="mini-list">${list.map((r)=>`<div class="mini-list-item">
-        <strong>${escapeHtml(r.no)}</strong>
-        <span>${tag(r.reasonType||'')} ${escapeHtml(r.reason||'')}</span>
-        <span>${escapeHtml(r.status)} · ${escapeHtml(snsProductDetail(r.sns))}</span>
-      </div>`).join('')||emptyHint()}</div>`;
-  }
-
-  function pageMiniException() {
-    const list = db.exceptions.filter((e) => {
-      const sn = db.sns.find((s) => s.sn === e.target);
-      return (sn && sn.l1Id === currentL1Id()) || String(e.target).includes(l1Name(currentL1Id())) || String(e.detail || '').includes(l1Name(currentL1Id()));
-    });
-    return `<div class="mini-page-title">异常</div>
-      <div class="mini-list">${list.map((e)=>`<div class="mini-list-item ${e.status==='未处理'?'ex-bold':''}">
-        <strong>${escapeHtml(e.type)}</strong>
-        <span>${escapeHtml(e.target)}</span>
-        <span>${escapeHtml(e.detail)}</span>
-        <span>解释：${escapeHtml(e.explain || '—')}</span>
-        <span>${tag(e.status)} ${e.type.includes('超量')?`<button class="btn btn-sm" data-action="edit-ex-explain" data-id="${e.id}">填解释</button>`:''}</span>
-      </div>`).join('')||emptyHint()}</div>`;
-  }
+  function pageMiniAftersale() { return pageMiniService(); }
+  function pageMiniException() { return pageMiniService(); }
 
   function pageMiniMine() {
     const r = ROLES[ui.role];
@@ -1575,8 +1645,8 @@
     sales: pageSales, stock: pageStock, return: pageReturn, exception: pageException,
     stats: pageStats, role: pageRole, log: pageLog,
     'l1-sales-detail': pageL1SalesDetail, 'l1-return-detail': pageL1ReturnDetail,
-    'mini-scan': pageMiniScan, 'mini-purchase': pageMiniPurchase, 'mini-sales': pageMiniSales,
-    'mini-stock': pageMiniStock, 'mini-aftersale': pageMiniAftersale, 'mini-exception': pageMiniException,
+    'mini-scan': pageMiniScan, 'mini-biz': pageMiniBiz, 'mini-purchase': pageMiniPurchase, 'mini-sales': pageMiniSales,
+    'mini-stock': pageMiniStock, 'mini-service': pageMiniService, 'mini-aftersale': pageMiniAftersale, 'mini-exception': pageMiniException,
     'mini-mine': pageMiniMine,
   };
   /* ---------- Modals ---------- */
@@ -2138,13 +2208,13 @@
           </div>
         </div>
         <div class="mini-phone-body"><div class="mini-scroll">${pageFn()}</div></div>
-        <nav class="mini-tabbar">
-          ${tabs.map((t) => `<button type="button" class="mini-tab ${ui.route === t.id ? 'active' : ''}" data-go="${t.id}">
-            <span class="mini-tab-ico">${t.icon}</span><span>${t.title}</span>
+        <nav class="mini-tabbar" aria-label="小程序导航">
+          ${tabs.map((t) => `<button type="button" class="mini-tab ${miniTabIsActive(t.id) ? 'active' : ''}" data-go="${t.id}">
+            <span class="mini-tab-ico">${MINI_TAB_ICONS[t.icon] || ''}</span><span class="mini-tab-label">${escapeHtml(t.title)}</span>
           </button>`).join('')}
         </nav>
       </div>
-      <p class="mini-stage-hint">代理端仅小程序 · 顶栏可切换演示身份 · 与后台数据同步</p>
+      <p class="mini-stage-hint">代理端仅小程序 · 底栏 4–5 项（玻璃态）· 顶栏可切换演示身份</p>
     </div>
     ${modalContent()}
     <div class="toast-wrap">${ui.toast ? `<div class="toast ${ui.toast.kind}">${escapeHtml(ui.toast.msg)}</div>` : ''}</div>`;
@@ -2208,8 +2278,16 @@
   function doNavigate(id) {
     if (!PAGES[id]) return toast('页面不存在', 'err');
     if (ui.mode === 'mini') {
-      const allowed = miniTabs().map((t) => t.id);
-      if (!allowed.includes(id)) return toast('当前小程序角色无此页', 'err');
+      if (!miniAllowedRoutes().includes(id)) return toast('当前小程序角色无此页', 'err');
+      // 旧路由兼容到合并后的底栏页
+      if (id === 'mini-purchase' || id === 'mini-sales') {
+        ui.tabs.miniBiz = id === 'mini-sales' ? 'sales' : 'purchase';
+        id = ui.role === 'l1' ? 'mini-biz' : id;
+      }
+      if (id === 'mini-aftersale' || id === 'mini-exception') {
+        ui.tabs.miniService = id === 'mini-exception' ? 'exception' : 'return';
+        id = 'mini-service';
+      }
     }
     ui.route = id;
     location.hash = id;
