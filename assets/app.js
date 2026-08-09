@@ -21,6 +21,13 @@
   };
   function permLabel(key) { return PERM_LABELS[key] || key; }
   const ALL_PERMS = Object.keys(PERM_LABELS);
+  const DETAIL_PERMS = ALL_PERMS.filter((p) => p !== 'all');
+  function roleDescFromPerms(perms) {
+    const list = Array.isArray(perms) ? perms : [];
+    if (!list.length) return '';
+    if (list.includes('all') || DETAIL_PERMS.every((p) => list.includes(p))) return '全量后台权限';
+    return list.map(permLabel).join('/');
+  }
   const LOG_TYPE_LABELS = { op: '操作', login: '登录', exception: '异常', warn: '预警', edit: '修改' };
   function logTypeLabel(t) { return LOG_TYPE_LABELS[t] || t || '操作'; }
   // 演示时钟固定在 8.7，避免原型随真实日期漂到 8.8/8.9
@@ -2067,11 +2074,15 @@
     } else if (type === 'edit-role') {
       const role = db.roles.find((r) => r.id === payload.id) || {};
       const selected = new Set(role.perms || []);
+      const hasAll = selected.has('all');
       title = `编辑权限 · ${role.name || ''}`;
-      body = `<p class="muted" style="margin-bottom:10px">勾选该角色可用权限，保存后立即生效（原型演示）。</p>
-        <div class="form-field"><label>角色说明</label><input class="field-input" id="f-role-desc" value="${escapeHtml(role.desc || '')}" /></div>
+      body = `<p class="muted" style="margin-bottom:10px">勾选该角色可用权限；点「全部权限」将全选，上方说明实时同步。</p>
+        <div class="form-field"><label>角色说明</label><input class="field-input" id="f-role-desc" value="${escapeHtml(role.desc || roleDescFromPerms(role.perms || []))}" /></div>
         <div class="perm-check-grid">
-          ${ALL_PERMS.map((p) => `<label class="perm-check"><input type="checkbox" data-perm="${p}" ${selected.has(p) ? 'checked' : ''}/><span>${escapeHtml(permLabel(p))}</span><code>${escapeHtml(p)}</code></label>`).join('')}
+          ${ALL_PERMS.map((p) => {
+            const on = hasAll || selected.has(p) || (p === 'all' && DETAIL_PERMS.every((x) => selected.has(x)));
+            return `<label class="perm-check"><input type="checkbox" data-perm="${p}" ${on ? 'checked' : ''}/><span>${escapeHtml(permLabel(p))}</span><code>${escapeHtml(p)}</code></label>`;
+          }).join('')}
         </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-role-perms" data-id="${escapeHtml(role.id)}">保存</button>`;
     } else {
@@ -2693,12 +2704,12 @@
       case 'save-role-perms': {
         const role = db.roles.find((r) => r.id === id);
         if (!role) return toast('角色不存在', 'err');
-        const desc = $('#f-role-desc')?.value?.trim();
-        if (desc) role.desc = desc;
         const perms = [...document.querySelectorAll('[data-perm]:checked')].map((el) => el.getAttribute('data-perm'));
         if (!perms.length) return toast('请至少勾选一项权限', 'err');
-        // 勾选「全部权限」时以 all 为准，避免冗余
-        role.perms = perms.includes('all') ? ['all'] : perms;
+        // 勾选「全部权限」或明细全勾时以 all 为准
+        role.perms = (perms.includes('all') || DETAIL_PERMS.every((p) => perms.includes(p))) ? ['all'] : perms.filter((p) => p !== 'all');
+        const desc = $('#f-role-desc')?.value?.trim() || roleDescFromPerms(role.perms);
+        role.desc = desc;
         addLog(`编辑角色权限 ${role.name}`);
         saveStore();
         closeModal();
@@ -2946,6 +2957,30 @@
       persistSession();
       navigate('home');
     }));
+
+    // 角色权限编辑：点「全部」全选；说明实时同步勾选结果
+    if (ui.modal?.type === 'edit-role') {
+      const syncRoleDesc = () => {
+        const boxes = [...document.querySelectorAll('[data-perm]')];
+        const checked = boxes.filter((el) => el.checked).map((el) => el.getAttribute('data-perm'));
+        const desc = $('#f-role-desc');
+        if (desc) desc.value = roleDescFromPerms(checked);
+      };
+      document.querySelectorAll('[data-perm]').forEach((el) => {
+        el.addEventListener('change', () => {
+          const key = el.getAttribute('data-perm');
+          const allBox = document.querySelector('[data-perm="all"]');
+          const detailBoxes = [...document.querySelectorAll('[data-perm]')].filter((x) => x.getAttribute('data-perm') !== 'all');
+          if (key === 'all') {
+            detailBoxes.forEach((x) => { x.checked = el.checked; });
+          } else if (allBox) {
+            allBox.checked = detailBoxes.length > 0 && detailBoxes.every((x) => x.checked);
+          }
+          syncRoleDesc();
+        });
+      });
+      syncRoleDesc();
+    }
 
     // chip toggles in modal
     const syncL1Draft = () => {
