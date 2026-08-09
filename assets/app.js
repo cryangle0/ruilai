@@ -20,6 +20,11 @@
     stock_self: '本级库存',
   };
   function permLabel(key) { return PERM_LABELS[key] || key; }
+  const ALL_PERMS = Object.keys(PERM_LABELS);
+  const LOG_TYPE_LABELS = { op: '操作', login: '登录', exception: '异常', warn: '预警', edit: '修改' };
+  function logTypeLabel(t) { return LOG_TYPE_LABELS[t] || t || '操作'; }
+  // 演示时钟固定在 8.7，避免原型随真实日期漂到 8.8/8.9
+  const DEMO_NOW = new Date('2026-08-07T14:30:00');
   const ALL_REGIONS = ['浙江', '上海', '江苏', '安徽', '广东', '福建', '北京', '河北', '天津', '四川', '重庆'];
   const CITY_MAP = {
     浙江: ['杭州市', '宁波市', '温州市', '嘉兴市', '金华市'],
@@ -52,25 +57,49 @@
   function uid(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
   }
+  function demoNow() {
+    // 保留真实时分，日期锚定演示日 8.7
+    const real = new Date();
+    const d = new Date(DEMO_NOW);
+    d.setHours(real.getHours(), real.getMinutes(), real.getSeconds(), 0);
+    return d;
+  }
   function nowStr() {
-    const d = new Date();
+    const d = demoNow();
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
   function todayCompact() {
-    const d = new Date();
+    const d = DEMO_NOW;
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
   }
   function monthStart() {
-    const d = new Date();
+    const d = DEMO_NOW;
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-01`;
   }
   function todayDate() {
-    const d = new Date();
+    const d = DEMO_NOW;
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+  function normalizeDemoLogTimes(logs) {
+    if (!Array.isArray(logs)) return;
+    let i = 0;
+    logs.forEach((l) => {
+      const m = String(l.time || '').match(/^(\d{4})-(\d{2})-(\d{2})(\s.*)?$/);
+      if (!m) return;
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const day = Number(m[3]);
+      // 演示区间外（8.8 及以后，或非 2026-08）压到 8.6 / 8.7
+      if (y !== 2026 || mo !== 8 || day < 6 || day > 7) {
+        const newDay = (i % 2 === 0) ? '07' : '06';
+        l.time = `${m[1]}-08-${newDay}${m[4] || ' 10:00'}`;
+        i += 1;
+      }
+    });
   }
   function escapeHtml(s) {
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -327,7 +356,12 @@
         { id: 'ACC5', username: 'hd_scan_02', name: '仓管小周', roleId: 'R3', agentId: 'L1A', status: '启用', password: '******' },
       ],
       logs: [
-        { time: nowStr(), account: 'admin', role: '平台管理员', action: '登录后台', ip: '10.0.1.8', ok: true, type: 'login' },
+        { time: '2026-08-07 14:20', account: 'admin', role: '平台管理员', action: '登录后台', ip: '10.0.1.8', ok: true, type: 'login' },
+        { time: '2026-08-07 11:05', account: 'agent_hd', role: '华东锐涞总代', action: '登录小程序', ip: '10.0.1.8', ok: true, type: 'login' },
+        { time: '2026-08-07 09:12', account: 'admin', role: '平台管理员', action: '采购单自动生效 PO20260807031', ip: '10.0.1.8', ok: true, type: 'op' },
+        { time: '2026-08-06 18:40', account: 'admin', role: '平台管理员', action: '处理异常 超量下单预警', ip: '10.0.1.8', ok: true, type: 'exception' },
+        { time: '2026-08-06 16:22', account: 'admin2', role: '平台管理员', action: '会签确认采购 PO20260807030', ip: '10.0.1.8', ok: true, type: 'op' },
+        { time: '2026-08-06 10:08', account: 'admin', role: '平台管理员', action: '登录后台', ip: '10.0.1.8', ok: true, type: 'login' },
       ],
       subAccounts: [
         { id: 'SUB1', l1Id: 'L1A', username: 'hd_scan_01', name: '仓管小陈', status: '启用' },
@@ -388,6 +422,8 @@
           if (!e.dim || e.dim === 'activate') e.dim = /库存|压货/.test(e.type) ? 'stock' : (/超量|采购|下单/.test(e.type) ? 'nonSn' : 'sn');
           if (e.status === '已关闭') e.status = '已处理';
         });
+        if (!parsed.logs) parsed.logs = seed().logs;
+        normalizeDemoLogTimes(parsed.logs);
         return parsed;
       }
     } catch (_) {}
@@ -396,6 +432,8 @@
   function saveStore() { localStorage.setItem(persistKey, JSON.stringify(db)); }
 
   let db = loadStore();
+  normalizeDemoLogTimes(db.logs);
+  try { saveStore(); } catch (_) {}
 
   const ui = {
     loggedIn: sessionStorage.getItem('ruilai_logged') === '1',
@@ -1398,14 +1436,15 @@
   }
 
   function pageRole() {
-    return `${pageHeader('角色与权限', '创建账号 / 一级子账号（仅扫码）', '<button class="btn btn-primary" data-action="open-create-account">新建账号</button>')}
+    return `${pageHeader('角色与权限', '创建账号 / 一级子账号（仅扫码）· 角色权限可编辑', '<button class="btn btn-primary" data-action="open-create-account">新建账号</button>')}
       <h3 class="section-title">角色</h3>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>角色</th><th>说明</th><th>权限</th><th>账号数</th></tr></thead>
+        <thead><tr><th>角色</th><th>说明</th><th>权限</th><th>账号数</th><th>操作</th></tr></thead>
         <tbody>${db.roles.map((r)=>`<tr>
           <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.desc)}</td>
-          <td>${(r.perms||[]).map((p)=>tag(permLabel(p))).join(' ')}</td>
+          <td>${(r.perms||[]).map((p)=>tag(permLabel(p))).join(' ') || '—'}</td>
           <td class="num">${db.accounts.filter((a)=>a.roleId===r.id).length}</td>
+          <td class="ops"><button class="btn btn-sm" data-action="open-edit-role" data-id="${r.id}">编辑权限</button></td>
         </tr>`).join('')}</tbody>
       </table></div>
       <h3 class="section-title" style="margin-top:12px">账号</h3>
@@ -1445,14 +1484,14 @@
         <input class="field-input" placeholder="搜索动作/账号" data-filter="log:q" value="${escapeHtml(f.q||'')}" />
         <select class="field-input" data-filter="log:type">
           <option value="">全部类型</option>
-          ${['op','login','exception','warn','edit'].map((t)=>`<option value="${t}" ${f.type===t?'selected':''}>${t}</option>`).join('')}
+          ${Object.keys(LOG_TYPE_LABELS).map((t)=>`<option value="${t}" ${f.type===t?'selected':''}>${LOG_TYPE_LABELS[t]}</option>`).join('')}
         </select>
       `)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>时间</th><th>账号</th><th>角色</th><th>类型</th><th>动作</th><th>IP</th><th>结果</th></tr></thead>
         <tbody>${rows.map((l)=>`<tr>
           <td>${escapeHtml(l.time)}</td><td>${escapeHtml(l.account)}</td><td>${escapeHtml(l.role)}</td>
-          <td>${tag(l.type||'op')}</td>
+          <td>${tag(logTypeLabel(l.type||'op'))}</td>
           <td>${escapeHtml(l.action)}</td><td>${escapeHtml(l.ip)}</td>
           <td>${tag(l.ok?'成功':'失败', l.ok?'green':'red')}</td>
         </tr>`).join('') || `<tr><td colspan="7">${emptyHint()}</td></tr>`}</tbody>
@@ -2025,6 +2064,16 @@
       </div>
       <p class="muted">子账号权限固定：仅销售扫码，不可改单、不可看其他菜单。</p>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-sub-ok">创建</button>`;
+    } else if (type === 'edit-role') {
+      const role = db.roles.find((r) => r.id === payload.id) || {};
+      const selected = new Set(role.perms || []);
+      title = `编辑权限 · ${role.name || ''}`;
+      body = `<p class="muted" style="margin-bottom:10px">勾选该角色可用权限，保存后立即生效（原型演示）。</p>
+        <div class="form-field"><label>角色说明</label><input class="field-input" id="f-role-desc" value="${escapeHtml(role.desc || '')}" /></div>
+        <div class="perm-check-grid">
+          ${ALL_PERMS.map((p) => `<label class="perm-check"><input type="checkbox" data-perm="${p}" ${selected.has(p) ? 'checked' : ''}/><span>${escapeHtml(permLabel(p))}</span><code>${escapeHtml(p)}</code></label>`).join('')}
+        </div>`;
+      foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-role-perms" data-id="${escapeHtml(role.id)}">保存</button>`;
     } else {
       title = '提示';
       body = `<p>${escapeHtml(payload.message || type)}</p>`;
@@ -2640,6 +2689,22 @@
         db.exceptionMultiplier = v; saveStore(); toast(`预警倍数已设为 ${v}`); break;
       }
       case 'open-create-account': openModal('create-account', {}); break;
+      case 'open-edit-role': openModal('edit-role', { id }); break;
+      case 'save-role-perms': {
+        const role = db.roles.find((r) => r.id === id);
+        if (!role) return toast('角色不存在', 'err');
+        const desc = $('#f-role-desc')?.value?.trim();
+        if (desc) role.desc = desc;
+        const perms = [...document.querySelectorAll('[data-perm]:checked')].map((el) => el.getAttribute('data-perm'));
+        if (!perms.length) return toast('请至少勾选一项权限', 'err');
+        // 勾选「全部权限」时以 all 为准，避免冗余
+        role.perms = perms.includes('all') ? ['all'] : perms;
+        addLog(`编辑角色权限 ${role.name}`);
+        saveStore();
+        closeModal();
+        toast('角色权限已更新');
+        break;
+      }
       case 'create-account-ok': {
         const username = $('#f-user')?.value?.trim();
         const name = $('#f-name')?.value?.trim();
