@@ -6,6 +6,20 @@
   const BAND_SIZES = ['SS', 'S', 'M', 'L', 'LL'];
   const BELTS = ['腰带SS', '腰带S', '腰带M', '腰带L', '腰带LL'];
   const DEFAULT_BELT = Object.fromEntries(BAND_SIZES.map((s, i) => [s, BELTS[i]]));
+  const PERM_LABELS = {
+    all: '全部权限',
+    purchase: '采购',
+    sales: '销售',
+    stock: '库存',
+    l2: '下级代理',
+    aftersale: '售后',
+    sub: '子账号',
+    exception: '异常',
+    sales_scan: '销售扫码',
+    sales_view: '销售查看',
+    stock_self: '本级库存',
+  };
+  function permLabel(key) { return PERM_LABELS[key] || key; }
   const ALL_REGIONS = ['浙江', '上海', '江苏', '安徽', '广东', '福建', '北京', '河北', '天津', '四川', '重庆'];
   const CITY_MAP = {
     浙江: ['杭州市', '宁波市', '温州市', '嘉兴市', '金华市'],
@@ -1390,7 +1404,7 @@
         <thead><tr><th>角色</th><th>说明</th><th>权限</th><th>账号数</th></tr></thead>
         <tbody>${db.roles.map((r)=>`<tr>
           <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.desc)}</td>
-          <td>${(r.perms||[]).map((p)=>tag(p)).join(' ')}</td>
+          <td>${(r.perms||[]).map((p)=>tag(permLabel(p))).join(' ')}</td>
           <td class="num">${db.accounts.filter((a)=>a.roleId===r.id).length}</td>
         </tr>`).join('')}</tbody>
       </table></div>
