@@ -2597,7 +2597,7 @@
       title = `扫码出货 ${s.no}`;
       const canEdit = ui.role !== 'sub';
       body = `<p>${escapeHtml(l2Name(s.l2Id))} · 计划 <strong>${escapeHtml(planBySizeText(s.planBySize))}</strong> · 已扫 ${(s.scanned||[]).length}/${s.planTotal}</p>
-        <div class="alert alert-info">支持号段起止录入（输入框 — 输入框），也可单个扫码添加</div>
+        <div class="alert alert-info">支持号段起止录入（起始 SN — 结束 SN）</div>
         <div class="form-field"><label>号段录入（起止两个输入框）</label>
           <div class="segment-row" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
             <input class="field-input" id="scan-seg-from" placeholder="起始 SN" style="flex:1;min-width:120px" />
@@ -2606,8 +2606,6 @@
           </div>
         </div>
         <button class="btn btn-primary btn-block" data-action="scan-add-seg" data-id="${s.id}" style="margin-top:8px">按号段添加</button>
-        <div class="form-field" style="margin-top:12px"><label>单个扫描 SN</label><input class="field-input" id="scan-sn-input" placeholder="输入单个 SN 回车或点添加" /></div>
-        <button class="btn btn-block" data-action="scan-add-sn" data-id="${s.id}">添加单个</button>
         <div style="margin-top:8px">${(s.scanned||[]).map((sn)=>tag(sn,'green')).join(' ') || emptyHint('尚未扫描')}</div>
         ${canEdit?'':'<p class="mini-page-desc">子账号不可修改计划数量</p>'}`;
       foot = `<button class="btn" data-action="close-modal">关闭</button>
@@ -3528,15 +3526,6 @@
         db.sales.unshift(so); saveStore(); openModal('scan-so', { id: so.id }); break;
       }
       case 'mini-open-scan-so': openModal('scan-so', { id }); break;
-      case 'scan-add-sn': {
-        const s = db.sales.find((x)=>x.id===id);
-        if (!s) break;
-        const sn = $('#scan-sn-input')?.value?.trim().toUpperCase();
-        const r = tryAddSnToSale(s, sn);
-        if (!r.ok) return toast(r.msg, 'err');
-        if ($('#scan-sn-input')) $('#scan-sn-input').value = '';
-        saveStore(); render(); toast(`已添加 ${r.msg}`); break;
-      }
       case 'scan-add-seg': {
         const s = db.sales.find((x)=>x.id===id);
         if (!s) break;
