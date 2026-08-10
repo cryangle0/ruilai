@@ -2040,7 +2040,7 @@
           <div class="form-field"><label>规格</label><input class="field-input" data-part-idx="${i}" data-part-field="spec" value="${escapeHtml(pt.spec||'')}" /></div>
           <div class="form-field"><label>数量</label><input type="number" class="field-input" data-part-idx="${i}" data-part-field="qty" value="${pt.qty||0}" /></div>
         `).join('')||emptyHint('无配件')}</div>
-        <div style="margin-top:10px">需求 SN：<strong class="num">${purchaseNeedQty(draft)}</strong>　已填段号：<strong class="num">${purchaseSegCount(draft)}</strong>　${match?tag('数量匹配','green'):tag('数量不匹配','orange')}</div>
+        <div style="margin-top:10px" class="audit-match-live">需求 SN：<strong class="num">${purchaseNeedQty(draft)}</strong>　已填段号：<strong class="num">${purchaseSegCount(draft)}</strong>　${match?tag('数量匹配','green'):tag('数量不匹配','orange')}</div>
         <div style="margin-top:8px">会签：管理员1 ${cos.admin1?'✓':'○'}　管理员2 ${cos.admin2?'✓':'○'}</div>`,
       foot: `<button class="btn" data-action="close-modal">取消</button>
         <button class="btn btn-danger" data-action="po-reject">驳回</button>
@@ -3609,10 +3609,24 @@
       }
     });
 
-    // live update audit po segments match
+    // live update audit po segments match（input 即时同步，避免只填起始就 render 冲掉结束框）
     if (ui.modal?.type === 'audit-po') {
-      document.querySelectorAll('.audit-line input, .audit-line select').forEach((inp) => {
-        inp.addEventListener('change', () => { syncDraftFromAuditDom(); render(); });
+      const refreshAuditMatch = () => {
+        syncDraftFromAuditDom();
+        const draft = ui.modal.draft;
+        const need = purchaseNeedQty(draft);
+        const got = purchaseSegCount(draft);
+        const match = need > 0 && got === need;
+        const box = document.querySelector('.audit-match-live');
+        if (box) {
+          box.innerHTML = `需求 SN：<strong class="num">${need}</strong>　已填段号：<strong class="num">${got}</strong>　${match ? tag('数量匹配','green') : tag('数量不匹配','orange')}`;
+        }
+        const btn = document.querySelector('[data-action="po-confirm"]');
+        if (btn) btn.disabled = !match;
+      };
+      document.querySelectorAll('.audit-line input, .audit-line select, [data-part-idx]').forEach((inp) => {
+        inp.addEventListener('input', refreshAuditMatch);
+        inp.addEventListener('change', () => { refreshAuditMatch(); });
       });
     }
 
