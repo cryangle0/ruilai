@@ -8,6 +8,29 @@
   const BELTS = ['腰带S', '腰带M', '腰带L'];
   const DEFAULT_BELT = { SS: '腰带S', S: '腰带S', M: '腰带M', L: '腰带L', LL: '腰带L' };
   const STANDARD_COMBO_NOTE = '标品：腰带S+弹力带SS/S=小；腰带M+弹力带M=中；腰带L+弹力带L/LL=大。其他组合请下非标。';
+  // 原型标品 5 档 + 非标腰带档位→可选弹力带（排除标品组合）
+  const STANDARD_KITS = [
+    { key: 'S-SS', label: '小（腰带S+弹力带SS）', size: 'SS', belt: '腰带S', grade: '小' },
+    { key: 'S-S', label: '小（腰带S+弹力带S）', size: 'S', belt: '腰带S', grade: '小' },
+    { key: 'M-M', label: '中（腰带M+弹力带M）', size: 'M', belt: '腰带M', grade: '中' },
+    { key: 'L-L', label: '大（腰带L+弹力带L）', size: 'L', belt: '腰带L', grade: '大' },
+    { key: 'L-LL', label: '大（腰带L+弹力带LL）', size: 'LL', belt: '腰带L', grade: '大' },
+  ];
+  const NONSTD_GRADES = [
+    { id: '小', belt: '腰带S', bands: ['M', 'L', 'LL'] },
+    { id: '中', belt: '腰带M', bands: ['SS', 'S', 'L', 'LL'] },
+    { id: '大', belt: '腰带L', bands: ['SS', 'S', 'M'] },
+  ];
+  function nonstdBandsForGrade(gradeId) {
+    return (NONSTD_GRADES.find((g) => g.id === gradeId) || NONSTD_GRADES[0]).bands;
+  }
+  function nonstdBeltForGrade(gradeId) {
+    return (NONSTD_GRADES.find((g) => g.id === gradeId) || NONSTD_GRADES[0]).belt;
+  }
+  function customComboLabel(belt, size) {
+    const g = NONSTD_GRADES.find((x) => x.belt === normalizeBelt(belt))?.id || '';
+    return `${g ? g + '（' + normalizeBelt(belt) + '）' : normalizeBelt(belt)} + 弹力带${size}`;
+  }
   function normalizeBelt(b) {
     if (!b) return '腰带M';
     if (BELTS.includes(b)) return b;
@@ -2411,7 +2434,7 @@
       body = `<div class="alert alert-info">${escapeHtml(STANDARD_COMBO_NOTE)}</div>
         <div class="form-grid">
         <div class="form-field"><label>商品</label><select class="field-input" id="f-pid">${kitProducts().map((p)=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
-        ${BAND_SIZES.map((s)=>`<div class="form-field"><label>标准 ${DEFAULT_BELT[s]}+${s}</label><input type="number" class="field-input" data-size-qty="${s}" value="0" /></div>`).join('')}
+        ${STANDARD_KITS.map((k)=>`<div class="form-field"><label>标准 ${escapeHtml(k.label)}</label><input type="number" class="field-input" data-size-qty="${k.size}" data-std-belt="${k.belt}" value="0" /></div>`).join('')}
         </div>
         <h4 style="margin-top:12px">非标（可多款） <button type="button" class="btn btn-sm btn-primary" data-action="po-draft-add-custom">+ 新增非标行</button></h4>
         <div class="page-card table-wrap"><table class="data">
@@ -2445,46 +2468,60 @@
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-product">${type==='edit-product'?'保存':'创建'}</button>`;
     } else if (type === 'order-cart') {
       const channel = payload.channel || draft?.channel || 'purchase';
-      const cart = (draft && draft.items) || [];
-      const customRows = (draft && draft.customRows) || [];
+      if (!ui.modal.draft) ui.modal.draft = { channel, customRows: [], nonstdGrade: '小', stdQty: {}, acc: {} };
+      const d = ui.modal.draft;
+      d.channel = channel;
+      d.customRows = d.customRows || [];
+      d.nonstdGrade = d.nonstdGrade || '小';
+      d.stdQty = d.stdQty || {};
+      d.acc = d.acc || {};
+      const bands = nonstdBandsForGrade(d.nonstdGrade);
       const l2Options = db.agentsL2.filter((a) => a.parentId === currentL1Id() && !a.pending);
-      title = channel === 'sales' ? '购物车式销售下单' : '购物车式采购下单';
-      body = `<div class="alert alert-info">标准套件 / 非标搭配 / 配件均可加入购物车后一次提交</div>
+      title = channel === 'sales' ? '提交销售单（购物车）' : '提交采购单（购物车）';
+      body = `<div class="alert alert-info">${escapeHtml(STANDARD_COMBO_NOTE)}</div>
         <div class="form-grid">
-          <div class="form-field"><label>商品</label><select class="field-input" id="f-cart-pid">${kitProducts().map((p)=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
-          ${channel==='sales'?`<div class="form-field"><label>二级代理</label><select class="field-input" id="f-cart-l2">${l2Options.map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}${l2Options.length?'':'<option value="">暂无可选二级</option>'}</select></div>`:''}
+          <div class="form-field span-2"><label>商品名称</label><select class="field-input" id="f-cart-pid">${kitProducts().map((p)=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
+          ${channel==='sales'?`<div class="form-field span-2"><label>二级代理</label><select class="field-input" id="f-cart-l2">${l2Options.map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}${l2Options.length?'':'<option value="">暂无可选二级</option>'}</select></div>`:''}
         </div>
-        <h4>标准套件（默认腰带+弹力带）</h4>
+        <h4>标准套件</h4>
         <div class="form-grid">
-          ${BAND_SIZES.map((s)=>`<div class="form-field"><label>${escapeHtml(DEFAULT_BELT[s])}+弹力带${s}</label><input type="number" class="field-input" data-cart-qty="${s}" value="0" min="0" /></div>`).join('')}
+          ${STANDARD_KITS.map((k)=>`<div class="form-field"><label>${escapeHtml(k.label)}</label>
+            <input type="number" class="field-input" data-std-key="${k.key}" data-std-size="${k.size}" data-std-belt="${k.belt}" value="${d.stdQty[k.key]||0}" min="0" /></div>`).join('')}
         </div>
-        <button class="btn btn-primary" data-action="cart-add-item" style="margin:10px 0">加入购物车</button>
-        <h4 style="margin-top:14px">非标搭配（自定义腰带 + 弹力带）</h4>
+        <h4 style="margin-top:14px">非标套件</h4>
         <div class="form-grid">
-          <div class="form-field"><label>腰带</label><select class="field-input" id="f-cart-c-belt">${BELTS.map((b)=>`<option value="${b}">${b}</option>`).join('')}</select></div>
-          <div class="form-field"><label>弹力带</label><select class="field-input" id="f-cart-c-size">${BAND_SIZES.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
-          <div class="form-field"><label>数量</label><input type="number" class="field-input" id="f-cart-c-qty" value="0" min="0" /></div>
+          <div class="form-field"><label>腰带</label>
+            <select class="field-input" id="f-cart-c-grade">
+              ${NONSTD_GRADES.map((g)=>`<option value="${g.id}" ${d.nonstdGrade===g.id?'selected':''}>${g.id}（${g.belt}）</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-field"><label>弹力带</label>
+            <select class="field-input" id="f-cart-c-size">${bands.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select>
+          </div>
+          <div class="form-field"><label>数量</label><input type="number" class="field-input" id="f-cart-c-qty" value="1" min="1" /></div>
         </div>
-        <button class="btn btn-sm btn-primary" data-action="cart-add-custom">+ 新增非标行</button>
-        <div class="segment-rows" style="margin-top:8px">${customRows.map((r,i)=>`<div class="segment-row"><span>${escapeHtml(r.belt)}+弹力带${escapeHtml(r.size)}×${r.qty}</span><button type="button" class="btn btn-sm" data-action="cart-del-custom" data-idx="${i}">删除</button></div>`).join('') || emptyHint('暂无非标行')}</div>
-        <h4 style="margin-top:14px">配件（可选，勾选后填规格与数量）</h4>
-        <div class="check-grid">${partProducts().map((p)=>`<label class="check-item" style="align-items:center;gap:8px">
-            <input type="checkbox" data-cart-acc-check="${p.id}" /> ${escapeHtml(p.name)}
-            <select class="field-input" data-cart-acc-size="${p.id}" style="width:90px">${(p.sizes||[]).map((s)=>`<option value="${s}">${s}</option>`).join('')}</select>
-            <input type="number" class="field-input" data-cart-acc-qty="${p.id}" value="1" min="1" style="width:70px" />
-          </label>`).join('') || emptyHint('暂无配件')}</div>
-        <h4 style="margin-top:14px">购物车（标准 ${cart.length} 项 / 非标 ${customRows.length} 行）</h4>
+        <p class="muted" style="margin:6px 0">选了小→弹力带仅 M/L/LL；中→SS/S/L/LL；大→SS/S/M。可多次添加非标行。</p>
+        <button class="btn btn-sm btn-primary" data-action="cart-add-custom">+ 添加</button>
+        <div class="segment-rows" style="margin-top:8px">${d.customRows.map((r,i)=>`<div class="segment-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border,#eee)">
+          <span>已添加：${escapeHtml(customComboLabel(r.belt, r.size))} ×${r.qty}</span>
+          <button type="button" class="btn btn-sm" data-action="cart-del-custom" data-idx="${i}">删除</button>
+        </div>`).join('') || emptyHint('暂无非标，点「+ 添加」')}</div>
+        <h4 style="margin-top:14px">配件（非必选；勾选后须填尺码数量）</h4>
         <div class="page-card table-wrap"><table class="data">
-          <thead><tr><th>商品</th><th>尺码明细</th><th>数量</th><th></th></tr></thead>
-          <tbody>${cart.map((it,i)=>`<tr>
-            <td>${escapeHtml(productName(it.productId))}</td>
-            <td>${escapeHtml(planBySizeText(it.planBySize))}</td>
-            <td class="num">${it.qty}</td>
-            <td><button type="button" class="btn btn-sm" data-action="cart-remove-item" data-idx="${i}">移除</button></td>
-          </tr>`).join('') || (customRows.length?'':`<tr><td colspan="4">${emptyHint('购物车为空')}</td></tr>`)}</tbody>
+          <thead><tr><th></th><th>配件</th><th>尺码</th><th>数量</th></tr></thead>
+          <tbody>${partProducts().map((p)=>{
+            const on = !!(d.acc[p.id]?.on);
+            const sizes = (p.sizes && p.sizes.length) ? p.sizes : ['S','M','L'];
+            return sizes.map((sz, si)=>`<tr>
+              ${si===0?`<td rowspan="${sizes.length}"><input type="checkbox" data-acc-on="${p.id}" ${on?'checked':''} /></td>
+                <td rowspan="${sizes.length}">${escapeHtml(p.name)}</td>`:''}
+              <td>${escapeHtml(sz)}</td>
+              <td><input type="number" class="field-input" data-acc-qty="${p.id}" data-acc-size="${sz}" value="${(d.acc[p.id]?.qty&&d.acc[p.id].qty[sz])||0}" min="0" ${on?'':'disabled'} style="width:80px" /></td>
+            </tr>`).join('');
+          }).join('') || `<tr><td colspan="4">${emptyHint('暂无配件')}</td></tr>`}</tbody>
         </table></div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button>
-        <button class="btn btn-primary" data-action="cart-submit" ${cart.length||customRows.length?'':'disabled'}>提交${channel==='sales'?'销售单':'采购申请'}</button>`;
+        <button class="btn btn-primary" data-action="cart-submit">提交${channel==='sales'?'销售单':'采购单'}</button>`;
     } else if (type === 'create-return') {
       title = '申请退货';
       body = `<div class="form-field"><label>理由类型</label><select class="field-input" id="f-rtype">${RETURN_REASONS.map((r)=>`<option value="${r.type}">${r.label}</option>`).join('')}</select></div>
@@ -2542,6 +2579,26 @@
       <div class="modal-ft">${foot}</div>
     </div></div>`;
   }
+
+  function syncOrderCartDraftFromDom() {
+    if (!ui.modal || ui.modal.type !== 'order-cart') return;
+    const d = ui.modal.draft || (ui.modal.draft = { customRows: [], nonstdGrade: '小', stdQty: {}, acc: {} });
+    d.nonstdGrade = $('#f-cart-c-grade')?.value || d.nonstdGrade || '小';
+    d.stdQty = d.stdQty || {};
+    document.querySelectorAll('[data-std-key]').forEach((inp) => {
+      d.stdQty[inp.getAttribute('data-std-key')] = Number(inp.value) || 0;
+    });
+    d.acc = d.acc || {};
+    partProducts().forEach((p) => {
+      const on = !!document.querySelector(`[data-acc-on="${p.id}"]`)?.checked;
+      const qty = {};
+      document.querySelectorAll(`[data-acc-qty="${p.id}"]`).forEach((inp) => {
+        qty[inp.getAttribute('data-acc-size')] = Number(inp.value) || 0;
+      });
+      d.acc[p.id] = { on, qty };
+    });
+  }
+
   /* ---------- Business actions ---------- */
   function syncDraftFromAuditDom() {
     if (!ui.modal || ui.modal.type !== 'audit-po') return;
@@ -3355,36 +3412,21 @@
         saveStore(); closeModal(); toast('已保存'); break;
       }
       case 'open-order-cart':
-        openModal('order-cart', { channel: el.getAttribute('data-channel') || 'purchase', draftSeed: { channel: el.getAttribute('data-channel') || 'purchase', items: [], customRows: [] } });
+        openModal('order-cart', { channel: el.getAttribute('data-channel') || 'purchase', draftSeed: { channel: el.getAttribute('data-channel') || 'purchase', customRows: [], nonstdGrade: '小', stdQty: {}, acc: {} } });
         break;
-      case 'cart-add-item': {
-        const productId = $('#f-cart-pid')?.value;
-        const planBySize = {};
-        let qty = 0;
-        document.querySelectorAll('[data-cart-qty]').forEach((inp) => {
-          const q = Number(inp.value) || 0;
-          if (q > 0) { planBySize[inp.getAttribute('data-cart-qty')] = q; qty += q; }
-        });
-        if (!qty) return toast('请填写尺码数量', 'err');
-        ui.modal.draft = ui.modal.draft || { channel: ui.modal.payload.channel, items: [], customRows: [] };
-        ui.modal.draft.items = ui.modal.draft.items || [];
-        ui.modal.draft.items.push({ productId, planBySize, qty });
-        render(); break;
-      }
-      case 'cart-remove-item': {
-        const idx = Number(el.getAttribute('data-idx'));
-        (ui.modal.draft.items || []).splice(idx, 1);
-        render(); break;
-      }
       case 'cart-add-custom': {
-        const belt = $('#f-cart-c-belt')?.value;
+        syncOrderCartDraftFromDom();
+        const grade = ui.modal.draft.nonstdGrade || '小';
+        const belt = nonstdBeltForGrade(grade);
         const size = $('#f-cart-c-size')?.value;
         const qty = Number($('#f-cart-c-qty')?.value) || 0;
+        if (!size) return toast('请选择弹力带', 'err');
         if (!qty) return toast('请填写非标数量', 'err');
-        ui.modal.draft = ui.modal.draft || { channel: ui.modal.payload.channel, items: [], customRows: [] };
+        if (!nonstdBandsForGrade(grade).includes(size)) return toast('该腰带档位不可选此弹力带', 'err');
         ui.modal.draft.customRows = ui.modal.draft.customRows || [];
-        ui.modal.draft.customRows.push({ belt, size, qty });
-        render(); break;
+        ui.modal.draft.customRows.push({ belt, size, qty, grade });
+        if ($('#f-cart-c-qty')) $('#f-cart-c-qty').value = '1';
+        render(); toast('已添加非标行'); break;
       }
       case 'cart-del-custom': {
         const idx = Number(el.getAttribute('data-idx'));
@@ -3392,42 +3434,49 @@
         render(); break;
       }
       case 'cart-submit': {
+        syncOrderCartDraftFromDom();
         const channel = ui.modal.draft?.channel || ui.modal.payload?.channel || 'purchase';
-        const items = ui.modal.draft?.items || [];
-        const customRows = ui.modal.draft?.customRows || [];
         const cartPid = $('#f-cart-pid')?.value || kitProducts()[0]?.id;
-        const parts = [];
-        partProducts().forEach((p) => {
-          const chk = document.querySelector(`[data-cart-acc-check="${p.id}"]`);
-          if (chk && chk.checked) {
-            const spec = document.querySelector(`[data-cart-acc-size="${p.id}"]`)?.value || (p.sizes || [])[0] || '';
-            const pq = Number(document.querySelector(`[data-cart-acc-qty="${p.id}"]`)?.value) || 0;
-            if (pq > 0) parts.push({ partId: p.id, name: p.name, spec, qty: pq });
-          }
+        const lines = [];
+        document.querySelectorAll('[data-std-size]').forEach((inp) => {
+          const q = Number(inp.value) || 0;
+          if (q > 0) lines.push({ productId: cartPid, size: inp.getAttribute('data-std-size'), belt: inp.getAttribute('data-std-belt'), qty: q });
         });
-        if (!items.length && !customRows.length && !parts.length) return toast('购物车为空，请至少添加一项', 'err');
+        const customRows = ui.modal.draft?.customRows || [];
+        const customLines = customRows.map((r) => ({ productId: cartPid, size: r.size, belt: r.belt, qty: r.qty }));
+        const parts = [];
+        let accErr = '';
+        partProducts().forEach((p) => {
+          const on = document.querySelector(`[data-acc-on="${p.id}"]`)?.checked;
+          if (!on) return;
+          let any = 0;
+          document.querySelectorAll(`[data-acc-qty="${p.id}"]`).forEach((inp) => {
+            const pq = Number(inp.value) || 0;
+            if (pq > 0) {
+              any += pq;
+              parts.push({ partId: p.id, name: p.name, spec: inp.getAttribute('data-acc-size') || '', qty: pq });
+            }
+          });
+          if (!any) accErr = `已勾选配件「${p.name}」但未填尺码数量`;
+        });
+        if (accErr) return toast(accErr, 'err');
+        if (!lines.length && !customLines.length && !parts.length) return toast('请至少填写标准套件、非标或配件', 'err');
         if (channel === 'sales') {
           const l2Id = $('#f-cart-l2')?.value;
           if (!l2Id) return toast('请选择二级代理', 'err');
           const planBySize = {};
           let planTotal = 0;
-          items.forEach((it) => { Object.entries(it.planBySize).forEach(([sz, q]) => { planBySize[sz] = (planBySize[sz] || 0) + q; planTotal += q; }); });
-          customRows.forEach((r) => { planBySize[r.size] = (planBySize[r.size] || 0) + r.qty; planTotal += r.qty; });
+          lines.forEach((l) => { planBySize[l.size] = (planBySize[l.size] || 0) + l.qty; planTotal += l.qty; });
+          customLines.forEach((r) => { planBySize[r.size] = (planBySize[r.size] || 0) + r.qty; planTotal += r.qty; });
+          if (!planTotal) return toast('销售单需至少一件套件（含非标）', 'err');
           db.sales.unshift({
             id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`,
-            channel: 'distribute', l1Id: currentL1Id(), l2Id, productId: items[0]?.productId || cartPid,
+            channel: 'distribute', l1Id: currentL1Id(), l2Id, productId: cartPid,
             planTotal, planBySize, parts, scanned: [], status: 'scanning', createdAt: nowStr(),
           });
           addLog('购物车提交销售单');
           closeModal(); toast('已创建销售单，可去扫码出货');
         } else {
-          const lines = [];
-          items.forEach((it) => {
-            Object.entries(it.planBySize).forEach(([size, q]) => {
-              lines.push({ productId: it.productId, size, belt: DEFAULT_BELT[size], qty: q });
-            });
-          });
-          const customLines = customRows.map((r) => ({ productId: items[0]?.productId || cartPid, size: r.size, belt: r.belt, qty: r.qty }));
           db.purchases.unshift({
             id: uid('PO'), no: `PO${todayCompact()}${String(++db.seq.po).padStart(3, '0')}`, l1Id: currentL1Id() || 'L1A',
             lines, customLines, parts, status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
@@ -3655,6 +3704,21 @@
         if (btn) handleAction('scan-add-sn', btn);
       }
     });
+
+
+    if (ui.modal?.type === 'order-cart') {
+      $('#f-cart-c-grade')?.addEventListener('change', () => {
+        syncOrderCartDraftFromDom();
+        ui.modal.draft.nonstdGrade = $('#f-cart-c-grade').value;
+        render();
+      });
+      document.querySelectorAll('[data-acc-on]').forEach((chk) => {
+        chk.addEventListener('change', () => { syncOrderCartDraftFromDom(); render(); });
+      });
+      document.querySelectorAll('[data-std-key], [data-acc-qty]').forEach((inp) => {
+        inp.addEventListener('change', () => syncOrderCartDraftFromDom());
+      });
+    }
 
     // live update audit po segments match（input 即时同步，避免只填起始就 render 冲掉结束框）
     if (ui.modal?.type === 'audit-po') {
