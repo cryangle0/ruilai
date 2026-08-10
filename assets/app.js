@@ -239,6 +239,7 @@
       const sn = `RL20260720${String(i).padStart(4, '0')}`;
       if (i === 7) {
         sns.push(mkSn(sn, { size: 'M', l1Id: 'L1A', l2Id: 'L2A', status: 'l2', reIn: true, tags: ['已退货', '修理过'],
+          soldAt: '2026-07-25 12:00', bindAt: '2026-07-25 12:00', bindIpRegion: '浙江',
           prevUser: { phone: '138****1007', addr: '杭州市余杭区', phoneLoc: '浙江' }, returnAt: '2026-08-01 11:20' }));
         continue;
       }
@@ -413,7 +414,7 @@
     };
   }
 
-  const persistKey = 'ruilai_proto_v8';
+  const persistKey = 'ruilai_proto_v9';
   function loadStore() {
     try {
       const raw = localStorage.getItem(persistKey);
@@ -752,18 +753,26 @@
     const y = row.sn.slice(2, 6), m = row.sn.slice(6, 8), d = row.sn.slice(8, 10);
     const base = (/^\d{8}$/.test(`${y}${m}${d}`)) ? `${y}-${m}-${d}` : '2026-08-01';
     const has = (title) => ev.some((e) => e.title === title);
+    const hasCend = () => ev.some((e) => e.type === 'bind' || /销售到C端|C端销售|直销激活|C端绑定/.test(e.title || ''));
     if (!has('生成并导入码库')) ev.push({ time: `${base} 09:00`, title: '生成并导入码库', desc: `${productName(row.productId)} / ${row.size}+${row.belt || ''} · ${l1Name(row.l1Id)}`, type: 'import' });
     if (row.status !== 'warehouse' && !has('采购审核入库')) ev.push({ time: `${base} 10:30`, title: '采购审核入库', desc: '进入一级代理库存', type: 'purchase' });
     if ((row.l2Id || row.status === 'l2' || row.status === 'bound') && !ev.some((e) => e.type === 'sales')) {
       const so = db.sales.find((s) => (s.scanned || []).includes(row.sn));
       ev.push({ time: so?.createdAt || `${base} 15:00`, title: so?.channel === 'direct' ? '直销扫码' : '销售转入二级', desc: `${so ? so.no + ' · ' : ''}${l2Name(row.l2Id)}`, type: 'sales' });
     }
-    if ((row.status === 'bound' || row.bindAt || row.user) && !ev.some((e) => e.type === 'bind' || /C端销售|直销激活|C端绑定/.test(e.title||''))) {
-      ev.push({ time: row.bindAt || row.soldAt || `${base} 18:00`, title: '销售到C端', desc: `${row.user?.phone || '—'} · IP ${row.bindIpRegion || '—'} · ${row.user?.addr || ''}`, type: 'bind' });
-    }
-    // 退货后再入库：补一条历史 C 端销售
-    if (row.prevUser && !ev.some((e) => e.type === 'bind' || /销售到C端/.test(e.title||''))) {
-      ev.push({ time: row.soldAt || row.bindAt || `${base} 16:00`, title: '销售到C端', desc: `${row.prevUser.phone || '—'} · ${row.prevUser.addr || ''}（后退货）`, type: 'bind' });
+    const userReturn = db.returns.find((r) => r.type === 'user' && (r.sns || []).includes(row.sn));
+    // 当前已售 / 曾售后退货（prevUser / 用户退货单 / reIn）都必须有「销售到C端」
+    if (!hasCend() && (row.status === 'bound' || row.bindAt || row.user || row.prevUser || row.reIn || userReturn)) {
+      const u = row.user || row.prevUser || {};
+      const afterReturn = !!(row.prevUser || userReturn || row.reIn);
+      ev.push({
+        time: row.bindAt || row.soldAt || (userReturn && userReturn.createdAt) || `${base} 16:00`,
+        title: '销售到C端',
+        desc: afterReturn
+          ? `${u.phone || '—'} · ${u.addr || '—'}（后退货）`
+          : `${u.phone || '—'} · IP ${row.bindIpRegion || '—'} · ${u.addr || ''}`,
+        type: 'bind',
+      });
     }
     db.returns.filter((r) => (r.sns || []).includes(row.sn)).forEach((r) => {
       if (!ev.some((e) => e.desc && e.desc.includes(r.no))) ev.push({ time: r.createdAt, title: r.typeLabel || '退货', desc: `${r.no} · ${r.reason || ''}`, type: 'return' });
