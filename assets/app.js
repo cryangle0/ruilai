@@ -468,7 +468,7 @@
     form: {},
     notifyOpen: false,
     sort: {},
-    scanMode: sessionStorage.getItem('ruilai_scan_mode') || 'ship', // ship | direct | query
+    scanMode: sessionStorage.getItem('ruilai_scan_mode') || 'ship', // ship | direct
   };
 
   const ROLES = {
@@ -1185,13 +1185,17 @@
         <thead><tr>
           <th>编码</th><th>名称</th><th>类型</th>
           <th class="sortable" data-action="sort-col" data-sort-key="parent" data-sort-scope="agent-l2">所属一级${sortMark('parent')}</th>
-          <th>授权城市</th><th>状态</th>
+          <th>授权城市</th><th>状态</th><th>操作</th>
         </tr></thead>
         <tbody>${rows.map((a)=>`<tr class="row-clickable" data-row-action="view-agent-l2" data-id="${a.id}">
           <td>${escapeHtml(a.code)}</td><td>${escapeHtml(a.name)}</td><td>${tag(a.type, a.type==='法人'?'blue':'gray')}</td>
           <td>${escapeHtml(l1Name(a.parentId))}</td><td>${escapeHtml((a.areas||[]).join('、')||'—')}</td>
           <td>${tag(a.status, a.status==='启用'?'green':'gray')}</td>
-        </tr>`).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
+          <td class="ops" onclick="event.stopPropagation()">
+            <button class="btn btn-sm" data-go="l2-sales-detail" data-set-filter="l2-sales:l2Id=${a.id}">销售</button>
+            <button class="btn btn-sm" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}">退货</button>
+          </td>
+        </tr>`).join('') || `<tr><td colspan="7">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -1350,7 +1354,7 @@
     if (f.channel) rows = rows.filter((s) => s.channel === f.channel);
     if (f.l1) rows = rows.filter((s) => s.l1Id === f.l1);
     if (f.status) rows = rows.filter((s) => s.status === f.status);
-    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情', '<button class="btn btn-primary" data-action="mini-create-so">创建分销出货单</button>')}
+    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情', '<button class="btn btn-primary" data-action="mini-create-so">创建分销出货单</button><button class="btn" data-action="open-order-cart" data-channel="sales" style="margin-left:8px">购物车式下单</button>')}
       ${filterBar(`
         <select class="field-input" data-filter="sales:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <select class="field-input" data-filter="sales:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -1478,7 +1482,7 @@
     const openN = getOpenExceptionIdsInFilter().length;
     return `${pageHeader('异常管理', '扫码 / 激活 / 销售库存 · 未处理加粗')}
       <div class="page-card" style="margin-bottom:12px;padding:14px;border:1px solid var(--primary);background:rgba(15,118,110,.04)">
-        <div style="font-weight:600;margin-bottom:8px">异常标准配置（显眼区）</div>
+        <div style="font-weight:600;margin-bottom:8px">异常标准配置（平台可改）</div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
           <label style="font-size:12px">全局倍数 <input class="field-input" style="width:70px" type="number" step="0.1" value="${db.exceptionMultiplier}" id="f-ex-mult" /></label>
           <label style="font-size:12px">超量比 <input class="field-input" style="width:70px" type="number" step="0.1" value="${rules.overOrderRatio}" id="f-ex-over" /></label>
@@ -1639,11 +1643,9 @@
       return pageMiniShipScan(true);
     }
     if (ui.role === 'l2') {
-      return `<div class="mini-page-title">扫码查询</div>
-        <p class="mini-page-desc">拍摄/输入 SN 查询产品信息（只读）</p>
-        <div class="form-field"><input class="field-input" id="mini-q-sn" placeholder="输入或扫描 SN" /></div>
-        <button class="btn btn-primary btn-block" data-action="mini-query-sn">查询</button>
-        <div id="mini-query-result" style="margin-top:12px"></div>`;
+      return `<div class="mini-page-title">扫码</div>
+        <div class="alert alert-info">出货不适用（二级不发货给下级）</div>
+        <p class="mini-page-desc">提示：库存查看请用「库存」页；如需查询单个 SN，可在库存页搜索。</p>`;
     }
     const mode = ui.scanMode || 'ship';
     return `<div class="mini-page-title">扫码</div>
@@ -1685,11 +1687,6 @@
       <p class="mini-page-desc">校验：IP 须在直销围栏内；手机归属地须与 IP 地区一致。</p>
       <button class="btn btn-block" data-action="mini-direct-back" style="margin-bottom:8px">返回扫码</button>
       <button class="btn btn-primary btn-block" data-action="mini-direct-bind">校验并激活</button>`;
-  }
-
-  function pageMiniQueryScan() {
-    return `<div class="form-field"><input class="field-input" id="mini-q-sn" placeholder="输入或扫描 SN" /></div>
-      <button class="btn btn-primary btn-block" data-action="mini-query-sn">查询</button>`;
   }
 
   function miniPurchaseBody() {
@@ -2292,26 +2289,45 @@
     } else if (type === 'order-cart') {
       const channel = payload.channel || draft?.channel || 'purchase';
       const cart = (draft && draft.items) || [];
+      const customRows = (draft && draft.customRows) || [];
+      const l2Options = db.agentsL2.filter((a) => a.parentId === currentL1Id() && !a.pending);
       title = channel === 'sales' ? '购物车式销售下单' : '购物车式采购下单';
-      body = `<div class="alert alert-info">选商品 → 填尺码数量 → 加入购物车 → 提交</div>
+      body = `<div class="alert alert-info">标准套件 / 非标搭配 / 配件均可加入购物车后一次提交</div>
         <div class="form-grid">
           <div class="form-field"><label>商品</label><select class="field-input" id="f-cart-pid">${kitProducts().map((p)=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
-          ${channel==='sales'?`<div class="form-field"><label>二级代理</label><select class="field-input" id="f-cart-l2">${db.agentsL2.filter((a)=>a.parentId===currentL1Id()&&!a.pending).map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}</select></div>`:''}
-          ${BAND_SIZES.map((s)=>`<div class="form-field"><label>${s}</label><input type="number" class="field-input" data-cart-qty="${s}" value="0" min="0" /></div>`).join('')}
+          ${channel==='sales'?`<div class="form-field"><label>二级代理</label><select class="field-input" id="f-cart-l2">${l2Options.map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}${l2Options.length?'':'<option value="">暂无可选二级</option>'}</select></div>`:''}
+        </div>
+        <h4>标准套件（默认腰带+弹力带）</h4>
+        <div class="form-grid">
+          ${BAND_SIZES.map((s)=>`<div class="form-field"><label>${escapeHtml(DEFAULT_BELT[s])}+弹力带${s}</label><input type="number" class="field-input" data-cart-qty="${s}" value="0" min="0" /></div>`).join('')}
         </div>
         <button class="btn btn-primary" data-action="cart-add-item" style="margin:10px 0">加入购物车</button>
-        <h4>购物车（${cart.length}）</h4>
+        <h4 style="margin-top:14px">非标搭配（自定义腰带 + 弹力带）</h4>
+        <div class="form-grid">
+          <div class="form-field"><label>腰带</label><select class="field-input" id="f-cart-c-belt">${BELTS.map((b)=>`<option value="${b}">${b}</option>`).join('')}</select></div>
+          <div class="form-field"><label>弹力带</label><select class="field-input" id="f-cart-c-size">${BAND_SIZES.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+          <div class="form-field"><label>数量</label><input type="number" class="field-input" id="f-cart-c-qty" value="0" min="0" /></div>
+        </div>
+        <button class="btn btn-sm" data-action="cart-add-custom">+ 添加非标行</button>
+        <div class="segment-rows" style="margin-top:8px">${customRows.map((r,i)=>`<div class="segment-row"><span>${escapeHtml(r.belt)}+弹力带${escapeHtml(r.size)}×${r.qty}</span><button type="button" class="btn btn-sm" data-action="cart-del-custom" data-idx="${i}">删除</button></div>`).join('') || emptyHint('暂无非标行')}</div>
+        <h4 style="margin-top:14px">配件（可选，勾选后填规格与数量）</h4>
+        <div class="check-grid">${partProducts().map((p)=>`<label class="check-item" style="align-items:center;gap:8px">
+            <input type="checkbox" data-cart-acc-check="${p.id}" /> ${escapeHtml(p.name)}
+            <select class="field-input" data-cart-acc-size="${p.id}" style="width:90px">${(p.sizes||[]).map((s)=>`<option value="${s}">${s}</option>`).join('')}</select>
+            <input type="number" class="field-input" data-cart-acc-qty="${p.id}" value="1" min="1" style="width:70px" />
+          </label>`).join('') || emptyHint('暂无配件')}</div>
+        <h4 style="margin-top:14px">购物车（标准 ${cart.length} 项 / 非标 ${customRows.length} 行）</h4>
         <div class="page-card table-wrap"><table class="data">
           <thead><tr><th>商品</th><th>尺码明细</th><th>数量</th><th></th></tr></thead>
           <tbody>${cart.map((it,i)=>`<tr>
             <td>${escapeHtml(productName(it.productId))}</td>
             <td>${escapeHtml(planBySizeText(it.planBySize))}</td>
             <td class="num">${it.qty}</td>
-            <td><button class="btn btn-sm" data-action="cart-remove-item" data-idx="${i}">移除</button></td>
-          </tr>`).join('') || `<tr><td colspan="4">${emptyHint('购物车为空')}</td></tr>`}</tbody>
+            <td><button type="button" class="btn btn-sm" data-action="cart-remove-item" data-idx="${i}">移除</button></td>
+          </tr>`).join('') || (customRows.length?'':`<tr><td colspan="4">${emptyHint('购物车为空')}</td></tr>`)}</tbody>
         </table></div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button>
-        <button class="btn btn-primary" data-action="cart-submit" ${cart.length?'':'disabled'}>提交${channel==='sales'?'销售单':'采购申请'}</button>`;
+        <button class="btn btn-primary" data-action="cart-submit" ${cart.length||customRows.length?'':'disabled'}>提交${channel==='sales'?'销售单':'采购申请'}</button>`;
     } else if (type === 'create-return') {
       title = '申请退货';
       body = `<div class="form-field"><label>理由类型</label><select class="field-input" id="f-rtype">${RETURN_REASONS.map((r)=>`<option value="${r.type}">${r.label}</option>`).join('')}</select></div>
@@ -3162,7 +3178,7 @@
         saveStore(); closeModal(); toast('已保存'); break;
       }
       case 'open-order-cart':
-        openModal('order-cart', { channel: el.getAttribute('data-channel') || 'purchase', draftSeed: { channel: el.getAttribute('data-channel') || 'purchase', items: [] } });
+        openModal('order-cart', { channel: el.getAttribute('data-channel') || 'purchase', draftSeed: { channel: el.getAttribute('data-channel') || 'purchase', items: [], customRows: [] } });
         break;
       case 'cart-add-item': {
         const productId = $('#f-cart-pid')?.value;
@@ -3173,7 +3189,7 @@
           if (q > 0) { planBySize[inp.getAttribute('data-cart-qty')] = q; qty += q; }
         });
         if (!qty) return toast('请填写尺码数量', 'err');
-        ui.modal.draft = ui.modal.draft || { channel: ui.modal.payload.channel, items: [] };
+        ui.modal.draft = ui.modal.draft || { channel: ui.modal.payload.channel, items: [], customRows: [] };
         ui.modal.draft.items = ui.modal.draft.items || [];
         ui.modal.draft.items.push({ productId, planBySize, qty });
         render(); break;
@@ -3183,21 +3199,49 @@
         (ui.modal.draft.items || []).splice(idx, 1);
         render(); break;
       }
+      case 'cart-add-custom': {
+        const belt = $('#f-cart-c-belt')?.value;
+        const size = $('#f-cart-c-size')?.value;
+        const qty = Number($('#f-cart-c-qty')?.value) || 0;
+        if (!qty) return toast('请填写非标数量', 'err');
+        ui.modal.draft = ui.modal.draft || { channel: ui.modal.payload.channel, items: [], customRows: [] };
+        ui.modal.draft.customRows = ui.modal.draft.customRows || [];
+        ui.modal.draft.customRows.push({ belt, size, qty });
+        render(); break;
+      }
+      case 'cart-del-custom': {
+        const idx = Number(el.getAttribute('data-idx'));
+        (ui.modal.draft.customRows || []).splice(idx, 1);
+        render(); break;
+      }
       case 'cart-submit': {
         const channel = ui.modal.draft?.channel || ui.modal.payload?.channel || 'purchase';
         const items = ui.modal.draft?.items || [];
-        if (!items.length) return toast('购物车为空', 'err');
+        const customRows = ui.modal.draft?.customRows || [];
+        const cartPid = $('#f-cart-pid')?.value || kitProducts()[0]?.id;
+        const parts = [];
+        partProducts().forEach((p) => {
+          const chk = document.querySelector(`[data-cart-acc-check="${p.id}"]`);
+          if (chk && chk.checked) {
+            const spec = document.querySelector(`[data-cart-acc-size="${p.id}"]`)?.value || (p.sizes || [])[0] || '';
+            const pq = Number(document.querySelector(`[data-cart-acc-qty="${p.id}"]`)?.value) || 0;
+            if (pq > 0) parts.push({ partId: p.id, name: p.name, spec, qty: pq });
+          }
+        });
+        if (!items.length && !customRows.length && !parts.length) return toast('购物车为空，请至少添加一项', 'err');
         if (channel === 'sales') {
           const l2Id = $('#f-cart-l2')?.value;
           if (!l2Id) return toast('请选择二级代理', 'err');
-          items.forEach((it) => {
-            db.sales.unshift({
-              id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`,
-              channel: 'distribute', l1Id: currentL1Id(), l2Id, productId: it.productId,
-              planTotal: it.qty, planBySize: it.planBySize, scanned: [], status: 'scanning', createdAt: nowStr(),
-            });
+          const planBySize = {};
+          let planTotal = 0;
+          items.forEach((it) => { Object.entries(it.planBySize).forEach(([sz, q]) => { planBySize[sz] = (planBySize[sz] || 0) + q; planTotal += q; }); });
+          customRows.forEach((r) => { planBySize[r.size] = (planBySize[r.size] || 0) + r.qty; planTotal += r.qty; });
+          db.sales.unshift({
+            id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`,
+            channel: 'distribute', l1Id: currentL1Id(), l2Id, productId: items[0]?.productId || cartPid,
+            planTotal, planBySize, parts, scanned: [], status: 'scanning', createdAt: nowStr(),
           });
-          addLog(`购物车提交销售单 ×${items.length}`);
+          addLog('购物车提交销售单');
           closeModal(); toast('已创建销售单，可去扫码出货');
         } else {
           const lines = [];
@@ -3206,9 +3250,10 @@
               lines.push({ productId: it.productId, size, belt: DEFAULT_BELT[size], qty: q });
             });
           });
+          const customLines = customRows.map((r) => ({ productId: items[0]?.productId || cartPid, size: r.size, belt: r.belt, qty: r.qty }));
           db.purchases.unshift({
             id: uid('PO'), no: `PO${todayCompact()}${String(++db.seq.po).padStart(3, '0')}`, l1Id: currentL1Id() || 'L1A',
-            lines, customLines: [], parts: [], status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
+            lines, customLines, parts, status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
           });
           addLog('购物车提交采购申请');
           closeModal(); toast('已提交采购申请');
@@ -3217,14 +3262,6 @@
       }
       case 'view-dup-customer':
         openModal('view-exception', { id }); break;
-      case 'mini-query-sn': {
-        const sn = $('#mini-q-sn')?.value?.trim().toUpperCase();
-        const row = db.sns.find((x)=>x.sn===sn);
-        const box = document.getElementById('mini-query-result') || document.querySelector('.mini-scroll');
-        if (box && box.id === 'mini-query-result') box.innerHTML = renderMiniSnCard(row);
-        else openModal('view-sn', { id: sn });
-        break;
-      }
       case 'mini-create-po': openModal('create-po', {}); break;
       case 'create-po-ok': {
         const productId = $('#f-pid')?.value;
