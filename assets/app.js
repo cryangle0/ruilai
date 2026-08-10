@@ -1603,7 +1603,7 @@
     if (f.channel) rows = rows.filter((s) => s.channel === f.channel);
     if (f.l1) rows = rows.filter((s) => s.l1Id === f.l1);
     if (f.status) rows = rows.filter((s) => s.status === f.status);
-    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情', '<button class="btn btn-primary" data-action="mini-create-so">创建分销出货单</button><button class="btn" data-action="open-order-cart" data-channel="sales" style="margin-left:8px">购物车式下单</button>')}
+    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情', '<button class="btn btn-primary" data-action="open-order-cart" data-channel="sales">购物车式下单</button>')}
       ${filterBar(`
         <select class="field-input" data-filter="sales:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <select class="field-input" data-filter="sales:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -1916,8 +1916,7 @@
   function pageMiniShipScan(subOnly) {
     const open = db.sales.filter((s) => s.l1Id === currentL1Id() && s.channel === 'distribute' && s.status === 'scanning');
     return `${subOnly?'<div class="mini-page-title">销售扫码</div><p class="mini-page-desc">子账号仅可扫码出货，不可改单</p>':''}
-      ${!subOnly?`<button class="btn btn-primary btn-block" data-action="mini-create-so" style="margin-bottom:10px">创建分销出货单</button>
-      <button class="btn btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">购物车式下单</button>`:''}
+      ${!subOnly?`<button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">购物车式下单</button>`:''}
       <div class="mini-list">${open.map((s)=>`<button type="button" class="mini-list-item" data-action="mini-open-scan-so" data-id="${s.id}">
         <strong>${escapeHtml(s.no)}</strong>
         <span>${escapeHtml(l2Name(s.l2Id))} · ${escapeHtml(soProductDetail(s))}</span>
@@ -1969,8 +1968,7 @@
       : db.sales.filter((s) => s.l1Id === currentL1Id() && s.channel !== 'direct');
     list = list.filter((s) => matchTimeSnFilter(s.createdAt, s.scanned || [], f));
     list = list.slice().sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
-    const actions = ui.role === 'l2' ? '' : `<button class="btn btn-primary btn-block" data-action="mini-create-so" style="margin-bottom:8px">发起销售单</button>
-      <button class="btn btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">购物车式下单</button>`;
+    const actions = ui.role === 'l2' ? '' : `<button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">购物车式下单</button>`;
     return `${actions}
       ${ui.role==='l2'?`<div class="alert alert-info">本级销售记录（点开详情看商品与 SN）</div>`:''}
       ${miniTimeSnFilters('miniSo')}
@@ -3929,12 +3927,6 @@
     }));
 
     $('#modal-mask')?.addEventListener('click', (e) => { if (e.target.id === 'modal-mask') closeModal(); });
-    $('#scan-sn-input')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const btn = document.querySelector('[data-action="scan-add-sn"]');
-        if (btn) handleAction('scan-add-sn', btn);
-      }
-    });
 
 
     if (ui.modal?.type === 'order-cart') {
