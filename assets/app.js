@@ -93,6 +93,9 @@
   const PO_STATUS = {
     pending: '待审核', cosigning: '会签中', approved: '已生效', rejected: '已驳回',
   };
+  const SO_STATUS = {
+    scanning: '扫码中', done: '已完成', cancelled: '已取消',
+  };
   const RT_STATUS = {
     pending: '待审核', approved: '已通过', done: '已处理', rejected: '已驳回',
   };
@@ -105,6 +108,10 @@
       : status === 'rejected' ? 'red'
       : 'gray';
     return tag(returnStatusLabel(status), tone);
+  }
+  function saleStatusTag(status) {
+    const tone = status === 'scanning' ? 'orange' : status === 'done' ? 'green' : 'gray';
+    return tag(SO_STATUS[status] || status || '—', tone);
   }
 
   function uid(prefix) {
@@ -359,7 +366,8 @@
           planTotal: 5, planBySize: { LL: 5 }, scanned: ['RL202608020001', 'RL202608020002', 'RL202608020003', 'RL202608020004', 'RL202608020005'],
           status: 'done', createdAt: '2026-08-02 16:00' },
         { id: 'SO5', no: `SO${todayCompact()}100`, channel: 'direct', l1Id: 'L1A', l2Id: null, productId: 'P1',
-          planTotal: 2, planBySize: { M: 2 }, scanned: ['RL202607200001', 'RL202607200002'], status: 'done', createdAt: '2026-07-25 12:00' },
+          planTotal: 2, planBySize: { M: 2 }, scanned: ['RL202607200001', 'RL202607200002'], status: 'done', createdAt: '2026-07-25 12:00',
+          customer: { phone: '138****1001', addr: '杭州市西湖区文一路1号', phoneLoc: '浙江' } },
       ],
       returns: [
         { id: 'RT1', no: `RTU${todayCompact()}01`, type: 'user', typeLabel: '用户退货再入库', fromId: 'L2A', fromName: '杭州城西专营',
@@ -631,6 +639,161 @@
     if (typeof plan !== 'object') return '—';
     const parts = Object.entries(plan).filter(([, q]) => Number(q) > 0).map(([sz, q]) => `${sz}×${q}`);
     return parts.join('，') || '—';
+  }
+
+  function miniTimeSnFilters(scope) {
+    const f = ui.filters[scope] || {};
+    return `<div class="mini-filters">
+      <input type="date" class="field-input" data-filter="${scope}:from" value="${escapeHtml(f.from || '')}" title="开始日期" />
+      <input type="date" class="field-input" data-filter="${scope}:to" value="${escapeHtml(f.to || '')}" title="结束日期" />
+      <input class="field-input" data-filter="${scope}:sn" placeholder="SN码" value="${escapeHtml(f.sn || '')}" />
+    </div>`;
+  }
+
+  function matchTimeSnFilter(time, snList, f) {
+    if ((f.from || f.to) && !inDateRange(time, f.from, f.to)) return false;
+    if (f.sn) {
+      const q = String(f.sn).trim().toLowerCase();
+      if (!q) return true;
+      const hit = (snList || []).some((sn) => String(sn).toLowerCase().includes(q));
+      if (!hit) return false;
+    }
+    return true;
+  }
+
+  function purchaseSnHaystack(p) {
+    const segs = Object.values(p.segments || {}).flat().filter(Boolean);
+    return [p.no, ...segs, ...(p.sns || [])];
+  }
+
+  function saleProductRows(s) {
+    const rows = [];
+    const plan = s.planBySize || {};
+    const sizes = new Set([...Object.keys(plan), ...((s.scanned || []).map((sn) => db.sns.find((x) => x.sn === sn)?.size).filter(Boolean))]);
+    sizes.forEach((size) => {
+      const scannedOfSize = (s.scanned || []).filter((sn) => db.sns.find((x) => x.sn === sn)?.size === size);
+      const sample = scannedOfSize[0] ? db.sns.find((x) => x.sn === scannedOfSize[0]) : null;
+      rows.push({
+        productId: s.productId || sample?.productId,
+        size,
+        belt: sample?.belt || DEFAULT_BELT[size] || '—',
+        plan: Number(plan[size] || 0),
+        scanned: scannedOfSize.length,
+      });
+    });
+    return rows;
+  }
+
+  function saleDetailHtml(s) {
+    const productRows = saleProductRows(s);
+    const snRows = (s.scanned || []).map((sn) => {
+      const row = db.sns.find((x) => x.sn === sn);
+      const u = row?.user || row?.prevUser;
+      return { sn, size: row?.size || '—', belt: row?.belt || '—', user: u ? `${u.phone || ''} ${u.addr || ''}`.trim() : '—' };
+    });
+    return `<div class="detail-grid">
+        <div><span>渠道</span>${tag(s.channel==='direct'?'直售':'分销', s.channel==='direct'?'orange':'blue')}</div>
+        <div><span>状态</span>${saleStatusTag(s.status)}</div>
+        <div><span>一级</span>${escapeHtml(l1Name(s.l1Id))}</div>
+        <div><span>二级</span>${s.l2Id?escapeHtml(l2Name(s.l2Id)):'—'}</div>
+        <div><span>计划/已扫</span>${(s.scanned||[]).length}/${s.planTotal||0}</div>
+        <div><span>时间</span>${escapeHtml(s.createdAt||'—')}</div>
+      </div>
+      <h4 style="margin-top:12px">商品明细</h4>
+      <div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>商品</th><th>弹力带</th><th>腰带</th><th>计划</th><th>已扫</th></tr></thead>
+        <tbody>${productRows.map((r)=>`<tr>
+          <td>${escapeHtml(productName(r.productId))}</td>
+          <td>${escapeHtml(r.size)}</td>
+          <td>${escapeHtml(r.belt)}</td>
+          <td class="num">${r.plan}</td>
+          <td class="num">${r.scanned}</td>
+        </tr>`).join('') || `<tr><td colspan="5">${emptyHint('无商品明细')}</td></tr>`}
+        ${(s.parts||[]).map((p)=>`<tr>
+          <td>${escapeHtml(productName(p.partId))}（配件）</td>
+          <td>—</td><td>${escapeHtml(p.spec||'—')}</td>
+          <td class="num">${p.qty||0}</td><td class="num">—</td>
+        </tr>`).join('')}
+        </tbody>
+      </table></div>
+      <h4 style="margin-top:12px">SN码（${snRows.length}）</h4>
+      <div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>SN</th><th>尺码</th><th>腰带</th><th>客户</th></tr></thead>
+        <tbody>${snRows.map((r)=>`<tr>
+          <td><code>${escapeHtml(r.sn)}</code></td>
+          <td>${escapeHtml(r.size)}</td>
+          <td>${escapeHtml(r.belt)}</td>
+          <td>${escapeHtml(r.user)}</td>
+        </tr>`).join('') || `<tr><td colspan="4">${emptyHint('暂无已扫 SN')}</td></tr>`}</tbody>
+      </table></div>`;
+  }
+
+  function listCendOrders() {
+    const orders = [];
+    const covered = new Set();
+    const inScopeSn = (row) => {
+      if (!row) return false;
+      if (ui.role === 'l2') return row.l2Id === currentL2Id();
+      return row.l1Id === currentL1Id();
+    };
+    const inScopeSale = (s) => {
+      if (ui.role === 'l2') return s.l2Id === currentL2Id() || (s.channel === 'direct' && (s.scanned || []).some((sn) => db.sns.find((x) => x.sn === sn)?.l2Id === currentL2Id()));
+      return s.l1Id === currentL1Id();
+    };
+    db.sales.filter((s) => s.channel === 'direct' && inScopeSale(s)).forEach((s) => {
+      (s.scanned || []).forEach((sn) => covered.add(sn));
+      const users = (s.scanned || []).map((sn) => db.sns.find((x) => x.sn === sn)?.user || db.sns.find((x) => x.sn === sn)?.prevUser).filter(Boolean);
+      const u = users[0] || s.customer || null;
+      orders.push({
+        id: s.id,
+        kind: 'sale',
+        no: s.no,
+        createdAt: s.createdAt,
+        sns: s.scanned || [],
+        phone: u?.phone || s.customer?.phone || '—',
+        addr: u?.addr || s.customer?.addr || '—',
+        detail: soProductDetail(s),
+        status: s.status,
+      });
+    });
+    db.sns.filter((row) => (row.user || row.prevUser) && inScopeSn(row) && !covered.has(row.sn)).forEach((row) => {
+      const u = row.user || row.prevUser;
+      orders.push({
+        id: `CO_${row.sn}`,
+        kind: 'bind',
+        no: `CO${String(row.sn).slice(-8)}`,
+        createdAt: row.soldAt || row.bindAt || row.returnAt || '',
+        sns: [row.sn],
+        phone: u.phone || '—',
+        addr: u.addr || '—',
+        detail: `${productName(row.productId)}/${row.size}${row.belt ? '+' + row.belt : ''}`,
+        status: row.status === 'bound' ? 'done' : 'done',
+        snRow: row,
+      });
+    });
+    orders.sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
+    return orders;
+  }
+
+  function cendOrderDetailHtml(order) {
+    if (order.kind === 'sale') {
+      const s = db.sales.find((x) => x.id === order.id);
+      return saleDetailHtml(s);
+    }
+    const row = order.snRow || db.sns.find((x) => x.sn === order.sns[0]);
+    const u = row?.user || row?.prevUser || {};
+    return `<div class="detail-grid">
+        <div><span>订单号</span>${escapeHtml(order.no)}</div>
+        <div><span>状态</span>${tag(row?.status === 'bound' ? '已销售' : '已归档', 'green')}</div>
+        <div><span>客户手机</span>${escapeHtml(u.phone || '—')}</div>
+        <div><span>归属地</span>${escapeHtml(u.phoneLoc || '—')}</div>
+        <div class="span-2"><span>地址</span>${escapeHtml(u.addr || '—')}</div>
+        <div><span>商品</span>${escapeHtml(productName(row?.productId))}</div>
+        <div><span>尺码</span>${escapeHtml(row?.size || '—')} / ${escapeHtml(row?.belt || '—')}</div>
+        <div><span>SN码</span><code>${escapeHtml(row?.sn || '—')}</code></div>
+        <div><span>时间</span>${escapeHtml(order.createdAt || '—')}</div>
+        <div><span>代理</span>${escapeHtml(row?.l2Id ? l2Name(row.l2Id) : l1Name(row?.l1Id))}</div>
+      </div>`;
   }
 
   function tryAddSnToSale(s, sn) {
@@ -1783,31 +1946,53 @@
   }
 
   function miniPurchaseBody() {
-    const list = db.purchases.filter((p) => p.l1Id === currentL1Id());
+    const f = ui.filters.miniPo || {};
+    let list = db.purchases.filter((p) => p.l1Id === currentL1Id());
+    list = list.filter((p) => matchTimeSnFilter(p.createdAt, purchaseSnHaystack(p), f));
+    list = list.slice().sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
     return `<p class="mini-page-desc">发起采购申请（标准/非标/配件）</p>
       <button class="btn btn-primary btn-block" data-action="mini-create-po">新建采购申请</button>
       <button class="btn btn-block" data-action="open-order-cart" data-channel="purchase" style="margin-top:8px">购物车式下单</button>
-      <div class="mini-list" style="margin-top:12px">${list.map((p)=>`<button type="button" class="mini-list-item" data-action="open-view-purchase" data-id="${p.id}">
-        <strong>${escapeHtml(p.no)}</strong>
-        <span>${tag(PO_STATUS[p.status]||p.status)} ${escapeHtml(p.createdAt)}</span>
-        <span>${(p.lines||[]).map((l)=>`${l.size}×${l.qty}`).join('，')}</span>
+      ${miniTimeSnFilters('miniPo')}
+      <div class="mini-list" style="margin-top:8px">${list.map((p)=>`<button type="button" class="mini-list-item" data-action="open-view-purchase" data-id="${p.id}">
+        <strong class="rt-row-hd"><span>${escapeHtml(p.no)}</span>${tag(PO_STATUS[p.status]||p.status)}</strong>
+        <span>${escapeHtml(p.createdAt)}</span>
+        <span>${escapeHtml((p.lines||[]).map((l)=>`${productName(l.productId)}/${l.size}×${l.qty}`).join('，') || '—')}</span>
+        <span class="muted">${escapeHtml(purchaseSnHaystack(p).filter((x)=>x!==p.no).join(' ')||'暂无号段')}</span>
       </button>`).join('') || emptyHint()}</div>`;
   }
 
   function miniSalesBody() {
-    if (ui.role === 'l2') {
-      const list = db.sales.filter((s) => s.l2Id === currentL2Id());
-      return `<div class="alert alert-info">本级销售记录（点开详情）</div>
-        <div class="mini-list">${list.map((s)=>`<button type="button" class="mini-list-item" data-action="open-view-sale" data-id="${s.id}"><strong>${escapeHtml(s.no)}</strong><span>${escapeHtml(soProductDetail(s))}</span></button>`).join('') || emptyHint()}</div>`;
-    }
-    const list = db.sales.filter((s) => s.l1Id === currentL1Id());
-    return `<button class="btn btn-primary btn-block" data-action="mini-create-so" style="margin-bottom:8px">发起销售单</button>
-      <button class="btn btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">购物车式下单</button>
-      <div class="mini-list">${list.map((s)=>`<button type="button" class="mini-list-item" data-action="open-view-sale" data-id="${s.id}">
-        <strong>${escapeHtml(s.no)}</strong>
+    const f = ui.filters.miniSo || {};
+    let list = ui.role === 'l2'
+      ? db.sales.filter((s) => s.l2Id === currentL2Id())
+      : db.sales.filter((s) => s.l1Id === currentL1Id() && s.channel !== 'direct');
+    list = list.filter((s) => matchTimeSnFilter(s.createdAt, s.scanned || [], f));
+    list = list.slice().sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
+    const actions = ui.role === 'l2' ? '' : `<button class="btn btn-primary btn-block" data-action="mini-create-so" style="margin-bottom:8px">发起销售单</button>
+      <button class="btn btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">购物车式下单</button>`;
+    return `${actions}
+      ${ui.role==='l2'?`<div class="alert alert-info">本级销售记录（点开详情看商品与 SN）</div>`:''}
+      ${miniTimeSnFilters('miniSo')}
+      <div class="mini-list" style="margin-top:8px">${list.map((s)=>`<button type="button" class="mini-list-item" data-action="open-view-sale" data-id="${s.id}">
+        <strong class="rt-row-hd"><span>${escapeHtml(s.no)}</span>${saleStatusTag(s.status)}</strong>
         <span>${tag(s.channel==='direct'?'直售':'分销')} ${escapeHtml(soProductDetail(s))}</span>
-        <span>${(s.scanned||[]).length}/${s.planTotal} · ${escapeHtml(s.status)}</span>
+        <span>${(s.scanned||[]).length}/${s.planTotal} · ${escapeHtml(s.createdAt||'')}</span>
+        <span class="muted">${escapeHtml((s.scanned||[]).join(' ')||'暂无 SN')}</span>
       </button>`).join('') || emptyHint()}</div>`;
+  }
+
+  function miniCendBody() {
+    const f = ui.filters.miniCend || {};
+    const list = listCendOrders().filter((o) => matchTimeSnFilter(o.createdAt, o.sns || [], f));
+    return `<p class="mini-page-desc">C 端客户订单（直销激活 / 用户绑定）</p>
+      ${miniTimeSnFilters('miniCend')}
+      <div class="mini-list" style="margin-top:8px">${list.map((o)=>`<button type="button" class="mini-list-item" data-action="open-view-cend" data-id="${o.id}">
+        <strong class="rt-row-hd"><span>${escapeHtml(o.no)}</span>${tag('C端','orange')}</strong>
+        <span>${escapeHtml(o.phone)} · ${escapeHtml(o.addr)}</span>
+        <span>${escapeHtml(o.detail)}</span>
+        <span class="muted">${escapeHtml((o.sns||[]).join(' '))} · ${escapeHtml(o.createdAt||'')}</span>
+      </button>`).join('') || emptyHint('暂无 C 端订单')}</div>`;
   }
 
   function miniAftersaleBody() {
@@ -1867,11 +2052,16 @@
   }
 
   function pageMiniBiz() {
-    const tab = ui.tabs.miniBiz || 'purchase';
+    const items = ui.role === 'l2'
+      ? [{ id: 'sales', title: '销售' }, { id: 'cend', title: 'C端订单' }]
+      : [{ id: 'purchase', title: '采购' }, { id: 'sales', title: '销售' }, { id: 'cend', title: 'C端订单' }];
+    const tab = ui.tabs.miniBiz || items[0].id;
+    const cur = items.some((it) => it.id === tab) ? tab : items[0].id;
+    const panel = cur === 'cend' ? miniCendBody() : cur === 'sales' ? miniSalesBody() : miniPurchaseBody();
     return `<div class="mini-page-title">业务</div>
-      <p class="mini-page-desc">采购与销售，能力与原先独立页一致</p>
-      ${miniSegHtml('miniBiz', [{ id: 'purchase', title: '采购' }, { id: 'sales', title: '销售' }])}
-      <div class="mini-seg-panel">${tab === 'sales' ? miniSalesBody() : miniPurchaseBody()}</div>`;
+      <p class="mini-page-desc">采购 / 销售 / C端客户订单</p>
+      ${miniSegHtml('miniBiz', items)}
+      <div class="mini-seg-panel">${panel}</div>`;
   }
 
   function pageMiniService() {
@@ -1904,6 +2094,14 @@
   }
 
   function pageMiniSales() {
+    // 二级底栏「销售」：内含销售单 + C端订单
+    if (ui.role === 'l2') {
+      const tab = ui.tabs.miniSalesTab || 'sales';
+      return `<div class="mini-page-title">销售</div>
+        <p class="mini-page-desc">分销到货 / C端客户订单</p>
+        ${miniSegHtml('miniSalesTab', [{ id: 'sales', title: '销售单' }, { id: 'cend', title: 'C端订单' }])}
+        <div class="mini-seg-panel">${tab === 'cend' ? miniCendBody() : miniSalesBody()}</div>`;
+    }
     return `<div class="mini-page-title">销售</div>${miniSalesBody()}`;
   }
 
@@ -2315,15 +2513,20 @@
     } else if (type === 'view-sale') {
       const s = db.sales.find((x) => x.id === payload.id);
       title = `销售单 ${s.no}`;
-      body = `<div class="detail-grid">
-        <div><span>渠道</span>${tag(s.channel==='direct'?'直售':'分销')}</div>
-        <div><span>一级</span>${escapeHtml(l1Name(s.l1Id))}</div>
-        <div><span>二级</span>${s.l2Id?escapeHtml(l2Name(s.l2Id)):'—'}</div>
-        <div><span>明细</span>${escapeHtml(soProductDetail(s))}</div>
-        <div><span>计划</span>${escapeHtml(planBySizeText(s.planBySize))}</div>
-        <div><span>已扫</span>${(s.scanned||[]).length}/${s.planTotal}</div>
-      </div>
-      <div style="margin-top:8px;font-size:12px">${(s.scanned||[]).map((sn)=>tag(sn)).join(' ')}</div>`;
+      body = saleDetailHtml(s);
+      foot = `<button class="btn" data-action="close-modal">关闭</button>`;
+    } else if (type === 'view-cend') {
+      const order = listCendOrders().find((o) => o.id === payload.id)
+        || { id: payload.id, kind: String(payload.id).startsWith('CO_') ? 'bind' : 'sale', no: payload.id, sns: [], snRow: db.sns.find((x) => x.sn === String(payload.id).replace(/^CO_/, '')) };
+      if (order.kind === 'bind' && !order.snRow && String(payload.id).startsWith('CO_')) {
+        order.snRow = db.sns.find((x) => x.sn === String(payload.id).slice(3));
+        order.sns = order.snRow ? [order.snRow.sn] : [];
+        order.no = order.no || `CO${String(order.sns[0] || '').slice(-8)}`;
+        order.createdAt = order.snRow?.soldAt || order.snRow?.bindAt || '';
+      }
+      title = `C端订单 ${order.no || ''}`.trim();
+      body = cendOrderDetailHtml(order);
+      foot = `<button class="btn" data-action="close-modal">关闭</button>`;
     } else if (type === 'view-return') {
       const r = db.returns.find((x) => x.id === payload.id);
       title = `退货单 ${r.no}`;
@@ -2773,8 +2976,9 @@
     pushSnEvent(row, 'C端直销绑定', `${phone} · IP ${ipRegion}`, 'bind');
     db.sales.unshift({
       id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3,'0')}`,
-      channel: 'direct', l1Id: l1.id, l2Id: null, productId: row.productId,
+      channel: 'direct', l1Id: l1.id, l2Id: row.l2Id || null, productId: row.productId,
       planTotal: 1, planBySize: { [row.size]: 1 }, scanned: [sn], status: 'done', createdAt: nowStr(),
+      customer: { phone, addr, phoneLoc },
     });
     db.stockLogs.unshift({ id: uid('H'), agentType: row.l2Id ? 'l2' : 'l1', agentId: row.l2Id || l1.id, productId: row.productId, size: row.size, delta: -1, reason: '直销出库', time: nowStr(), ref: sn });
     addLog(`直销激活 ${sn}`);
@@ -3527,6 +3731,7 @@
         openModal('view-exception', { id }); break;
       case 'open-view-purchase': openModal('view-purchase', { id }); break;
       case 'open-view-sale': openModal('view-sale', { id }); break;
+      case 'open-view-cend': openModal('view-cend', { id }); break;
       case 'open-view-return': openModal('view-return', { id }); break;
       case 'open-view-exception': openModal('view-exception', { id }); break;
       case 'po-draft-add-custom': {

@@ -1116,12 +1116,17 @@ table.data .ops { display: flex; gap: 6px; flex-wrap: wrap; }
   border-color: #fdba74;
   background: #fff7ed;
 }
-.mini-list-item .rt-row-hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.mini-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  flex-wrap: wrap;
+  margin: 10px 0 4px;
+}
+.mini-filters .field-input:nth-child(3) {
+  grid-column: 1 / -1;
+}
+.mini-list-item .muted {
+  word-break: break-all;
 }
 .mini-profile {
   display: flex;
