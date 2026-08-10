@@ -653,11 +653,16 @@ table.data .ops { display: flex; gap: 6px; flex-wrap: wrap; }
 .modal-bd { padding: 16px; }
 .modal-ft {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
   gap: 8px;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
   background: var(--bg-soft);
+}
+.modal-ft .btn {
+  flex: 0 0 auto;
 }
 
 .chips {

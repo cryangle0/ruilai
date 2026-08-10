@@ -2378,7 +2378,7 @@
       body = `<p>${escapeHtml(payload.message || type)}</p>`;
     }
 
-    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'view-agent-l1' || type === 'edit-l1' || type === 'order-cart' || type === 'view-exception';
+    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'view-agent-l1' || type === 'edit-l1' || type === 'view-agent-l2' || type === 'edit-l2' || type === 'order-cart' || type === 'view-exception';
     return `<div class="modal-mask" id="modal-mask"><div class="modal ${wide ? 'modal--wide' : ''}" id="modal-box">
       <div class="modal-hd"><strong>${escapeHtml(title)}</strong><button class="btn btn-sm btn-ghost" data-action="close-modal">×</button></div>
       <div class="modal-bd">${body}</div>
