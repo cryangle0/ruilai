@@ -2030,11 +2030,11 @@
         : `<button class="btn" data-action="close-modal">关闭</button>
            <button class="btn" data-action="edit-l2" data-id="${a.id}">编辑</button>
            <button class="btn" data-action="toggle-l2" data-id="${a.id}">${a.status==='启用'?'停用':'启用'}</button>
-           <button class="btn" data-go="l2-sales-detail" data-set-filter="l2-sales:l2Id=${a.id}">销售</button>
-           <button class="btn" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}">退货</button>
-           ${a.type==='法人'&&a.parentId?`<button class="btn btn-danger" data-action="unbind-l2" data-id="${a.id}">解绑法人</button>`:''}
+           <button class="btn btn-primary" data-go="l2-sales-detail" data-set-filter="l2-sales:l2Id=${a.id}">销售</button>
+           <button class="btn btn-primary" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}">退货</button>
            <button class="btn" data-action="open-rebind-l2" data-id="${a.id}">更改绑定</button>
-           <button class="btn" data-action="edit-l2-fence" data-id="${a.id}">围栏设定</button>`;
+           <button class="btn" data-action="edit-l2-fence" data-id="${a.id}">围栏设定</button>
+           ${a.type==='法人'&&a.parentId?`<button class="btn btn-danger" data-action="unbind-l2" data-id="${a.id}">解绑法人</button>`:''}`;
     } else if (type === 'rebind-l2') {
       const a = db.agentsL2.find((x) => x.id === payload.id);
       title = `重新绑定 · ${a.name}`;
