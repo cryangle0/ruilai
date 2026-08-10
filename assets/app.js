@@ -1718,10 +1718,10 @@
       return pageMiniShipScan(true);
     }
     if (ui.role === 'l2') {
-      ui.scanMode = ui.scanMode === 'ship' ? 'direct' : (ui.scanMode || 'direct');
-      const mode = ui.scanMode === 'direct' ? 'direct' : 'direct';
+      ui.scanMode = 'direct';
       return `<div class="mini-page-title">扫码</div>
-        <p class="mini-page-desc">二级可直销激活 C 端（无出货给下级）</p>
+        <div class="alert alert-info">出库不适用（二级不发货给下级）</div>
+        <p class="mini-page-desc">提示：库存查看请用「库存」页；查询单个 SN 也可在库存页搜索。本页仅做直销激活。</p>
         <div class="scan-mode-grid">
           <button type="button" class="scan-mode-card on" data-action="set-scan-mode" data-scan-mode="direct"><strong>直销激活</strong><span>先扫码再填客户</span></button>
         </div>
