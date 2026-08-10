@@ -93,6 +93,19 @@
   const PO_STATUS = {
     pending: '待审核', cosigning: '会签中', approved: '已生效', rejected: '已驳回',
   };
+  const RT_STATUS = {
+    pending: '待审核', approved: '已通过', done: '已处理', rejected: '已驳回',
+  };
+  function returnStatusLabel(status) {
+    return RT_STATUS[status] || status || '—';
+  }
+  function returnStatusTag(status) {
+    const tone = status === 'pending' ? 'orange'
+      : status === 'approved' ? 'green'
+      : status === 'rejected' ? 'red'
+      : 'gray';
+    return tag(returnStatusLabel(status), tone);
+  }
 
   function uid(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -1518,7 +1531,7 @@
       </div>
       ${filterBar(`
         <select class="field-input" data-filter="return:reasonType"><option value="">退货理由</option>${RETURN_REASONS.map((r)=>`<option value="${r.type}" ${f.reasonType===r.type?'selected':''}>${r.label}</option>`).join('')}</select>
-        <select class="field-input" data-filter="return:status"><option value="">状态</option><option value="pending" ${f.status==='pending'?'selected':''}>待审</option><option value="approved" ${f.status==='approved'?'selected':''}>已通过</option></select>
+        <select class="field-input" data-filter="return:status"><option value="">状态</option><option value="pending" ${f.status==='pending'?'selected':''}>待审核</option><option value="approved" ${f.status==='approved'?'selected':''}>已通过</option><option value="done" ${f.status==='done'?'selected':''}>已处理</option><option value="rejected" ${f.status==='rejected'?'selected':''}>已驳回</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>类型</th><th>来源</th><th>理由</th><th>SN码</th><th>商品明细</th><th>状态</th><th>时间</th></tr></thead>
@@ -1528,7 +1541,7 @@
           <td>${tag(r.reasonType||'其他')} ${escapeHtml(r.reason||'')}</td>
           <td>${(r.sns||[]).map((sn)=>`<code>${escapeHtml(sn)}</code>`).join('<br>')||'—'}</td>
           <td>${escapeHtml(snsProductDetail(r.sns))}</td>
-          <td>${tag(r.status)}</td><td>${escapeHtml(r.createdAt)}</td>
+          <td>${returnStatusTag(r.status)}</td><td>${escapeHtml(r.createdAt)}</td>
         </tr>`).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
@@ -1801,15 +1814,30 @@
     const pendingL2 = ui.role === 'l1'
       ? db.returns.filter((r) => r.type === 'l2_to_l1' && r.status === 'pending' && r.approverId === currentL1Id())
       : [];
-    const list = ui.role === 'l2'
+    let list = ui.role === 'l2'
       ? db.returns.filter((r) => r.fromId === currentL2Id())
       : db.returns.filter((r) => r.fromId === currentL1Id() || r.approverId === currentL1Id() || (r.sns||[]).some((sn)=>db.sns.find(s=>s.sn===sn&&s.l1Id===currentL1Id())));
+    const pendingCnt = list.filter((r) => r.status === 'pending').length;
+    const statusTab = ui.tabs.miniRtStatus || 'all';
+    if (statusTab !== 'all') list = list.filter((r) => r.status === statusTab);
+    list = list.slice().sort((a, b) => {
+      const pa = a.status === 'pending' ? 0 : 1;
+      const pb = b.status === 'pending' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return parseTime(b.createdAt) - parseTime(a.createdAt);
+    });
     return `${ui.role==='l2'?`<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:10px">向上申请退货</button>`:`<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:10px">申请退货</button>`}
       ${pendingL2.length?`<div class="alert alert-info">待审二级退一级 ${pendingL2.length} 单（点进详情审核）</div>`:''}
-      <div class="mini-list">${list.map((r)=>`<button type="button" class="mini-list-item" data-action="open-view-return" data-id="${r.id}">
-        <strong>${escapeHtml(r.no)}</strong>
+      ${miniSegHtml('miniRtStatus', [
+        { id: 'all', title: '全部' },
+        { id: 'pending', title: '待审核', badge: pendingCnt || null },
+        { id: 'approved', title: '已通过' },
+        { id: 'done', title: '已处理' },
+      ])}
+      <div class="mini-list">${list.map((r)=>`<button type="button" class="mini-list-item ${r.status==='pending'?'rt-pending':''}" data-action="open-view-return" data-id="${r.id}">
+        <strong class="rt-row-hd"><span>${escapeHtml(r.no)}</span>${returnStatusTag(r.status)}</strong>
         <span>${tag(r.reasonType||'')} ${escapeHtml(r.reason||'')}</span>
-        <span>${escapeHtml(r.status)} · ${(r.sns||[]).join(' ')||escapeHtml(snsProductDetail(r.sns))}</span>
+        <span>${(r.sns||[]).map((sn)=>escapeHtml(sn)).join(' ')||escapeHtml(snsProductDetail(r.sns))}</span>
       </button>`).join('') || emptyHint()}</div>`;
   }
 
@@ -2303,7 +2331,7 @@
         <div><span>类型</span>${escapeHtml(r.typeLabel||r.type)}</div>
         <div><span>理由</span>${tag(r.reasonType||'')} ${escapeHtml(r.reason||'')}</div>
         <div><span>明细</span>${escapeHtml(snsProductDetail(r.sns))}</div>
-        <div><span>状态</span>${tag(r.status)}</div>
+        <div><span>状态</span>${returnStatusTag(r.status)}</div>
         <div class="span-2"><span>SN码</span>${(r.sns||[]).map((sn)=>`<code style="margin-right:6px">${escapeHtml(sn)}</code>`).join('')||'—'}</div>
       </div>`;
       foot = `<button class="btn" data-action="close-modal">关闭</button>

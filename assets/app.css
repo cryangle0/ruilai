@@ -1112,6 +1112,17 @@ table.data .ops { display: flex; gap: 6px; flex-wrap: wrap; }
   flex-direction: column;
   gap: 2px;
 }
+.mini-list-item.rt-pending {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+.mini-list-item .rt-row-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .mini-profile {
   display: flex;
   gap: 12px;
