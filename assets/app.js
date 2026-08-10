@@ -1345,7 +1345,7 @@
       { id: 'approved', title: '已生效' },
       { id: 'rejected', title: '已驳回' },
     ];
-    return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即生效', '<button class="btn btn-primary" data-action="open-order-cart" data-channel="purchase">去下单</button>')}
+    return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即生效', '<button class="btn btn-primary" data-action="mini-create-po">新建采购申请</button><button class="btn" data-action="open-order-cart" data-channel="purchase" style="margin-left:8px">购物车式下单</button>')}
       ${tabsHtml('purchase', tabItems)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>时间</th></tr></thead>
@@ -1445,6 +1445,12 @@
     let rows = db.returns.slice();
     if (f.reasonType) rows = rows.filter((r) => r.reasonType === f.reasonType);
     if (f.status) rows = rows.filter((r) => r.status === f.status);
+    rows.sort((a, b) => {
+      const pa = a.status === 'pending' ? 0 : 1;
+      const pb = b.status === 'pending' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return parseTime(b.createdAt) - parseTime(a.createdAt);
+    });
     const monthQty = db.returns.filter((r) => inDateRange(r.createdAt, monthStart(), todayDate())).reduce((n, r) => n + (r.sns || []).length, 0);
     const histQty = db.returns.reduce((n, r) => n + (r.sns || []).length, 0);
     return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', '<button class="btn" data-go="stats">退货统计</button>')}
@@ -2101,6 +2107,7 @@
         <div class="form-field"><label>联系人</label><input class="field-input" id="f-contact" value="${escapeHtml(d.contact||'')}" /></div>
         <div class="form-field span-2"><label>主授权区域（多选） <button type="button" class="btn btn-sm" data-action="select-all-main">全选全国</button></label>${chips(ALL_REGIONS, d.mainAreas||[], 'data-toggle-main', occupiedMainAreas())}</div>
         <div class="form-field span-2"><label>可销售范围 <button type="button" class="btn btn-sm" data-action="select-all-sale">全选</button></label>${chips(ALL_REGIONS, d.saleAreas||[], 'data-toggle-sale')}</div>
+        <div class="form-field span-2"><label>直销范围（城市） <button type="button" class="btn btn-sm" data-action="select-all-direct">全选当前可售城市</button></label>${chips((d.saleAreas||[]).flatMap((r)=>CITY_MAP[r]||[]), d.directAreas||[], 'data-toggle-direct')}${!(d.saleAreas||[]).length?'<p class="muted" style="margin-top:6px">请先选择可销售范围，再全选直销城市</p>':''}</div>
       </div>${entFieldsHtml(d.ent||{})}`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-l1-ok">创建</button>`;
     } else if (type === 'view-agent-l2' || type === 'edit-l2') {
@@ -2424,7 +2431,7 @@
           <div class="form-field"><label>弹力带</label><select class="field-input" id="f-cart-c-size">${BAND_SIZES.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select></div>
           <div class="form-field"><label>数量</label><input type="number" class="field-input" id="f-cart-c-qty" value="0" min="0" /></div>
         </div>
-        <button class="btn btn-sm" data-action="cart-add-custom">+ 添加非标行</button>
+        <button class="btn btn-sm btn-primary" data-action="cart-add-custom">+ 新增非标行</button>
         <div class="segment-rows" style="margin-top:8px">${customRows.map((r,i)=>`<div class="segment-row"><span>${escapeHtml(r.belt)}+弹力带${escapeHtml(r.size)}×${r.qty}</span><button type="button" class="btn btn-sm" data-action="cart-del-custom" data-idx="${i}">删除</button></div>`).join('') || emptyHint('暂无非标行')}</div>
         <h4 style="margin-top:14px">配件（可选，勾选后填规格与数量）</h4>
         <div class="check-grid">${partProducts().map((p)=>`<label class="check-item" style="align-items:center;gap:8px">
@@ -3088,9 +3095,9 @@
         pushSnEvent(row, '冷冻库重分配', l1Name(l1Id), 'reassign');
         addLog(`冷冻SN重分配 ${id} → ${l1Name(l1Id)}`); saveStore(); closeModal(); toast('已解冻并分配'); break;
       }
-      case 'approve-return': approveReturn(id); break;
+      case 'approve-return': approveReturn(id); closeModal(); break;
       case 'reject-return': {
-        const r = db.returns.find((x)=>x.id===id); if (r) { r.status = 'rejected'; addLog(`驳回退货 ${r.no}`); saveStore(); toast('已驳回'); render(); }
+        const r = db.returns.find((x)=>x.id===id); if (r) { r.status = 'rejected'; addLog(`驳回退货 ${r.no}`); saveStore(); toast('已驳回'); closeModal(); }
         break;
       }
       case 'close-exception':
