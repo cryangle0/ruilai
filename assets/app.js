@@ -587,9 +587,34 @@
   }
 
   function planBySizeText(plan) {
-    if (!plan || typeof plan !== 'object') return '—';
+    if (!plan) return '—';
+    if (typeof plan === 'string') {
+      try { plan = JSON.parse(plan); } catch (_) { return plan; }
+    }
+    if (typeof plan !== 'object') return '—';
     const parts = Object.entries(plan).filter(([, q]) => Number(q) > 0).map(([sz, q]) => `${sz}×${q}`);
     return parts.join('，') || '—';
+  }
+
+  function tryAddSnToSale(s, sn) {
+    sn = String(sn || '').trim().toUpperCase();
+    if (!sn) return { ok: false, msg: '请输入 SN' };
+    const row = db.sns.find((x) => x.sn === sn);
+    if (!row) return { ok: false, msg: `SN 不存在：${sn}` };
+    if (row.frozen || row.status === 'frozen') return { ok: false, msg: `冷冻 SN 无效：${sn}` };
+    if (row.l1Id !== s.l1Id || row.status !== 'l1') return { ok: false, msg: `不在本一级库存：${sn}` };
+    if (row.productId !== s.productId) return { ok: false, msg: `商品不匹配：${sn}` };
+    const need = s.planBySize[row.size] || 0;
+    if (need <= 0) {
+      const orderSizes = Object.keys(s.planBySize || {}).filter((k) => (s.planBySize[k] || 0) > 0).join('/');
+      return { ok: false, msg: `尺寸不匹配：订单要 ${orderSizes || '—'}，扫到 ${row.size}` };
+    }
+    const got = (s.scanned || []).filter((x) => db.sns.find((y) => y.sn === x)?.size === row.size).length;
+    if (got >= need) return { ok: false, msg: `尺寸 ${row.size} 已扫满（${got}/${need}）` };
+    if ((s.scanned || []).includes(sn)) return { ok: false, msg: `已扫描：${sn}` };
+    s.scanned = s.scanned || [];
+    s.scanned.push(sn);
+    return { ok: true, msg: sn };
   }
 
   function getStockSns(agentType, agentId, f = {}) {
@@ -2308,10 +2333,19 @@
       const s = db.sales.find((x) => x.id === payload.id);
       title = `扫码出货 ${s.no}`;
       const canEdit = ui.role !== 'sub';
-      body = `<p>${escapeHtml(l2Name(s.l2Id))} · 计划 ${escapeHtml(planBySizeText(s.planBySize))} · 已扫 ${(s.scanned||[]).length}/${s.planTotal}</p>
-        <div class="form-field"><label>扫描 SN</label><input class="field-input" id="scan-sn-input" placeholder="输入 SN 回车或点添加" /></div>
-        <button class="btn btn-primary" data-action="scan-add-sn" data-id="${s.id}">添加</button>
-        <div style="margin-top:8px">${(s.scanned||[]).map((sn)=>tag(sn,'green')).join(' ')}</div>
+      body = `<p>${escapeHtml(l2Name(s.l2Id))} · 计划 <strong>${escapeHtml(planBySizeText(s.planBySize))}</strong> · 已扫 ${(s.scanned||[]).length}/${s.planTotal}</p>
+        <div class="alert alert-info">支持号段起止录入（输入框 — 输入框），也可单个扫码添加</div>
+        <div class="form-field"><label>号段录入（起止两个输入框）</label>
+          <div class="segment-row" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <input class="field-input" id="scan-seg-from" placeholder="起始 SN" style="flex:1;min-width:120px" />
+            <span class="muted">—</span>
+            <input class="field-input" id="scan-seg-to" placeholder="结束 SN" style="flex:1;min-width:120px" />
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" data-action="scan-add-seg" data-id="${s.id}" style="margin-top:8px">按号段添加</button>
+        <div class="form-field" style="margin-top:12px"><label>单个扫描 SN</label><input class="field-input" id="scan-sn-input" placeholder="输入单个 SN 回车或点添加" /></div>
+        <button class="btn btn-block" data-action="scan-add-sn" data-id="${s.id}">添加单个</button>
+        <div style="margin-top:8px">${(s.scanned||[]).map((sn)=>tag(sn,'green')).join(' ') || emptyHint('尚未扫描')}</div>
         ${canEdit?'':'<p class="mini-page-desc">子账号不可修改计划数量</p>'}`;
       foot = `<button class="btn" data-action="close-modal">关闭</button>
         <button class="btn btn-primary" data-action="scan-confirm-so" data-id="${s.id}" ${(s.scanned||[]).length>=s.planTotal?'':'disabled'}>确认出货</button>`;
@@ -3198,24 +3232,37 @@
       case 'mini-open-scan-so': openModal('scan-so', { id }); break;
       case 'scan-add-sn': {
         const s = db.sales.find((x)=>x.id===id);
+        if (!s) break;
         const sn = $('#scan-sn-input')?.value?.trim().toUpperCase();
-        if (!sn) return;
-        const row = db.sns.find((x)=>x.sn===sn);
-        if (!row) return toast('SN 不存在', 'err');
-        if (row.frozen || row.status==='frozen') return toast('冷冻 SN 无效', 'err');
-        if (row.l1Id !== s.l1Id || row.status !== 'l1') return toast('SN 不在本一级库存', 'err');
-        if (row.productId !== s.productId) return toast('商品与订单不匹配', 'err');
-        const need = s.planBySize[row.size] || 0;
-        if (need <= 0) {
-          const orderSizes = Object.keys(s.planBySize || {}).filter((k) => (s.planBySize[k] || 0) > 0).join('/');
-          return toast(`尺寸不匹配：订单需要 ${orderSizes || '—'}，扫到 ${row.size}`, 'err');
-        }
-        const got = (s.scanned||[]).filter((x)=>db.sns.find(y=>y.sn===x)?.size===row.size).length;
-        if (got >= need) return toast(`尺寸 ${row.size} 已扫满（${got}/${need}）`, 'err');
-        if ((s.scanned||[]).includes(sn)) return toast('已扫描', 'warn');
-        s.scanned.push(sn);
+        const r = tryAddSnToSale(s, sn);
+        if (!r.ok) return toast(r.msg, 'err');
         if ($('#scan-sn-input')) $('#scan-sn-input').value = '';
-        saveStore(); render(); break;
+        saveStore(); render(); toast(`已添加 ${r.msg}`); break;
+      }
+      case 'scan-add-seg': {
+        const s = db.sales.find((x)=>x.id===id);
+        if (!s) break;
+        const from = $('#scan-seg-from')?.value?.trim().toUpperCase();
+        const to = $('#scan-seg-to')?.value?.trim().toUpperCase();
+        if (!from) return toast('请填写起始 SN', 'err');
+        const seg = to ? `${from}-${to}` : from;
+        const list = parseSegment(seg);
+        if (!list || !list.length) return toast('号段格式无效（示例 RL…0001 — RL…0010）', 'err');
+        let okN = 0;
+        const errs = [];
+        for (const sn of list) {
+          if ((s.scanned || []).length >= s.planTotal) { errs.push('已达计划总数'); break; }
+          const r = tryAddSnToSale(s, sn);
+          if (r.ok) okN += 1;
+          else errs.push(r.msg);
+        }
+        if ($('#scan-seg-from')) $('#scan-seg-from').value = '';
+        if ($('#scan-seg-to')) $('#scan-seg-to').value = '';
+        saveStore(); render();
+        if (okN) toast(`号段已添加 ${okN} 个`);
+        if (!okN) toast(errs[0] || '未能添加', 'err');
+        else if (errs.length) toast(`部分失败：${errs[0]}`, 'warn');
+        break;
       }
       case 'scan-confirm-so': {
         const s = db.sales.find((x)=>x.id===id);
