@@ -490,6 +490,7 @@
         (parsed.agentsL2 || []).forEach((a) => {
           if (a.warnMode === undefined) a.warnMode = null;
           if (a.warnMultiplier === undefined) a.warnMultiplier = null;
+          if (a.exNoAlarm === undefined) a.exNoAlarm = false;
         });
         (parsed.purchases || []).forEach((p) => {
           if (!p.customLines) p.customLines = [];
@@ -548,6 +549,7 @@
     form: {},
     notifyOpen: false,
     sort: {},
+    selected: {}, // e.g. { 'agent-l2': { L2A: true } }
     scanMode: sessionStorage.getItem('ruilai_scan_mode') || 'ship', // ship | direct
   };
 
@@ -900,24 +902,42 @@
     const l1 = db.agentsL1.find((a) => a.id === l1Id);
     const l2 = l2Id ? db.agentsL2.find((a) => a.id === l2Id) : null;
     const mult = Number(l2?.warnMultiplier || l1?.warnMultiplier || db.exceptionMultiplier || 1.5);
-    const mode = l2?.warnMode || l1?.warnMode || 'strict';
     const rules = db.exceptionRules || { overOrderRatio: 1.0, stockTurnover: mult };
+    if (l2?.exNoAlarm) return { mult, mode: 'off', rules, l1, l2 };
+    const mode = l2?.warnMode || l1?.warnMode || 'strict';
     return { mult, mode, rules, l1, l2 };
+  }
+
+  function resolveL2IdForException(target, opts = {}) {
+    if (opts.l2Id) return opts.l2Id;
+    const byName = db.agentsL2.find((a) => a.name === target || String(target || '').includes(a.name));
+    if (byName) return byName.id;
+    const sn = db.sns.find((s) => s.sn === target);
+    return sn?.l2Id || null;
+  }
+
+  function agentExNoAlarm(l2Id) {
+    if (!l2Id) return false;
+    return !!db.agentsL2.find((a) => a.id === l2Id)?.exNoAlarm;
   }
 
   function pushException(type, target, detail, dim, opts = {}) {
     const d = dim || exceptionDim({ type });
-    const mode = opts.mode || 'strict';
-    const status = mode === 'soft' ? '仅记录' : '未处理';
+    let mode = opts.mode || 'strict';
+    const l2Id = resolveL2IdForException(target, opts);
+    if (mode !== 'off' && agentExNoAlarm(l2Id)) mode = 'off';
+    // off=异常不报警：只落库，默认已处理，不推送未处理预警
+    const status = mode === 'off' ? '已处理' : (mode === 'soft' ? '仅记录' : '未处理');
     const row = {
       id: uid('EX'), time: nowStr(), type, target, detail,
-      notify: mode === 'soft' ? '仅记录' : '一级+原厂',
-      status, dim: d, warnMode: mode, explain: '',
+      notify: (mode === 'off' || mode === 'soft') ? '仅记录' : '一级+原厂',
+      status, dim: d, warnMode: mode, explain: '', l2Id: l2Id || undefined,
     };
     if (opts.dupPhone) row.dupPhone = opts.dupPhone;
     db.exceptions.unshift(row);
-    if (mode !== 'soft') pushNotify(`预警：${type}`, `${target} · ${detail}`, '一级+原厂');
-    addLog(`${mode === 'soft' ? '软报警记录' : '触发异常'} ${type} · ${target}`, mode === 'soft' ? 'warn' : 'exception');
+    if (mode === 'strict') pushNotify(`预警：${type}`, `${target} · ${detail}`, '一级+原厂');
+    const logLabel = mode === 'off' ? '异常不报警记录' : (mode === 'soft' ? '软报警记录' : '触发异常');
+    addLog(`${logLabel} ${type} · ${target}`, mode === 'strict' ? 'exception' : 'warn');
     saveStore();
   }
 
@@ -1473,6 +1493,7 @@
     const f = ui.filters['agent-l2'] || {};
     const sortKey = ui.sort['agent-l2'] || 'parent';
     const sortDir = ui.sort['agent-l2-dir'] || 'asc';
+    const sel = ui.selected['agent-l2'] || (ui.selected['agent-l2'] = {});
     let rows = db.agentsL2.filter((a) => !a.pending && a.auditStatus === 'approved');
     if (f.q) {
       const q = f.q.toLowerCase();
@@ -1488,28 +1509,35 @@
       return sortDir === 'asc' ? String(av).localeCompare(String(bv), 'zh') : String(bv).localeCompare(String(av), 'zh');
     });
     const sortMark = (k) => sortKey === k ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
-    return `${pageHeader('二级代理商', '点击行进入详情（含解绑/改绑/围栏）')}
+    const allOn = rows.length > 0 && rows.every((a) => !!sel[a.id]);
+    const selN = rows.filter((a) => sel[a.id]).length;
+    return `${pageHeader('二级代理商', '点击行进入详情（含解绑/改绑/围栏）；勾选后可设异常不报警')}
       ${filterBar(`
         <input class="field-input" placeholder="搜索" data-filter="agent-l2:q" value="${escapeHtml(f.q||'')}" />
         <select class="field-input" data-filter="agent-l2:type"><option value="">类型</option><option value="法人" ${f.type==='法人'?'selected':''}>法人</option><option value="个人" ${f.type==='个人'?'selected':''}>个人</option></select>
         <select class="field-input" data-filter="agent-l2:parent"><option value="">所属一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.parent===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <input class="field-input" placeholder="所属地域/城市" data-filter="agent-l2:region" value="${escapeHtml(f.region||'')}" />
+        <button type="button" class="btn btn-sm btn-primary" data-action="l2-ex-no-alarm" ${selN ? '' : 'disabled'} title="所选二级出现异常时只记录且默认已处理">异常不报警${selN ? ` (${selN})` : ''}</button>
       `)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr>
+          <th class="col-check"><input type="checkbox" data-action="toggle-l2-sel-all" ${allOn ? 'checked' : ''} title="全选当前列表" /></th>
           <th>编码</th><th>名称</th><th>类型</th>
           <th class="sortable" data-action="sort-col" data-sort-key="parent" data-sort-scope="agent-l2">所属一级${sortMark('parent')}</th>
           <th>授权城市</th><th>状态</th><th>操作</th>
         </tr></thead>
         <tbody>${rows.map((a)=>`<tr class="row-clickable" data-row-action="view-agent-l2" data-id="${a.id}">
-          <td>${escapeHtml(a.code)}</td><td>${escapeHtml(a.name)}</td><td>${tag(a.type, a.type==='法人'?'blue':'gray')}</td>
+          <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" data-action="toggle-l2-sel" data-id="${a.id}" ${sel[a.id] ? 'checked' : ''} /></td>
+          <td>${escapeHtml(a.code)}</td>
+          <td>${escapeHtml(a.name)}${a.exNoAlarm ? ` ${tag('不报警', 'gray')}` : ''}</td>
+          <td>${tag(a.type, a.type==='法人'?'blue':'gray')}</td>
           <td>${escapeHtml(l1Name(a.parentId))}</td><td>${escapeHtml((a.areas||[]).join('、')||'—')}</td>
           <td>${tag(a.status, a.status==='启用'?'green':'gray')}</td>
           <td class="ops" onclick="event.stopPropagation()">
             <button class="btn btn-sm" data-go="l2-sales-detail" data-set-filter="l2-sales:l2Id=${a.id}">销售</button>
             <button class="btn btn-sm" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}">退货</button>
           </td>
-        </tr>`).join('') || `<tr><td colspan="7">${emptyHint()}</td></tr>`}</tbody>
+        </tr>`).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -1860,7 +1888,7 @@
         <tbody>${rows.map((e)=>{
           const bold = e.status === '未处理' ? 'ex-bold' : '';
           return `<tr class="${bold} row-clickable" data-row-action="view-exception" data-id="${e.id}">
-            <td>${escapeHtml(e.time)}</td><td>${escapeHtml(e.type)}${e.warnMode==='soft'?tag('软','gray'):''}</td>
+            <td>${escapeHtml(e.time)}</td><td>${escapeHtml(e.type)}${e.warnMode==='off'?tag('不报警','gray'):(e.warnMode==='soft'?tag('软','gray'):'')}</td>
             <td>${escapeHtml(e.target)}</td><td>${escapeHtml(e.detail)}</td>
             <td>${escapeHtml(e.explain || '—')}</td>
             <td>${tag(e.status, e.status==='未处理'?'orange':(e.status==='仅记录'?'gray':'green'))}</td>
@@ -2737,13 +2765,17 @@
           <div><span>所属一级</span>${escapeHtml(l1Name(a.parentId))}</div>
           <div><span>城市</span>${escapeHtml((a.areas||[]).join('、')||'—')}</div>
           <div><span>状态</span>${tag(a.status)}</div>
-          <div><span>报警</span>${a.warnMultiplier || a.warnMode ? `${a.warnMultiplier || '继承'}× / ${a.warnMode || '继承'}` : '继承一级'}</div>
-        </div>${a.ent?`<h4>企业</h4><div class="detail-grid"><div class="span-2">${escapeHtml(a.ent.company||'')}</div></div>`:''}`;
+          <div><span>报警</span>${a.exNoAlarm ? tag('异常不报警', 'gray') : (a.warnMultiplier || a.warnMode ? `${a.warnMultiplier || '继承'}× / ${a.warnMode || '继承'}` : '继承一级')}</div>
+        </div>${a.ent?`<h4>企业</h4><div class="detail-grid"><div class="span-2">${escapeHtml(a.ent.company||'')}</div></div>`:''}
+        ${a.exNoAlarm ? '<p class="muted" style="margin-top:8px">该二级已设「异常不报警」：新异常只记录且默认已处理，不推送未处理预警。</p>' : ''}`;
       foot = editing
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-l2">保存</button>`
         : `<button class="btn" data-action="close-modal">关闭</button>
            <button class="btn" data-action="edit-l2" data-id="${a.id}">编辑</button>
            <button class="btn" data-action="toggle-l2" data-id="${a.id}">${a.status==='启用'?'停用':'启用'}</button>
+           ${a.exNoAlarm
+             ? `<button class="btn" data-action="l2-ex-alarm-on" data-id="${a.id}">恢复异常报警</button>`
+             : `<button class="btn" data-action="l2-ex-no-alarm-one" data-id="${a.id}">异常不报警</button>`}
            <button class="btn btn-primary" data-go="l2-sales-detail" data-set-filter="l2-sales:l2Id=${a.id}">销售</button>
            <button class="btn btn-primary" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}">退货</button>
            <button class="btn" data-action="open-rebind-l2" data-id="${a.id}">更改绑定</button>
@@ -3364,20 +3396,21 @@
     // IP 必须落在直销围栏城市所属省份
     const ipInDirect = (l1.directAreas || []).some((c) => (CITY_MAP[ipRegion] || []).includes(c));
     const ipPass = ipInDirect || ((l1.directAreas || []).length === 0 && (l1.saleAreas || l1.areas || []).includes(ipRegion));
+    const exOpts = { l2Id: row.l2Id || (ui.role === 'l2' ? currentL2Id() : null) || undefined };
     if (!ipPass) {
-      pushException('SN激活异常', sn, `跨区激活：IP ${ipRegion} 不在直销围栏 ${(l1.directAreas||[]).join('、')}`, 'activate');
+      pushException('SN激活异常', sn, `跨区激活：IP ${ipRegion} 不在直销围栏 ${(l1.directAreas||[]).join('、')}`, 'activate', exOpts);
     }
     // 手机归属地必须与 IP 地区一致
     const phonePass = phoneLoc !== '未知' && phoneLoc === ipRegion;
     if (!phonePass) {
-      pushException('归属地异常', sn, `手机归属 ${phoneLoc} 与 IP 地区 ${ipRegion} 不一致`, 'activate');
+      pushException('归属地异常', sn, `手机归属 ${phoneLoc} 与 IP 地区 ${ipRegion} 不一致`, 'activate', exOpts);
     }
     const dup = db.sns.filter((s) => s.user && s.user.phone === phone && s.sn !== sn);
-    if (dup.length) pushException('客户信息重复', sn, `手机号 ${phone} 已激活 ${dup.length} 次`, 'activate', { dupPhone: phone });
+    if (dup.length) pushException('客户信息重复', sn, `手机号 ${phone} 已激活 ${dup.length} 次`, 'activate', { ...exOpts, dupPhone: phone });
     const addrNorm = String(addr || '').replace(/\s+/g, '');
     if (addrNorm) {
       const addrDup = db.sns.filter((s) => s.user && String(s.user.addr || '').replace(/\s+/g, '') === addrNorm && s.user.phone !== phone && s.sn !== sn);
-      if (addrDup.length) pushException('客户信息重复', sn, `同地址多客户：${addr} 已关联其他手机号`, 'activate');
+      if (addrDup.length) pushException('客户信息重复', sn, `同地址多客户：${addr} 已关联其他手机号`, 'activate', exOpts);
     }
 
     row.status = 'bound';
@@ -3751,6 +3784,17 @@
           const p = conf.payload || {};
           doDirectBind(p.sn, p.phone, p.addr, p.region);
           render();
+        } else if (act === 'l2-ex-no-alarm-ok') {
+          finishL2ExNoAlarm(conf.payload?.ids || []);
+        } else if (act === 'l2-ex-alarm-on-ok') {
+          const a = db.agentsL2.find((x) => x.id === pid);
+          if (a) {
+            a.exNoAlarm = false;
+            addLog(`恢复二级异常报警 ${a.name}`);
+            saveStore();
+            toast('已恢复异常报警');
+          }
+          render();
         } else {
           render();
         }
@@ -3774,6 +3818,55 @@
       }
       case 'toggle-l2':
         confirmDialog('确认切换该二级代理启用状态？', 'toggle-l2-ok', { id }, { title: '二级代理状态确认' });
+        break;
+      case 'toggle-l2-sel': {
+        const map = ui.selected['agent-l2'] || (ui.selected['agent-l2'] = {});
+        if (map[id]) delete map[id]; else map[id] = true;
+        render(); break;
+      }
+      case 'toggle-l2-sel-all': {
+        const f = ui.filters['agent-l2'] || {};
+        let rows = db.agentsL2.filter((a) => !a.pending && a.auditStatus === 'approved');
+        if (f.q) {
+          const q = f.q.toLowerCase();
+          rows = rows.filter((a) => [a.name, a.code, ...(a.areas || [])].join(' ').toLowerCase().includes(q));
+        }
+        if (f.type) rows = rows.filter((a) => a.type === f.type);
+        if (f.parent) rows = rows.filter((a) => a.parentId === f.parent);
+        if (f.region) rows = rows.filter((a) => (a.areas || []).some((c) => c.includes(f.region)) || citiesForL1(a.parentId).includes(f.region));
+        const map = ui.selected['agent-l2'] || (ui.selected['agent-l2'] = {});
+        const allOn = rows.length > 0 && rows.every((a) => !!map[a.id]);
+        if (allOn) rows.forEach((a) => { delete map[a.id]; });
+        else rows.forEach((a) => { map[a.id] = true; });
+        render(); break;
+      }
+      case 'l2-ex-no-alarm': {
+        const map = ui.selected['agent-l2'] || {};
+        const ids = Object.keys(map).filter((k) => map[k]);
+        if (!ids.length) return toast('请先勾选二级代理', 'warn');
+        confirmDialog(
+          `确认对已选 ${ids.length} 个二级设置「异常不报警」？之后其异常只做记录，状态默认已处理，不再推送未处理预警。`,
+          'l2-ex-no-alarm-ok',
+          { ids },
+          { title: '异常不报警', okText: '确认设置' }
+        );
+        break;
+      }
+      case 'l2-ex-no-alarm-one':
+        confirmDialog(
+          `确认对「${db.agentsL2.find((x)=>x.id===id)?.name || ''}」设置异常不报警？`,
+          'l2-ex-no-alarm-ok',
+          { ids: [id] },
+          { title: '异常不报警', okText: '确认设置' }
+        );
+        break;
+      case 'l2-ex-alarm-on':
+        confirmDialog(
+          `确认恢复「${db.agentsL2.find((x)=>x.id===id)?.name || ''}」的异常报警？`,
+          'l2-ex-alarm-on-ok',
+          { id },
+          { title: '恢复异常报警', okText: '确认恢复' }
+        );
         break;
       case 'unbind-l2':
         confirmDialog('确认解绑该法人二级？将进入待分配池。', 'unbind-l2-ok', { id }, { title: '解绑确认', danger: true });
@@ -4504,6 +4597,37 @@
     if (d.type === '法人') d.ent = readEntFields();
   }
 
+  function finishL2ExNoAlarm(ids) {
+    const list = (ids || []).filter(Boolean);
+    if (!list.length) { render(); return; }
+    let n = 0;
+    let closed = 0;
+    list.forEach((lid) => {
+      const a = db.agentsL2.find((x) => x.id === lid);
+      if (!a) return;
+      a.exNoAlarm = true;
+      n += 1;
+      db.exceptions.forEach((e) => {
+        const hit = e.l2Id === lid
+          || e.target === a.name
+          || String(e.target || '').includes(a.name)
+          || (!!db.sns.find((s) => s.sn === e.target && s.l2Id === lid));
+        if (hit && e.status === '未处理') {
+          e.status = '已处理';
+          e.warnMode = 'off';
+          e.notify = '仅记录';
+          closed += 1;
+        }
+      });
+    });
+    ui.selected['agent-l2'] = {};
+    addLog(`设置异常不报警 ${n} 个二级${closed ? `，关闭未处理 ${closed} 条` : ''}`);
+    saveStore();
+    toast(`已设置 ${n} 个二级异常不报警${closed ? `，并处理 ${closed} 条未处理异常` : ''}`);
+    ui.modal = null;
+    render();
+  }
+
   function finishDeleteL2Mini(id) {
     const a = db.agentsL2.find((x) => x.id === id);
     if (!a) { render(); return; }
@@ -4651,7 +4775,7 @@
     const overRatio = Number(cfg.rules.overOrderRatio || 1);
     const l2Stock = db.sns.filter((x) => x.l2Id === l2Id && x.status === 'l2' && !x.frozen && x.productId === productId).length;
     if (l2Stock > 0 && planTotal >= Math.max(1, Math.ceil(l2Stock * overRatio))) {
-      pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（超量比 ${overRatio}，代理倍数 ${cfg.mult}）`, 'stock', { mode: cfg.mode });
+      pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（超量比 ${overRatio}，代理倍数 ${cfg.mult}）`, 'stock', { mode: cfg.mode, l2Id });
     }
     db.sales.unshift(so); saveStore(); openModal('scan-so', { id: so.id });
   }

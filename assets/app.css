@@ -581,6 +581,19 @@ table.data th {
 table.data td { background: #fff; color: var(--text); }
 table.data tbody tr:hover td { background: var(--primary-tint); }
 table.data .ops { display: flex; gap: 6px; flex-wrap: wrap; }
+table.data .col-check {
+  width: 36px;
+  text-align: center;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+table.data .col-check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  vertical-align: middle;
+}
 
 .tag {
   display: inline-flex;
