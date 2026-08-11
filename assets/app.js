@@ -1526,7 +1526,10 @@
     const all = db.sales.filter((s) => s.l1Id === l1Id && s.status === 'done');
     const monthQty = all.filter((s) => inDateRange(s.createdAt, from, to)).reduce((n, s) => n + (s.scanned || []).length, 0);
     const histQty = all.reduce((n, s) => n + (s.scanned || []).length, 0);
-    const list = all.filter((s) => s.channel === channel && inDateRange(s.createdAt, from, to));
+    const inRange = all.filter((s) => inDateRange(s.createdAt, from, to));
+    const list = inRange.filter((s) => s.channel === channel);
+    const distN = inRange.filter((s) => s.channel === 'distribute').length;
+    const dirN = inRange.filter((s) => s.channel === 'direct').length;
     return `${pageHeader('一级销售详情', `${l1Name(l1Id)} · 默认当月可改区间`, '<button class="btn" data-go="agent-l1">返回列表</button>')}
       ${filterBar(`
         <select class="field-input" data-filter="l1-sales:l1Id">${db.agentsL1.map((a)=>`<option value="${a.id}" ${a.id===l1Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -1534,7 +1537,10 @@
         <input type="date" class="field-input" data-filter="l1-sales:to" value="${to}" />
       `)}
       <div class="metric-grid">${metricCard('当月销量', monthQty)}${metricCard('历史总量', histQty)}</div>
-      ${tabsHtml('l1-sales', [{ id: 'distribute', title: '分销' }, { id: 'direct', title: '直售' }])}
+      ${tabsHtml('l1-sales', [
+        { id: 'distribute', title: '分销', badge: distN || null },
+        { id: 'direct', title: '直售', badge: dirN || null },
+      ])}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>渠道</th><th>二级/客户</th><th>商品明细</th><th>数量</th><th>时间</th></tr></thead>
         <tbody>${list.map((s)=>`<tr class="row-clickable" data-row-action="view-sale" data-id="${s.id}">
@@ -1839,12 +1845,13 @@
     const tab = ui.tabs.purchase || 'all';
     let rows = db.purchases.slice();
     if (tab !== 'all') rows = rows.filter((p) => p.status === tab);
+    const poN = (st) => db.purchases.filter((p) => p.status === st).length;
     const tabItems = [
-      { id: 'all', title: '全部' },
-      { id: 'pending', title: '待审核' },
-      { id: 'cosigning', title: '会签中' },
-      { id: 'approved', title: '已生效' },
-      { id: 'rejected', title: '已驳回' },
+      { id: 'all', title: '全部', badge: db.purchases.length || null },
+      { id: 'pending', title: '待审核', badge: poN('pending') || null },
+      { id: 'cosigning', title: '会签中', badge: poN('cosigning') || null },
+      { id: 'approved', title: '已生效', badge: poN('approved') || null },
+      { id: 'rejected', title: '已驳回', badge: poN('rejected') || null },
     ];
     return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即生效（下单仅一级小程序）')}
       ${tabsHtml('purchase', tabItems)}
@@ -1954,9 +1961,11 @@
 
   function pageReturn() {
     const f = ui.filters.return || {};
+    const tab = ui.tabs.return || (f.status || 'all');
+    if (f.status && !ui.tabs.return) ui.tabs.return = f.status;
     let rows = db.returns.slice();
     if (f.reasonType) rows = rows.filter((r) => r.reasonType === f.reasonType);
-    if (f.status) rows = rows.filter((r) => r.status === f.status);
+    if (tab && tab !== 'all') rows = rows.filter((r) => r.status === tab);
     rows.sort((a, b) => {
       const pa = a.status === 'pending' ? 0 : 1;
       const pb = b.status === 'pending' ? 0 : 1;
@@ -1965,15 +1974,22 @@
     });
     const monthQty = db.returns.filter((r) => inDateRange(r.createdAt, monthStart(), todayDate())).reduce((n, r) => n + (r.sns || []).length, 0);
     const histQty = db.returns.reduce((n, r) => n + (r.sns || []).length, 0);
+    const rtN = (st) => db.returns.filter((r) => r.status === st).length;
     return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', '<button class="btn" data-go="stats">数据统计</button>')}
       <div class="metric-grid" style="margin-bottom:10px">
         ${metricCard('本月退货件数', monthQty, 'return')}
         ${metricCard('历史退货件数', histQty, 'return')}
-        ${metricCard('待审单', db.returns.filter((r)=>r.status==='pending').length, 'return', 'return:status=pending')}
+        ${metricCard('待审单', rtN('pending'), 'return', 'tab:return:pending')}
       </div>
+      ${tabsHtml('return', [
+        { id: 'all', title: '全部', badge: db.returns.length || null },
+        { id: 'pending', title: '待审核', badge: rtN('pending') || null },
+        { id: 'approved', title: '已通过', badge: rtN('approved') || null },
+        { id: 'done', title: '已处理', badge: rtN('done') || null },
+        { id: 'rejected', title: '已驳回', badge: rtN('rejected') || null },
+      ])}
       ${filterBar(`
         <select class="field-input" data-filter="return:reasonType"><option value="">退货理由</option>${RETURN_REASONS.map((r)=>`<option value="${r.type}" ${f.reasonType===r.type?'selected':''}>${r.label}</option>`).join('')}</select>
-        <select class="field-input" data-filter="return:status"><option value="">状态</option><option value="pending" ${f.status==='pending'?'selected':''}>待审核</option><option value="approved" ${f.status==='approved'?'selected':''}>已通过</option><option value="done" ${f.status==='done'?'selected':''}>已处理</option><option value="rejected" ${f.status==='rejected'?'selected':''}>已驳回</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>类型</th><th>来源</th><th>理由</th><th>SN码</th><th>商品明细</th><th>状态</th><th>时间</th></tr></thead>
@@ -2458,7 +2474,8 @@
     let list = ui.role === 'l2'
       ? db.returns.filter((r) => r.fromId === currentL2Id())
       : db.returns.filter((r) => r.fromId === currentL1Id() || r.approverId === currentL1Id() || (r.sns||[]).some((sn)=>db.sns.find(s=>s.sn===sn&&s.l1Id===currentL1Id())));
-    const pendingCnt = list.filter((r) => r.status === 'pending').length;
+    const rtAll = list.slice();
+    const rtN = (st) => rtAll.filter((r) => r.status === st).length;
     const statusTab = ui.tabs.miniRtStatus || 'all';
     if (statusTab !== 'all') list = list.filter((r) => r.status === statusTab);
     list = list.slice().sort((a, b) => {
@@ -2470,10 +2487,10 @@
     return `${ui.role==='l2'?`<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:10px">向上申请退货</button>`:`<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:10px">申请退货</button>`}
       ${pendingL2.length?`<div class="alert alert-info">待审二级退一级 ${pendingL2.length} 单（点进详情审核）</div>`:''}
       ${miniSegHtml('miniRtStatus', [
-        { id: 'all', title: '全部' },
-        { id: 'pending', title: '待审核', badge: pendingCnt || null },
-        { id: 'approved', title: '已通过' },
-        { id: 'done', title: '已处理' },
+        { id: 'all', title: '全部', badge: rtAll.length || null },
+        { id: 'pending', title: '待审核', badge: rtN('pending') || null },
+        { id: 'approved', title: '已通过', badge: rtN('approved') || null },
+        { id: 'done', title: '已处理', badge: rtN('done') || null },
       ])}
       <div class="mini-list">${list.map((r)=>`<button type="button" class="mini-list-item ${r.status==='pending'?'rt-pending':''}" data-action="open-view-return" data-id="${r.id}">
         <strong class="rt-row-hd"><span>${escapeHtml(r.no)}</span>${returnStatusTag(r.status)}</strong>
@@ -2491,12 +2508,14 @@
       }
       return (sn && sn.l1Id === currentL1Id()) || String(e.target).includes(l1Name(currentL1Id())) || String(e.detail || '').includes(l1Name(currentL1Id()));
     });
+    const exAll = list.slice();
+    const exN = (d) => (d === 'all' ? exAll.length : exAll.filter((e) => exceptionDim(e) === d).length);
     if (dim !== 'all') list = list.filter((e) => exceptionDim(e) === dim);
     return `${miniSegHtml('miniEx', [
-      { id: 'all', title: '全部' },
-      { id: 'scan', title: '扫码' },
-      { id: 'activate', title: '激活' },
-      { id: 'stock', title: '库存' },
+      { id: 'all', title: '全部', badge: exN('all') || null },
+      { id: 'scan', title: '扫码', badge: exN('scan') || null },
+      { id: 'activate', title: '激活', badge: exN('activate') || null },
+      { id: 'stock', title: '库存', badge: exN('stock') || null },
     ])}
       <div class="mini-list">${list.map((e)=>`<button type="button" class="mini-list-item ${e.status==='未处理'?'ex-bold':''}" data-action="open-view-exception" data-id="${e.id}">
         <strong>${escapeHtml(e.type)}</strong>
@@ -5106,10 +5125,20 @@
       e.preventDefault();
       const set = el.getAttribute('data-set-filter');
       if (set) {
-        const [scopeField, val] = set.split('=');
-        const [scope, field] = scopeField.split(':');
-        ui.filters[scope] = ui.filters[scope] || {};
-        ui.filters[scope][field] = val;
+        if (set.startsWith('tab:')) {
+          const [, key, id] = set.split(':');
+          if (key && id) ui.tabs[key] = id;
+        } else {
+          const [scopeField, val] = set.split('=');
+          const [scope, field] = scopeField.split(':');
+          ui.filters[scope] = ui.filters[scope] || {};
+          ui.filters[scope][field] = val;
+        }
+      }
+      const setTab = el.getAttribute('data-set-tab');
+      if (setTab) {
+        const [key, id] = setTab.split(':');
+        if (key && id) ui.tabs[key] = id;
       }
       navigate(el.getAttribute('data-go'));
     }));

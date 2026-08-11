@@ -768,6 +768,8 @@ table.data .col-check input[type="checkbox"] {
   margin-bottom: 10px;
 }
 .tab {
+  display: inline-flex;
+  align-items: center;
   height: 34px;
   padding: 0 14px;
   border: none;
@@ -777,6 +779,9 @@ table.data .col-check input[type="checkbox"] {
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+}
+.tab .menu-badge {
+  margin-left: 6px;
 }
 .tab.active {
   color: var(--primary);
