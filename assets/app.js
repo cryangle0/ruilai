@@ -3568,9 +3568,11 @@
         ui.loginTab = el.getAttribute('data-tab-id');
         persistSession(); render(); break;
       case 'reset-demo':
-        localStorage.removeItem(persistKey); db = seed(); saveStore(); toast('演示数据已重置 (v6)'); render(); break;
+        confirmDialog('确认重置全部演示数据？当前本地改动将丢失且不可恢复。', 'reset-demo-ok', {}, { title: '重置演示数据', danger: true, okText: '确认重置' });
+        break;
       case 'logout':
-        ui.loggedIn = false; persistSession(); ui.modal = null; render(); break;
+        confirmDialog('确认退出当前账号？', 'logout-ok', {}, { title: '退出登录', okText: '确认退出' });
+        break;
       case 'close-modal': closeModal(); break;
       case 'toggle-notify': ui.notifyOpen = !ui.notifyOpen; render(); break;
       case 'mark-all-read': (db.notifications||[]).forEach((n)=>n.read=true); saveStore(); render(); break;
@@ -3659,7 +3661,7 @@
             addLog(`解绑二级 ${a.name}`); saveStore(); toast('已解绑并进入待分配');
           }
           ui.modal = null; render();
-        } else if (act === 'audit-l2-ok') {
+        } else if (act === 'audit-l2-approve-ok') {
           const a = db.agentsL2.find((x)=>x.id===pid);
           if (a) { a.auditStatus = 'approved'; addLog(`二级审核通过 ${a.name}`); saveStore(); toast('已通过'); }
           ui.modal = null; render();
@@ -3679,6 +3681,54 @@
           finishRebindL2(pid, conf.payload);
         } else if (act === 'delete-l2-mini-ok') {
           finishDeleteL2Mini(pid);
+        } else if (act === 'toggle-account-ok') {
+          const a = db.accounts.find((x) => x.id === pid);
+          if (a) { a.status = a.status === '启用' ? '停用' : '启用'; addLog(`${a.status}账号 ${a.username}`); saveStore(); toast('已更新'); }
+          render();
+        } else if (act === 'toggle-sub-ok') {
+          const s = db.subAccounts.find((x) => x.id === pid);
+          if (s) {
+            s.status = s.status === '启用' ? '停用' : '启用';
+            const acc = db.accounts.find((a) => a.username === s.username);
+            if (acc) acc.status = s.status;
+            addLog(`${s.status}子账号 ${s.username}`); saveStore(); toast('已更新');
+          }
+          render();
+        } else if (act === 'toggle-l2-mini-ok') {
+          const a = db.agentsL2.find((x) => x.id === pid);
+          if (a && a.parentId === currentL1Id()) {
+            a.status = a.status === '启用' ? '停用' : '启用';
+            const acc = db.accounts.find((x) => x.roleId === 'R4' && x.agentId === a.id);
+            if (acc) acc.status = a.status;
+            addLog(`${a.status}二级 ${a.name}`); saveStore(); toast('已更新');
+          }
+          render();
+        } else if (act === 'reset-demo-ok') {
+          localStorage.removeItem(persistKey); db = seed(); saveStore(); toast('演示数据已重置 (v6)'); render();
+        } else if (act === 'logout-ok') {
+          ui.loggedIn = false; persistSession(); ui.modal = null; ui.confirm = null; render();
+        } else if (act === 'reassign-frozen-confirm-ok') {
+          finishReassignFrozen(pid, conf.payload?.l1Id);
+        } else if (act === 'cart-submit-ok') {
+          finishCartSubmit(conf.payload || {});
+        } else if (act === 'save-sn-ok') {
+          finishSaveSn(conf.payload || {});
+        } else if (act === 'gen-sn-confirm-ok') {
+          finishGenSn(conf.payload || {});
+        } else if (act === 'import-sn-confirm-ok') {
+          finishImportSn(conf.payload || {});
+        } else if (act === 'save-role-perms-ok') {
+          finishSaveRolePerms(pid, conf.payload || {});
+        } else if (act === 'create-po-confirm-ok') {
+          finishCreatePo(conf.payload || {});
+        } else if (act === 'create-return-confirm-ok') {
+          finishCreateReturn(conf.payload || {});
+        } else if (act === 'create-so-confirm-ok') {
+          finishCreateSo(conf.payload || {});
+        } else if (act === 'mini-direct-bind-ok') {
+          const p = conf.payload || {};
+          doDirectBind(p.sn, p.phone, p.addr, p.region);
+          render();
         } else {
           render();
         }
@@ -3727,12 +3777,12 @@
       }
       case 'audit-l2-ok': {
         const a = db.agentsL2.find((x)=>x.id===id);
-        confirmDialog(`确认通过二级代理「${a?.name || ''}」的审核？`, 'audit-l2-ok', { id }, { title: '二级审核通过', okText: '确认通过' });
+        confirmDialog(`确认通过二级代理「${a?.name || ''}」的审核？`, 'audit-l2-approve-ok', { id }, { title: '二级审核通过', okText: '确认通过' });
         break;
       }
       case 'audit-l2-reject': {
         const a = db.agentsL2.find((x)=>x.id===id);
-        confirmDialog(`确认驳回二级代理「${a?.name || ''}」？`, 'audit-l2-reject-ok', { id }, { title: '二级审核驳回', danger: true });
+        confirmDialog(`确认驳回二级代理「${a?.name || ''}」？`, 'audit-l2-reject-ok', { id }, { title: '二级审核驳回', danger: true, okText: '确认驳回' });
         break;
       }
       case 'open-audit-po': {
@@ -3780,25 +3830,13 @@
         if (!newSn) return toast('SN 不能为空', 'err');
         if (newSn !== row.sn && db.sns.some((s)=>s.sn===newSn)) return toast('SN 段号重复', 'err');
         const changes = [];
-        if (newSn !== row.sn) { changes.push(`SN ${row.sn}→${newSn}`); row.sn = newSn; }
-        if (size && size !== row.size) { changes.push(`弹力带 ${row.size}→${size}`); row.size = size; }
-        if (belt && belt !== row.belt) { changes.push(`腰带 ${row.belt}→${belt}`); row.belt = belt; }
-        if (l1Id !== (row.l1Id || null)) { changes.push(`一级 ${l1Name(row.l1Id)}→${l1Name(l1Id)}`); row.l1Id = l1Id; }
-        if (l2Id !== (row.l2Id || null)) {
-          changes.push(`二级调库 ${l2Name(row.l2Id)}→${l2Name(l2Id)}`);
-          row.l2Id = l2Id || null;
-          if (l2Id && ['l1', 'warehouse'].includes(row.status)) row.status = 'l2';
-          if (!l2Id && row.status === 'l2') row.status = 'l1';
-        }
+        if (newSn !== row.sn) changes.push(`SN ${row.sn}→${newSn}`);
+        if (size && size !== row.size) changes.push(`弹力带 ${row.size}→${size}`);
+        if (belt && belt !== row.belt) changes.push(`腰带 ${row.belt}→${belt}`);
+        if (l1Id !== (row.l1Id || null)) changes.push(`一级 ${l1Name(row.l1Id)}→${l1Name(l1Id)}`);
+        if (l2Id !== (row.l2Id || null)) changes.push(`二级调库 ${l2Name(row.l2Id)}→${l2Name(l2Id)}`);
         if (!changes.length) { toast('未修改任何字段', 'warn'); break; }
-        const who = (ROLES[ui.role]?.account || ui.account || 'admin');
-        const when = nowStr();
-        row.tags = [...new Set([...(row.tags||[]), '修改过'])];
-        pushSnEvent(row, '管理员修改', `${who} 于 ${when}：${changes.join('；')}`, 'edit');
-        addLog(`修改SN ${row.sn}：${changes.join('；')}`, 'edit');
-        saveStore();
-        closeModal();
-        toast('已保存修改记录');
+        confirmDialog(`确认保存 SN「${row.sn}」修改？${changes.join('；')}`, 'save-sn-ok', { id, newSn, size, belt, l1Id, l2Id, changes }, { title: '保存 SN 修改', okText: '确认保存' });
         break;
       }
       case 'open-import-sn-seg':
@@ -3809,27 +3847,15 @@
         const qty = Math.min(200, Math.max(1, Number($('#f-qty')?.value) || 0));
         if (!qty) return toast('请填写数量', 'err');
         const meta = { l1Id: $('#f-l1')?.value, productId: $('#f-pid')?.value, size: $('#f-size')?.value, belt: $('#f-belt')?.value };
-        const list = nextInternalSnBatch(qty);
-        list.forEach((sn) => {
-          const row = {
-            sn, productId: meta.productId, size: meta.size, belt: meta.belt,
-            l1Id: meta.l1Id, l2Id: null, status: 'warehouse', tags: ['系统生成'],
-            frozen: false, factoryAt: nowStr(), soldAt: null, returnAt: null, user: null, events: [], reIn: false, resale: false,
-          };
-          pushSnEvent(row, '系统内部生成', `${productName(meta.productId)} / ${meta.size}`, 'import');
-          db.sns.push(row);
-        });
-        addLog(`系统生成SN ${list[0]}~${list[list.length - 1]} 共${list.length}条`);
-        saveStore(); closeModal(); toast(`已生成 ${list.length} 条 SN`); break;
+        confirmDialog(`确认系统生成 ${qty} 条 SN？`, 'gen-sn-confirm-ok', { qty, meta }, { title: '生成 SN 确认', okText: '确认生成' });
+        break;
       }
       case 'import-sn-seg-ok': {
         const meta = { l1Id: $('#f-l1')?.value, productId: $('#f-pid')?.value, size: $('#f-size')?.value, belt: $('#f-belt')?.value };
         const text = $('#f-seg-paste')?.value || ui.form.segPaste || '';
-        const result = importSnSegmentsFromText(text, meta);
-        if (result.err) return toast(result.err, 'err');
-        ui.form.segPaste = '';
-        addLog(`批量导入SN段号 +${result.added}`);
-        saveStore(); closeModal(); toast(`导入 ${result.added} 条${result.skipped ? `，跳过 ${result.skipped}` : ''}`); break;
+        if (!(text || '').trim()) return toast('请粘贴号段', 'err');
+        confirmDialog('确认按粘贴内容导入 SN 段号到待入库？', 'import-sn-confirm-ok', { meta, text }, { title: '导入 SN 确认', okText: '确认导入' });
+        break;
       }
       case 'save-ex-rules': {
         db.exceptionMultiplier = Number($('#f-ex-mult')?.value || db.exceptionMultiplier || 1.5);
@@ -3871,12 +3897,10 @@
       }
       case 'reassign-frozen': openModal('reassign-frozen', { id }); break;
       case 'reassign-frozen-ok': {
-        const row = db.sns.find((s)=>s.sn===id);
         const l1Id = $('#f-l1')?.value;
-        row.l1Id = l1Id; row.status = 'l1'; row.frozen = false;
-        row.tags = (row.tags||[]).filter((t)=>t!=='冷冻');
-        pushSnEvent(row, '冷冻库重分配', l1Name(l1Id), 'reassign');
-        addLog(`冷冻SN重分配 ${id} → ${l1Name(l1Id)}`); saveStore(); closeModal(); toast('已解冻并分配'); break;
+        if (!l1Id) return toast('请选择一级代理', 'err');
+        confirmDialog(`确认将冷冻 SN「${id}」分配给「${l1Name(l1Id)}」并解冻？`, 'reassign-frozen-confirm-ok', { id, l1Id }, { title: '冷冻库重分配', okText: '确认分配' });
+        break;
       }
       case 'approve-return': {
         const r = db.returns.find((x)=>x.id===id);
@@ -3995,11 +4019,8 @@
         if (ui.role !== 'l1') return toast('仅一级可操作', 'err');
         const a = db.agentsL2.find((x) => x.id === id);
         if (!a || a.parentId !== currentL1Id()) return toast('无权操作', 'err');
-        a.status = a.status === '启用' ? '停用' : '启用';
-        const acc = db.accounts.find((x) => x.roleId === 'R4' && x.agentId === a.id);
-        if (acc) acc.status = a.status;
-        addLog(`${a.status}二级 ${a.name}`);
-        saveStore(); toast('已更新'); render(); break;
+        confirmDialog(`确认${a.status === '启用' ? '停用' : '启用'}二级「${a.name}」？`, 'toggle-l2-mini-ok', { id }, { title: '二级状态确认', danger: a.status === '启用' });
+        break;
       }
       case 'delete-l2-mini': {
         if (ui.role !== 'l1') return toast('仅一级可操作', 'err');
@@ -4015,14 +4036,9 @@
         if (!role) return toast('角色不存在', 'err');
         const perms = [...document.querySelectorAll('[data-perm]:checked')].map((el) => el.getAttribute('data-perm'));
         if (!perms.length) return toast('请至少勾选一项权限', 'err');
-        // 勾选「全部权限」或明细全勾时以 all 为准
-        role.perms = (perms.includes('all') || DETAIL_PERMS.every((p) => perms.includes(p))) ? ['all'] : perms.filter((p) => p !== 'all');
-        const desc = $('#f-role-desc')?.value?.trim() || roleDescFromPerms(role.perms);
-        role.desc = desc;
-        addLog(`编辑角色权限 ${role.name}`);
-        saveStore();
-        closeModal();
-        toast('角色权限已更新');
+        const nextPerms = (perms.includes('all') || DETAIL_PERMS.every((p) => perms.includes(p))) ? ['all'] : perms.filter((p) => p !== 'all');
+        const desc = $('#f-role-desc')?.value?.trim() || roleDescFromPerms(nextPerms);
+        confirmDialog(`确认更新角色「${role.name}」的权限配置？`, 'save-role-perms-ok', { id, perms: nextPerms, desc }, { title: '保存角色权限', okText: '确认保存' });
         break;
       }
       case 'create-account-ok': {
@@ -4035,7 +4051,10 @@
         addLog(`创建账号 ${username}`); saveStore(); closeModal(); toast('已创建'); break;
       }
       case 'toggle-account': {
-        const a = db.accounts.find((x)=>x.id===id); a.status = a.status==='启用'?'停用':'启用'; saveStore(); render(); break;
+        const a = db.accounts.find((x)=>x.id===id);
+        if (!a) break;
+        confirmDialog(`确认${a.status==='启用'?'停用':'启用'}账号「${a.username}」？`, 'toggle-account-ok', { id }, { title: '账号状态确认', danger: a.status==='启用' });
+        break;
       }
       case 'open-create-sub':
         if (ui.mode !== 'mini' || ui.role !== 'l1') return toast('请在一级小程序「我的」中创建子账号', 'err');
@@ -4054,9 +4073,10 @@
         addLog(`创建子账号 ${username}`); saveStore(); closeModal(); toast('已创建子账号（仅扫码）'); break;
       }
       case 'toggle-sub': {
-        const s = db.subAccounts.find((x)=>x.id===id); s.status = s.status==='启用'?'停用':'启用';
-        const acc = db.accounts.find((a)=>a.username===s.username); if (acc) acc.status = s.status;
-        saveStore(); render(); break;
+        const s = db.subAccounts.find((x)=>x.id===id);
+        if (!s) break;
+        confirmDialog(`确认${s.status==='启用'?'停用':'启用'}子账号「${s.username}」？`, 'toggle-sub-ok', { id }, { title: '子账号状态确认', danger: s.status==='启用' });
+        break;
       }
       case 'sort-col': {
         const key = el.getAttribute('data-sort-key');
@@ -4083,23 +4103,15 @@
           const q = Number(inp.value)||0; if (q>0) { planBySize[inp.getAttribute('data-size-qty')] = q; planTotal += q; }
         });
         if (!planTotal) return toast('请填写数量', 'err');
+        if (!l2Id) return toast('请选择二级代理', 'err');
         const parts = [];
         const pb = Number($('#f-part-belt')?.value) || 0;
         const ps = Number($('#f-part-sil')?.value) || 0;
         if (pb > 0) parts.push({ partId: 'PART-BELT', spec: '配件', qty: pb });
         if (ps > 0) parts.push({ partId: 'PART-SIL', spec: 'M', qty: ps });
-        const so = {
-          id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3,'0')}`, channel: 'distribute',
-          l1Id: currentL1Id() || $('#f-l1')?.value || db.agentsL2.find((a)=>a.id===l2Id)?.parentId, l2Id, productId, planTotal, planBySize, parts, scanned: [], status: 'scanning', createdAt: nowStr(),
-        };
-        // 8.6 / 12.2：按一级+二级报警粒度与超量比触发
-        const cfg = resolveWarnConfig(so.l1Id, l2Id);
-        const overRatio = Number(cfg.rules.overOrderRatio || 1);
-        const l2Stock = db.sns.filter((x) => x.l2Id === l2Id && x.status === 'l2' && !x.frozen && x.productId === productId).length;
-        if (l2Stock > 0 && planTotal >= Math.max(1, Math.ceil(l2Stock * overRatio))) {
-          pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（超量比 ${overRatio}，代理倍数 ${cfg.mult}）`, 'scan', { mode: cfg.mode });
-        }
-        db.sales.unshift(so); saveStore(); openModal('scan-so', { id: so.id }); break;
+        const l1Id = currentL1Id() || $('#f-l1')?.value || db.agentsL2.find((a)=>a.id===l2Id)?.parentId;
+        confirmDialog(`确认创建销售单并进入扫码出货（计划 ${planTotal} 件）？`, 'create-so-confirm-ok', { l1Id, l2Id, productId, planTotal, planBySize, parts }, { title: '创建销售单', okText: '确认创建' });
+        break;
       }
       case 'mini-open-scan-so': openModal('scan-so', { id }); break;
       case 'scan-add-sn': {
@@ -4145,8 +4157,13 @@
       }
       case 'mini-direct-bind': {
         db.demoIpRegion = $('#demo-ip')?.value || db.demoIpRegion;
-        doDirectBind(ui.form.directSn || $('#direct-sn')?.value?.trim().toUpperCase(), $('#direct-phone')?.value?.trim(), $('#direct-addr')?.value?.trim(), db.demoIpRegion);
-        render(); break;
+        const sn = ui.form.directSn || $('#direct-sn')?.value?.trim().toUpperCase();
+        const phone = $('#direct-phone')?.value?.trim();
+        const addr = $('#direct-addr')?.value?.trim();
+        if (!sn) return toast('请先确认 SN', 'err');
+        if (!phone) return toast('请填写手机号', 'err');
+        confirmDialog(`确认激活 SN「${sn}」并绑定客户？`, 'mini-direct-bind-ok', { sn, phone, addr, region: db.demoIpRegion }, { title: '直销激活确认', okText: '确认激活' });
+        break;
       }
       case 'mini-direct-step1': {
         const sn = $('#direct-sn')?.value?.trim().toUpperCase();
@@ -4290,30 +4307,18 @@
         });
         if (accErr) return toast(accErr, 'err');
         if (!lines.length && !customLines.length && !parts.length) return toast('请至少填写标准套件、非标或配件', 'err');
+        const payload = { channel, cartPid, lines, customLines, parts, l2Id: $('#f-cart-l2')?.value || '' };
         if (channel === 'sales') {
-          const l2Id = $('#f-cart-l2')?.value;
-          if (!l2Id) return toast('请选择二级代理', 'err');
-          const planBySize = {};
+          if (!payload.l2Id) return toast('请选择二级代理', 'err');
           let planTotal = 0;
-          lines.forEach((l) => { planBySize[l.size] = (planBySize[l.size] || 0) + l.qty; planTotal += l.qty; });
-          customLines.forEach((r) => { planBySize[r.size] = (planBySize[r.size] || 0) + r.qty; planTotal += r.qty; });
+          lines.forEach((l) => { planTotal += l.qty; });
+          customLines.forEach((r) => { planTotal += r.qty; });
           if (!planTotal) return toast('销售单需至少一件套件（含非标）', 'err');
-          db.sales.unshift({
-            id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`,
-            channel: 'distribute', l1Id: currentL1Id(), l2Id, productId: cartPid,
-            planTotal, planBySize, parts, scanned: [], status: 'scanning', createdAt: nowStr(),
-          });
-          addLog('购物车提交销售单');
-          closeModal(); toast('已创建销售单，可去扫码出货');
+          confirmDialog(`确认提交销售单（套件 ${planTotal} 件）？`, 'cart-submit-ok', payload, { title: '提交销售单', okText: '确认提交' });
         } else {
-          db.purchases.unshift({
-            id: uid('PO'), no: `PO${todayCompact()}${String(++db.seq.po).padStart(3, '0')}`, l1Id: currentL1Id() || 'L1A',
-            lines, customLines, parts, status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
-          });
-          addLog('购物车提交采购申请');
-          closeModal(); toast('已提交采购申请');
+          confirmDialog('确认提交采购申请？提交后进入平台审核。', 'cart-submit-ok', payload, { title: '提交采购申请', okText: '确认提交' });
         }
-        saveStore(); render(); break;
+        break;
       }
       case 'view-dup-customer':
         openModal('view-exception', { id }); break;
@@ -4365,24 +4370,24 @@
         if (pb > 0) parts.push({ partId: 'PART-BELT', spec: '配件', qty: pb });
         if (pq>0) parts.push({ partId: 'PART-SIL', spec: 'M', qty: pq });
         if (!lines.length && !customLines.length) return toast('请填写标准数量或新增非标行', 'err');
-        db.purchases.unshift({
-          id: uid('PO'), no: `PO${todayCompact()}${String(++db.seq.po).padStart(3,'0')}`, l1Id: currentL1Id() || 'L1A',
-          lines, customLines, parts, status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
-        });
-        addLog('提交采购申请'); saveStore(); closeModal(); toast('已提交，等待平台审核'); break;
+        confirmDialog('确认提交采购申请？提交后进入平台审核。', 'create-po-confirm-ok', {
+          productId, lines, customLines, parts, l1Id: currentL1Id() || 'L1A',
+        }, { title: '提交采购申请', okText: '确认提交' });
+        break;
       }
       case 'mini-create-return': openModal('create-return', {}); break;
       case 'create-return-ok': {
         const sns = ($('#f-sns')?.value||'').split(/[,，\s]+/).map((x)=>x.trim().toUpperCase()).filter(Boolean);
         const type = $('#f-ttype')?.value;
+        if (!sns.length) return toast('请填写 SN', 'err');
         const labels = { l2_to_l1: '二级退一级', l1_to_factory: '一级退原厂', user: '用户退货再入库' };
-        db.returns.unshift({
-          id: uid('RT'), no: `RT${todayCompact()}${String(++db.seq.rt).padStart(2,'0')}`, type, typeLabel: labels[type],
+        confirmDialog(`确认提交退货申请（${sns.length} 个 SN）？`, 'create-return-confirm-ok', {
+          sns, type, typeLabel: labels[type],
           fromId: ui.role==='l2'?currentL2Id():currentL1Id(),
           fromName: ROLES[ui.role].name, approverId: ui.role==='l2'?currentL1Id():null,
-          sns, status: 'pending', createdAt: nowStr(), reason: $('#f-reason')?.value||'', reasonType: $('#f-rtype')?.value,
-        });
-        saveStore(); closeModal(); toast('退货已提交'); break;
+          reason: $('#f-reason')?.value||'', reasonType: $('#f-rtype')?.value,
+        }, { title: '提交退货申请', okText: '确认提交' });
+        break;
       }
       default: break;
     }
@@ -4484,6 +4489,141 @@
     saveStore();
     toast('已删除');
     render();
+  }
+
+  function finishReassignFrozen(sn, l1Id) {
+    const row = db.sns.find((s) => s.sn === sn);
+    if (!row || !l1Id) { render(); return; }
+    row.l1Id = l1Id; row.status = 'l1'; row.frozen = false;
+    row.tags = (row.tags || []).filter((t) => t !== '冷冻');
+    pushSnEvent(row, '冷冻库重分配', l1Name(l1Id), 'reassign');
+    addLog(`冷冻SN重分配 ${sn} → ${l1Name(l1Id)}`);
+    saveStore(); ui.modal = null; toast('已解冻并分配'); render();
+  }
+
+  function finishSaveSn(payload) {
+    const row = db.sns.find((s) => s.sn === payload.id);
+    if (!row) { toast('找不到该 SN', 'err'); render(); return; }
+    const { newSn, size, belt, l1Id, l2Id, changes } = payload;
+    if (newSn && newSn !== row.sn) row.sn = newSn;
+    if (size && size !== row.size) row.size = size;
+    if (belt && belt !== row.belt) row.belt = belt;
+    if (l1Id !== undefined && l1Id !== (row.l1Id || null)) row.l1Id = l1Id;
+    if (l2Id !== undefined && l2Id !== (row.l2Id || null)) {
+      row.l2Id = l2Id || null;
+      if (l2Id && ['l1', 'warehouse'].includes(row.status)) row.status = 'l2';
+      if (!l2Id && row.status === 'l2') row.status = 'l1';
+    }
+    const who = (ROLES[ui.role]?.account || ui.account || 'admin');
+    const when = nowStr();
+    row.tags = [...new Set([...(row.tags || []), '修改过'])];
+    pushSnEvent(row, '管理员修改', `${who} 于 ${when}：${(changes || []).join('；')}`, 'edit');
+    addLog(`修改SN ${row.sn}：${(changes || []).join('；')}`, 'edit');
+    saveStore(); ui.modal = null; toast('已保存修改记录'); render();
+  }
+
+  function finishGenSn(payload) {
+    const qty = Number(payload.qty) || 0;
+    const meta = payload.meta || {};
+    if (!qty) { render(); return; }
+    const list = nextInternalSnBatch(qty);
+    list.forEach((sn) => {
+      const row = {
+        sn, productId: meta.productId, size: meta.size, belt: meta.belt,
+        l1Id: meta.l1Id, l2Id: null, status: 'warehouse', tags: ['系统生成'],
+        frozen: false, factoryAt: nowStr(), soldAt: null, returnAt: null, user: null, events: [], reIn: false, resale: false,
+      };
+      pushSnEvent(row, '系统内部生成', `${productName(meta.productId)} / ${meta.size}`, 'import');
+      db.sns.push(row);
+    });
+    addLog(`系统生成SN ${list[0]}~${list[list.length - 1]} 共${list.length}条`);
+    saveStore(); ui.modal = null; toast(`已生成 ${list.length} 条 SN`); render();
+  }
+
+  function finishImportSn(payload) {
+    const meta = payload.meta || {};
+    const text = payload.text || '';
+    const result = importSnSegmentsFromText(text, meta);
+    if (result.err) { toast(result.err, 'err'); render(); return; }
+    ui.form.segPaste = '';
+    addLog(`批量导入SN段号 +${result.added}`);
+    saveStore(); ui.modal = null;
+    toast(`导入 ${result.added} 条${result.skipped ? `，跳过 ${result.skipped}` : ''}`);
+    render();
+  }
+
+  function finishSaveRolePerms(id, payload) {
+    const role = db.roles.find((r) => r.id === id);
+    if (!role) { toast('角色不存在', 'err'); render(); return; }
+    role.perms = payload.perms || role.perms;
+    role.desc = payload.desc || role.desc;
+    addLog(`编辑角色权限 ${role.name}`);
+    saveStore(); ui.modal = null; toast('角色权限已更新'); render();
+  }
+
+  function finishCartSubmit(payload) {
+    const channel = payload.channel || 'purchase';
+    const cartPid = payload.cartPid;
+    const lines = payload.lines || [];
+    const customLines = payload.customLines || [];
+    const parts = payload.parts || [];
+    if (channel === 'sales') {
+      const l2Id = payload.l2Id;
+      const planBySize = {};
+      let planTotal = 0;
+      lines.forEach((l) => { planBySize[l.size] = (planBySize[l.size] || 0) + l.qty; planTotal += l.qty; });
+      customLines.forEach((r) => { planBySize[r.size] = (planBySize[r.size] || 0) + r.qty; planTotal += r.qty; });
+      db.sales.unshift({
+        id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`,
+        channel: 'distribute', l1Id: currentL1Id(), l2Id, productId: cartPid,
+        planTotal, planBySize, parts, scanned: [], status: 'scanning', createdAt: nowStr(),
+      });
+      addLog('购物车提交销售单');
+      ui.modal = null; toast('已创建销售单，可去扫码出货');
+    } else {
+      db.purchases.unshift({
+        id: uid('PO'), no: `PO${todayCompact()}${String(++db.seq.po).padStart(3, '0')}`, l1Id: currentL1Id() || 'L1A',
+        lines, customLines, parts, status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
+      });
+      addLog('购物车提交采购申请');
+      ui.modal = null; toast('已提交采购申请');
+    }
+    saveStore(); render();
+  }
+
+  function finishCreatePo(payload) {
+    db.purchases.unshift({
+      id: uid('PO'), no: `PO${todayCompact()}${String(++db.seq.po).padStart(3, '0')}`, l1Id: payload.l1Id || currentL1Id() || 'L1A',
+      lines: payload.lines || [], customLines: payload.customLines || [], parts: payload.parts || [],
+      status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
+    });
+    addLog('提交采购申请'); saveStore(); ui.modal = null; toast('已提交，等待平台审核'); render();
+  }
+
+  function finishCreateReturn(payload) {
+    db.returns.unshift({
+      id: uid('RT'), no: `RT${todayCompact()}${String(++db.seq.rt).padStart(2, '0')}`,
+      type: payload.type, typeLabel: payload.typeLabel,
+      fromId: payload.fromId, fromName: payload.fromName, approverId: payload.approverId,
+      sns: payload.sns || [], status: 'pending', createdAt: nowStr(),
+      reason: payload.reason || '', reasonType: payload.reasonType,
+    });
+    saveStore(); ui.modal = null; toast('退货已提交'); render();
+  }
+
+  function finishCreateSo(payload) {
+    const { l1Id, l2Id, productId, planTotal, planBySize, parts } = payload;
+    const so = {
+      id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`, channel: 'distribute',
+      l1Id, l2Id, productId, planTotal, planBySize, parts: parts || [], scanned: [], status: 'scanning', createdAt: nowStr(),
+    };
+    const cfg = resolveWarnConfig(so.l1Id, l2Id);
+    const overRatio = Number(cfg.rules.overOrderRatio || 1);
+    const l2Stock = db.sns.filter((x) => x.l2Id === l2Id && x.status === 'l2' && !x.frozen && x.productId === productId).length;
+    if (l2Stock > 0 && planTotal >= Math.max(1, Math.ceil(l2Stock * overRatio))) {
+      pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（超量比 ${overRatio}，代理倍数 ${cfg.mult}）`, 'scan', { mode: cfg.mode });
+    }
+    db.sales.unshift(so); saveStore(); openModal('scan-so', { id: so.id });
   }
 
   function bindEvents() {
