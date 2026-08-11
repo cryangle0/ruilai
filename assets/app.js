@@ -2059,7 +2059,8 @@
   }
 
   function pageRole() {
-    return `${pageHeader('角色与权限', '创建账号 / 一级子账号（仅扫码）· 角色权限可编辑', '<button class="btn btn-primary" data-action="open-create-account">新建账号</button>')}
+    return `${pageHeader('角色与权限', '查看账号 / 编辑角色权限。二级代理账号与一级子账号请由一级在小程序「我的」创建')}
+      <div class="alert alert-info">后台不再提供「创建二级代理账号 / 创建一级子账号」；启停仍可在此管理。</div>
       <h3 class="section-title">角色</h3>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>角色</th><th>说明</th><th>权限</th><th>账号数</th><th>操作</th></tr></thead>
@@ -2084,7 +2085,7 @@
           </tr>`;
         }).join('')}</tbody>
       </table></div>
-      <h3 class="section-title" style="margin-top:12px">一级子账号 <button class="btn btn-sm btn-primary" data-action="open-create-sub">创建子账号</button></h3>
+      <h3 class="section-title" style="margin-top:12px">一级子账号（只读）</h3>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>用户名</th><th>姓名</th><th>所属一级</th><th>状态</th><th>操作</th></tr></thead>
         <tbody>${db.subAccounts.map((s)=>`<tr>
@@ -2092,7 +2093,7 @@
           <td>${escapeHtml(l1Name(s.l1Id))}</td>
           <td>${tag(s.status, s.status==='启用'?'green':'gray')}</td>
           <td class="ops"><button class="btn btn-sm" data-action="toggle-sub" data-id="${s.id}">${s.status==='启用'?'停用':'启用'}</button></td>
-        </tr>`).join('')}</tbody>
+        </tr>`).join('') || `<tr><td colspan="5">${emptyHint('暂无子账号')}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -2424,17 +2425,59 @@
 
   function pageMiniMine() {
     const r = ROLES[ui.role];
-    const subs = ui.role === 'l1' ? db.subAccounts.filter((s) => s.l1Id === currentL1Id()) : [];
+    const l1Id = currentL1Id();
+    const subs = ui.role === 'l1' ? db.subAccounts.filter((s) => s.l1Id === l1Id) : [];
+    const l2q = (ui.filters.miniL2 || {}).q || '';
+    let l2rows = ui.role === 'l1'
+      ? db.agentsL2.filter((a) => a.parentId === l1Id || (a.pending && a.prevParentId === l1Id))
+      : [];
+    if (l2q) {
+      const q = l2q.toLowerCase();
+      l2rows = l2rows.filter((a) => [a.name, a.code, a.type, ...(a.areas || [])].join(' ').toLowerCase().includes(q));
+    }
+    const l2Acc = (a) => db.accounts.find((x) => x.roleId === 'R4' && x.agentId === a.id);
     return `<div class="mini-page-title">我的</div>
       <div class="mini-profile">
         <span class="user-avatar">${r.avatar}</span>
         <div><strong>${escapeHtml(r.name)}</strong><div style="font-size:12px;color:var(--text-3)">${escapeHtml(r.account)}</div></div>
       </div>
       ${ui.role === 'l1' ? `
-        <div class="mini-section-title">角色与权限 · 子账号（仅扫码）</div>
-        <p class="mini-page-desc">对应后台「角色与权限」能力：一级可在此创建仅扫码子账号。</p>
-        <button class="btn btn-primary btn-block" data-action="open-create-sub" style="margin-bottom:8px">+ 创建子账号</button>
-        ${subs.map((s)=>`<div class="mini-list-row"><span>${escapeHtml(s.username)} · ${escapeHtml(s.name)}</span><span>${tag(s.status)}</span></div>`).join('') || emptyHint('暂无子账号')}
+        <div class="mini-mine-block">
+          <div class="mini-section-title">二级代理</div>
+          <p class="mini-page-desc">维护下属二级信息与登录账号；新建后进入平台「二级审核」。</p>
+          <button class="btn btn-primary btn-block" data-action="open-create-l2-mini">+ 创建二级代理</button>
+          <input class="field-input" style="margin:8px 0" placeholder="搜索名称/编码/城市" data-filter="miniL2:q" value="${escapeHtml(l2q)}" />
+          <div class="mini-agent-list">
+            ${l2rows.map((a) => {
+              const acc = l2Acc(a);
+              const audit = a.pending ? '待分配' : (a.auditStatus === 'pending' ? '待审核' : (a.auditStatus === 'rejected' ? '已驳回' : '已通过'));
+              const tone = a.pending || a.auditStatus === 'pending' ? 'orange' : (a.auditStatus === 'rejected' ? 'red' : 'green');
+              return `<div class="mini-agent-card">
+                <div class="mini-agent-card-hd">
+                  <div>
+                    <strong>${escapeHtml(a.name)}</strong>
+                    <div class="mini-agent-meta">${escapeHtml(a.code)} · ${escapeHtml(a.type)} · ${escapeHtml((a.areas || []).join('、') || '未设城市')}</div>
+                    <div class="mini-agent-meta">登录：${escapeHtml(acc?.username || '未创建账号')}</div>
+                  </div>
+                  <div class="mini-agent-tags">${tag(a.status, a.status==='启用'?'green':'gray')} ${tag(audit, tone)}</div>
+                </div>
+                <div class="mini-agent-ops">
+                  <button class="btn btn-sm" data-action="open-edit-l2-mini" data-id="${a.id}">编辑</button>
+                  <button class="btn btn-sm" data-action="toggle-l2-mini" data-id="${a.id}">${a.status==='启用'?'停用':'启用'}</button>
+                  <button class="btn btn-sm btn-danger" data-action="delete-l2-mini" data-id="${a.id}">删除</button>
+                </div>
+              </div>`;
+            }).join('') || emptyHint('暂无二级代理，点上方创建')}
+          </div>
+        </div>
+        <div class="mini-mine-block">
+          <div class="mini-section-title">子账号（仅扫码）</div>
+          <p class="mini-page-desc">一级可创建仅扫码子账号，不可改单。</p>
+          <button class="btn btn-primary btn-block" data-action="open-create-sub" style="margin-bottom:8px">+ 创建子账号</button>
+          ${subs.map((s)=>`<div class="mini-list-row"><span>${escapeHtml(s.username)} · ${escapeHtml(s.name)}</span>
+            <span><button class="btn btn-sm" data-action="toggle-sub" data-id="${s.id}">${s.status==='启用'?'停用':'启用'}</button></span>
+          </div>`).join('') || emptyHint('暂无子账号')}
+        </div>
       ` : ''}
       <button class="btn btn-block" data-action="logout" style="margin-top:12px">退出登录</button>
       <button class="btn btn-block" data-action="reset-demo" style="margin-top:8px">重置演示数据</button>`;
@@ -3070,6 +3113,41 @@
       </div>
       <p class="muted">子账号权限固定：仅销售扫码，不可改单、不可看其他菜单。</p>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-sub-ok">创建</button>`;
+    } else if (type === 'create-l2-mini' || type === 'edit-l2-mini') {
+      const editing = type === 'edit-l2-mini';
+      const d = draft || {};
+      d.type = d.type || '个人';
+      d.areas = d.areas || [];
+      d.ent = d.ent || {};
+      const cities = citiesForL1(currentL1Id());
+      const cityOpts = cities.length ? cities : ['杭州市'];
+      const acc = editing ? (db.accounts.find((x) => x.roleId === 'R4' && x.agentId === d.id) || {}) : {};
+      title = editing ? `编辑二级 · ${d.name || ''}` : '创建二级代理';
+      body = `<div class="form-grid">
+        <div class="form-field"><label>名称</label><input class="field-input" id="f-l2-name" value="${escapeHtml(d.name || '')}" placeholder="如 杭州城西专营" /></div>
+        <div class="form-field"><label>类型</label>
+          <select class="field-input" id="f-l2-type">
+            <option value="个人" ${d.type==='个人'?'selected':''}>个人</option>
+            <option value="法人" ${d.type==='法人'?'selected':''}>法人</option>
+          </select>
+        </div>
+        ${editing ? `<div class="form-field"><label>状态</label>
+          <select class="field-input" id="f-l2-status">
+            <option value="启用" ${d.status!=='停用'?'selected':''}>启用</option>
+            <option value="停用" ${d.status==='停用'?'selected':''}>停用</option>
+          </select></div>
+          <div class="form-field"><label>编码</label><input class="field-input" value="${escapeHtml(d.code || '')}" readonly /></div>` : ''}
+        <div class="form-field span-2"><label>围栏城市 <button type="button" class="btn btn-sm" data-action="select-all-city">全选</button></label>
+          ${chips(cityOpts, d.areas || [], 'data-toggle-city')}
+          ${!cities.length ? '<p class="muted" style="margin-top:6px">一级无可售城市，请先在后台维护一级可销售范围</p>' : ''}
+        </div>
+        <div class="form-field"><label>登录用户名</label><input class="field-input" id="f-l2-user" value="${escapeHtml(d.username || acc.username || '')}" placeholder="如 hz_agent" /></div>
+        <div class="form-field"><label>${editing ? '登录密码（留空不改）' : '登录密码'}</label><input class="field-input" id="f-l2-pass" type="password" value="${editing ? '' : '******'}" placeholder="${editing ? '不修改请留空' : ''}" /></div>
+      </div>
+      ${d.type === '法人' ? `<h4 style="margin-top:12px">企业信息</h4>${entFieldsHtml(d.ent || {})}` : '<p class="muted" style="margin-top:8px">个人类型无需填写企业信息。</p>'}
+      <p class="muted" style="margin-top:8px">${editing ? '保存后同步更新二级登录账号。' : '创建后进入平台「二级审核」，通过后方可正常使用。'}</p>`;
+      foot = `<button class="btn" data-action="close-modal">取消</button>
+        <button class="btn btn-primary" data-action="${editing ? 'save-l2-mini' : 'create-l2-mini-ok'}" ${editing ? `data-id="${d.id}"` : ''}>${editing ? '保存' : '创建'}</button>`;
     } else if (type === 'edit-role') {
       const role = db.roles.find((r) => r.id === payload.id) || {};
       const selected = new Set(role.perms || []);
@@ -3564,6 +3642,8 @@
           finishScanConfirmSo(pid);
         } else if (act === 'rebind-l2-confirm-ok') {
           finishRebindL2(pid, conf.payload);
+        } else if (act === 'delete-l2-mini-ok') {
+          finishDeleteL2Mini(pid);
         } else {
           render();
         }
@@ -3780,8 +3860,121 @@
         const v = Number(document.querySelector('[data-filter="exception:mult"]')?.value || db.exceptionMultiplier);
         db.exceptionMultiplier = v; saveStore(); toast(`预警倍数已设为 ${v}`); break;
       }
-      case 'open-create-account': openModal('create-account', {}); break;
+      case 'open-create-account':
+        return toast('后台已关闭新建账号；二级代理 / 子账号请由一级在小程序「我的」创建', 'err');
       case 'open-edit-role': openModal('edit-role', { id }); break;
+      case 'open-create-l2-mini': {
+        if (ui.role !== 'l1') return toast('仅一级可创建二级代理', 'err');
+        openModal('create-l2-mini', {
+          draftSeed: { name: '', type: '个人', areas: [], username: '', password: '******', ent: {} },
+        });
+        break;
+      }
+      case 'open-edit-l2-mini': {
+        if (ui.role !== 'l1') return toast('仅一级可编辑二级代理', 'err');
+        const a = db.agentsL2.find((x) => x.id === id);
+        if (!a || (a.parentId !== currentL1Id() && !(a.pending && a.prevParentId === currentL1Id()))) {
+          return toast('无权编辑该二级', 'err');
+        }
+        const acc = db.accounts.find((x) => x.roleId === 'R4' && x.agentId === a.id);
+        openModal('edit-l2-mini', {
+          id,
+          draft: JSON.parse(JSON.stringify({
+            ...a,
+            username: acc?.username || '',
+            password: '',
+            ent: a.ent || {},
+            areas: [...(a.areas || [])],
+          })),
+        });
+        break;
+      }
+      case 'create-l2-mini-ok': {
+        if (ui.role !== 'l1') return toast('仅一级可创建二级代理', 'err');
+        syncMiniL2DraftFromDom();
+        const d = ui.modal.draft || {};
+        const name = (d.name || '').trim();
+        const username = (d.username || '').trim();
+        const password = d.password || '******';
+        const areas = d.areas || [];
+        if (!name) return toast('请填写二级名称', 'err');
+        if (!username) return toast('请填写登录用户名', 'err');
+        if (db.accounts.some((a) => a.username === username)) return toast('用户名已存在', 'err');
+        if (!areas.length) return toast('请选择围栏城市', 'err');
+        const l2Id = uid('L2');
+        const code = `AG-L2-${String(100 + db.agentsL2.length + 1)}`;
+        const row = {
+          id: l2Id,
+          code,
+          name,
+          type: d.type === '法人' ? '法人' : '个人',
+          parentId: currentL1Id(),
+          areas: [...areas],
+          status: '启用',
+          pending: false,
+          auditStatus: 'pending',
+          protocolOk: true,
+          warnMultiplier: null,
+          warnMode: null,
+          ent: d.type === '法人' ? (d.ent || {}) : null,
+        };
+        db.agentsL2.push(row);
+        db.accounts.push({
+          id: uid('ACC'), username, name, roleId: 'R4', agentId: l2Id, status: '启用', password,
+        });
+        pushNotify('二级待审核', `${l1Name(currentL1Id())} 新建二级「${name}」待审核`, '原厂');
+        addLog(`一级创建二级 ${name} / ${username}`);
+        saveStore(); closeModal(); toast('已创建，等待平台二级审核'); break;
+      }
+      case 'save-l2-mini': {
+        if (ui.role !== 'l1') return toast('仅一级可编辑二级代理', 'err');
+        syncMiniL2DraftFromDom();
+        const d = ui.modal.draft || {};
+        const a = db.agentsL2.find((x) => x.id === d.id);
+        if (!a) return toast('二级不存在', 'err');
+        const name = (d.name || '').trim();
+        const username = (d.username || '').trim();
+        if (!name) return toast('请填写二级名称', 'err');
+        if (!username) return toast('请填写登录用户名', 'err');
+        if (!((d.areas || []).length)) return toast('请选择围栏城市', 'err');
+        if (db.accounts.some((x) => x.username === username && x.agentId !== a.id)) return toast('用户名已被占用', 'err');
+        a.name = name;
+        a.type = d.type === '法人' ? '法人' : '个人';
+        a.areas = [...(d.areas || [])];
+        a.status = d.status === '停用' ? '停用' : '启用';
+        a.ent = a.type === '法人' ? (d.ent || {}) : null;
+        let acc = db.accounts.find((x) => x.roleId === 'R4' && x.agentId === a.id);
+        if (!acc) {
+          acc = { id: uid('ACC'), username, name, roleId: 'R4', agentId: a.id, status: a.status, password: d.password || '******' };
+          db.accounts.push(acc);
+        } else {
+          acc.username = username;
+          acc.name = name;
+          acc.status = a.status;
+          if (d.password) acc.password = d.password;
+        }
+        addLog(`一级编辑二级 ${a.name}`);
+        saveStore(); closeModal(); toast('已保存'); break;
+      }
+      case 'toggle-l2-mini': {
+        if (ui.role !== 'l1') return toast('仅一级可操作', 'err');
+        const a = db.agentsL2.find((x) => x.id === id);
+        if (!a || a.parentId !== currentL1Id()) return toast('无权操作', 'err');
+        a.status = a.status === '启用' ? '停用' : '启用';
+        const acc = db.accounts.find((x) => x.roleId === 'R4' && x.agentId === a.id);
+        if (acc) acc.status = a.status;
+        addLog(`${a.status}二级 ${a.name}`);
+        saveStore(); toast('已更新'); render(); break;
+      }
+      case 'delete-l2-mini': {
+        if (ui.role !== 'l1') return toast('仅一级可操作', 'err');
+        const a = db.agentsL2.find((x) => x.id === id);
+        if (!a || (a.parentId !== currentL1Id() && !(a.pending && a.prevParentId === currentL1Id()))) {
+          return toast('无权删除', 'err');
+        }
+        confirmDialog(`确认删除二级「${a.name}」及其登录账号？不可恢复。`, 'delete-l2-mini-ok', { id }, { title: '删除二级代理', danger: true, okText: '确认删除' });
+        break;
+      }
       case 'save-role-perms': {
         const role = db.roles.find((r) => r.id === id);
         if (!role) return toast('角色不存在', 'err');
@@ -3809,9 +4002,13 @@
       case 'toggle-account': {
         const a = db.accounts.find((x)=>x.id===id); a.status = a.status==='启用'?'停用':'启用'; saveStore(); render(); break;
       }
-      case 'open-create-sub': openModal('create-sub', {}); break;
+      case 'open-create-sub':
+        if (ui.mode !== 'mini' || ui.role !== 'l1') return toast('请在一级小程序「我的」中创建子账号', 'err');
+        openModal('create-sub', {});
+        break;
       case 'create-sub-ok': {
-        const l1Id = $('#f-l1')?.value;
+        if (ui.mode !== 'mini' || ui.role !== 'l1') return toast('请在一级小程序「我的」中创建子账号', 'err');
+        const l1Id = $('#f-l1')?.value || currentL1Id();
         const username = $('#f-user')?.value?.trim();
         const name = $('#f-name')?.value?.trim();
         const password = $('#f-pass')?.value || '******';
@@ -4224,6 +4421,34 @@
     render();
   }
 
+  function syncMiniL2DraftFromDom() {
+    if (!ui.modal || !['create-l2-mini', 'edit-l2-mini'].includes(ui.modal.type)) return;
+    const d = ui.modal.draft || (ui.modal.draft = {});
+    d.name = $('#f-l2-name')?.value?.trim() ?? d.name;
+    d.type = $('#f-l2-type')?.value || d.type || '个人';
+    d.username = $('#f-l2-user')?.value?.trim() ?? d.username;
+    d.password = $('#f-l2-pass')?.value ?? d.password;
+    if ($('#f-l2-status')) d.status = $('#f-l2-status').value;
+    if (d.type === '法人') d.ent = readEntFields();
+  }
+
+  function finishDeleteL2Mini(id) {
+    const a = db.agentsL2.find((x) => x.id === id);
+    if (!a) { render(); return; }
+    const snN = db.sns.filter((s) => s.l2Id === id).length;
+    if (snN) {
+      toast(`该二级仍有 ${snN} 条 SN 关联，请先调库或停用，不能直接删除`, 'err');
+      render();
+      return;
+    }
+    db.agentsL2 = db.agentsL2.filter((x) => x.id !== id);
+    db.accounts = db.accounts.filter((x) => !(x.roleId === 'R4' && x.agentId === id));
+    addLog(`删除二级 ${a.name}`);
+    saveStore();
+    toast('已删除');
+    render();
+  }
+
   function bindEvents() {
     $('#btn-login')?.addEventListener('click', doLogin);
     $('#login-pass')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
@@ -4365,6 +4590,13 @@
 
     $('#modal-mask')?.addEventListener('click', (e) => { if (e.target.id === 'modal-mask' && !ui.confirm) closeModal(); });
     $('#confirm-mask')?.addEventListener('click', (e) => { if (e.target.id === 'confirm-mask') closeConfirm(); });
+    if (ui.modal?.type === 'create-l2-mini' || ui.modal?.type === 'edit-l2-mini') {
+      $('#f-l2-type')?.addEventListener('change', () => {
+        syncMiniL2DraftFromDom();
+        ui.modal.draft.type = $('#f-l2-type').value;
+        render();
+      });
+    }
     $('#scan-sn-input')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         const btn = document.querySelector('[data-action="scan-add-sn"]');
