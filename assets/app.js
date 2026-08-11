@@ -1512,15 +1512,45 @@
   }
 
   function pageAgentL2Audit() {
-    const rows = db.agentsL2.filter((a) => a.auditStatus === 'pending');
+    const f = ui.filters['agent-l2-audit'] || {};
+    const tab = ui.tabs['agent-l2-audit'] || 'pending';
+    const pendingN = db.agentsL2.filter((a) => a.auditStatus === 'pending').length;
+    const approvedN = db.agentsL2.filter((a) => a.auditStatus === 'approved' && !a.pending).length;
+    const rejectedN = db.agentsL2.filter((a) => a.auditStatus === 'rejected').length;
+    let rows = db.agentsL2.filter((a) => {
+      if (tab === 'pending') return a.auditStatus === 'pending';
+      if (tab === 'approved') return a.auditStatus === 'approved' && !a.pending;
+      if (tab === 'rejected') return a.auditStatus === 'rejected';
+      return ['pending', 'approved', 'rejected'].includes(a.auditStatus);
+    });
+    if (f.l1) {
+      const q = String(f.l1).toLowerCase();
+      rows = rows.filter((a) => l1Name(a.parentId).toLowerCase().includes(q)
+        || l1Name(a.prevParentId).toLowerCase().includes(q));
+    }
+    const statusCell = (a) => {
+      if (a.auditStatus === 'pending') return tag('待审核', 'orange');
+      if (a.auditStatus === 'rejected') return tag('已驳回', 'red');
+      return tag('已通过', 'green');
+    };
+    const emptyMsg = tab === 'pending' ? '暂无待审' : tab === 'approved' ? '暂无已通过' : tab === 'rejected' ? '暂无已驳回' : '暂无数据';
     return `${pageHeader('二级审核', '点击行进入详情，审核操作在详情内')}
+      ${tabsHtml('agent-l2-audit', [
+        { id: 'all', title: '全部', badge: pendingN + approvedN + rejectedN || null },
+        { id: 'pending', title: '待审核', badge: pendingN || null },
+        { id: 'approved', title: '已通过', badge: approvedN || null },
+        { id: 'rejected', title: '已驳回', badge: rejectedN || null },
+      ])}
+      ${filterBar(`
+        <input class="field-input" placeholder="搜索一级代理名称" data-filter="agent-l2-audit:l1" value="${escapeHtml(f.l1 || '')}" />
+      `)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>编码</th><th>名称</th><th>类型</th><th>申请一级</th><th>城市</th><th>状态</th></tr></thead>
         <tbody>${rows.map((a)=>`<tr class="row-clickable" data-row-action="view-l2-audit" data-id="${a.id}">
           <td>${escapeHtml(a.code)}</td><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.type)}</td>
           <td>${escapeHtml(l1Name(a.parentId))}</td><td>${escapeHtml((a.areas||[]).join('、'))}</td>
-          <td>${tag('待审核','orange')}</td>
-        </tr>`).join('') || `<tr><td colspan="6">${emptyHint('暂无待审')}</td></tr>`}</tbody>
+          <td>${statusCell(a)}</td>
+        </tr>`).join('') || `<tr><td colspan="6">${emptyHint(emptyMsg)}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -2847,17 +2877,22 @@
         ${e.status==='未处理'?`<button class="btn btn-primary" data-action="close-exception" data-id="${e.id}">标记已处理</button>`:''}`;
     } else if (type === 'view-l2-audit') {
       const a = db.agentsL2.find((x) => x.id === payload.id);
+      const st = a.auditStatus === 'pending' ? tag('待审核', 'orange')
+        : a.auditStatus === 'rejected' ? tag('已驳回', 'red')
+        : tag('已通过', 'green');
+      const acc = db.accounts.find((x) => x.roleId === 'R4' && x.agentId === a.id);
       title = `二级审核详情 · ${a.name}`;
       body = `<div class="detail-grid">
         <div><span>编码</span>${escapeHtml(a.code)}</div>
         <div><span>类型</span>${escapeHtml(a.type)}</div>
         <div><span>申请一级</span>${escapeHtml(l1Name(a.parentId))}</div>
         <div><span>城市</span>${escapeHtml((a.areas||[]).join('、'))}</div>
-        <div><span>状态</span>${tag('待审核','orange')}</div>
+        <div><span>登录账号</span>${escapeHtml(acc?.username || '—')}</div>
+        <div><span>状态</span>${st}</div>
       </div>${a.ent?`<h4>企业</h4><div class="detail-grid"><div class="span-2">${escapeHtml(a.ent.company||'')}</div></div>`:''}`;
       foot = `<button class="btn" data-action="close-modal">关闭</button>
-        <button class="btn btn-primary" data-action="audit-l2-ok" data-id="${a.id}">通过</button>
-        <button class="btn btn-danger" data-action="audit-l2-reject" data-id="${a.id}">驳回</button>`;
+        ${a.auditStatus === 'pending' ? `<button class="btn btn-primary" data-action="audit-l2-ok" data-id="${a.id}">通过</button>
+        <button class="btn btn-danger" data-action="audit-l2-reject" data-id="${a.id}">驳回</button>` : ''}`;
     } else if (type === 'view-pending-l2') {
       const a = db.agentsL2.find((x) => x.id === payload.id);
       title = `待分配详情 · ${a.name}`;
