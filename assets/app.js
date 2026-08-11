@@ -1863,7 +1863,6 @@
       Object.entries(s.planBySize || {}).forEach(([sz, q]) => { sizeMap[sz] = (sizeMap[sz] || 0) + Number(q || 0); });
     });
     const sizeBars = BAND_SIZES.map((sz) => ({ label: sz, value: sizeMap[sz] || 0 }));
-    const clock = nowStr().slice(11, 16);
     const kpi = (label, value, go, filter, tone = '') =>
       `<button type="button" class="dash-kpi ${tone}" ${go ? `data-go="${go}"` : ''}${filter ? ` data-set-filter="${filter}"` : ''}>
         <span class="dash-kpi-label">${escapeHtml(label)}</span>
@@ -1871,20 +1870,13 @@
       </button>`;
 
     return `<div class="dash">
-      <div class="dash-hd">
-        <div>
-          <div class="dash-eyebrow">RUILAI OPS · ANALYTICS</div>
-          <h2 class="dash-title">数据统计</h2>
-          <p class="dash-sub">区间 ${escapeHtml(from)} ~ ${escapeHtml(to)} · 点击指标可下钻列表</p>
-        </div>
-        <div class="dash-hd-right">
-          <div class="dash-clock num">${escapeHtml(clock)}</div>
-          <div class="dash-filters">
-            <input type="date" class="field-input dash-input" data-filter="stats:from" value="${from}" />
-            <span class="dash-sep">→</span>
-            <input type="date" class="field-input dash-input" data-filter="stats:to" value="${to}" />
-            <button class="btn btn-sm dash-query" data-action="apply-filter">刷新</button>
-          </div>
+      <div class="dash-toolbar">
+        <span class="dash-toolbar-hint">点击指标可下钻列表</span>
+        <div class="dash-filters">
+          <input type="date" class="field-input dash-input" data-filter="stats:from" value="${from}" />
+          <span class="dash-sep">→</span>
+          <input type="date" class="field-input dash-input" data-filter="stats:to" value="${to}" />
+          <button class="btn btn-sm dash-query" data-action="apply-filter">刷新</button>
         </div>
       </div>
 
