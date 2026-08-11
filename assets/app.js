@@ -2580,6 +2580,20 @@
     }).join('')}</div>`;
   }
 
+  /** 选项是否已全部勾选（用于全选按钮高亮） */
+  function isAllSelected(options, selected) {
+    const opts = options || [];
+    if (!opts.length) return false;
+    const set = new Set(selected || []);
+    return opts.every((x) => set.has(x));
+  }
+
+  /** 全选/取消全选按钮：全选态用主题底色，文案切为「取消全选」 */
+  function selectAllBtn(action, label, allOn) {
+    const text = allOn ? '取消全选' : (label || '全选');
+    return `<button type="button" class="btn btn-sm select-all-btn ${allOn ? 'btn-primary on' : ''}" data-action="${action}" aria-pressed="${allOn ? 'true' : 'false'}">${escapeHtml(text)}</button>`;
+  }
+
   function modalAuditPo(p) {
     const draft = ui.modal.draft || p;
     const lines = draft.lines || [];
@@ -2645,19 +2659,24 @@
       const editing = type === 'edit-l1';
       const occ = occupiedMainAreas(a.id);
       title = editing ? '编辑一级代理' : `一级详情 · ${a.name}`;
-      body = editing ? `<div class="form-grid">
+      if (editing) {
+        const mainOpts = ALL_REGIONS.filter((r) => !occ.has(r) || (a.mainAreas || []).includes(r));
+        const saleSel = a.saleAreas || a.areas || [];
+        const directOpts = saleSel.flatMap((r) => CITY_MAP[r] || []);
+        body = `<div class="form-grid">
           <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(a.name)}" /></div>
           <div class="form-field"><label>联系人</label><input class="field-input" id="f-contact" value="${escapeHtml(a.contact)}" /></div>
-          <div class="form-field span-2"><label>主授权区域（多选） <button type="button" class="btn btn-sm" data-action="select-all-main">全选全国</button></label>${chips(ALL_REGIONS, a.mainAreas||[], 'data-toggle-main', occ)}</div>
-          <div class="form-field span-2"><label>可销售范围 <button type="button" class="btn btn-sm" data-action="select-all-sale">全选</button></label>${chips(ALL_REGIONS, a.saleAreas||a.areas||[], 'data-toggle-sale')}</div>
-          <div class="form-field span-2"><label>直销范围（城市） <button type="button" class="btn btn-sm" data-action="select-all-direct">全选当前可售城市</button></label>${chips((a.saleAreas||a.areas||[]).flatMap((r)=>CITY_MAP[r]||[]), a.directAreas||[], 'data-toggle-direct')}</div>
+          <div class="form-field span-2"><label>主授权区域（多选） ${selectAllBtn('select-all-main', '全选全国', isAllSelected(mainOpts, a.mainAreas))}</label>${chips(ALL_REGIONS, a.mainAreas||[], 'data-toggle-main', occ)}</div>
+          <div class="form-field span-2"><label>可销售范围 ${selectAllBtn('select-all-sale', '全选', isAllSelected(ALL_REGIONS, saleSel))}</label>${chips(ALL_REGIONS, saleSel, 'data-toggle-sale')}</div>
+          <div class="form-field span-2"><label>直销范围（城市） ${selectAllBtn('select-all-direct', '全选当前可售城市', isAllSelected(directOpts, a.directAreas))}</label>${chips(directOpts, a.directAreas||[], 'data-toggle-direct')}</div>
           <div class="form-field"><label>预警倍数</label><input type="number" step="0.1" class="field-input" id="f-warn" value="${a.warnMultiplier||1.5}" /></div>
           <div class="form-field"><label>报警粒度</label><select class="field-input" id="f-warn-mode">
             <option value="strict" ${(a.warnMode||'strict')==='strict'?'selected':''}>严格（强制处理）</option>
             <option value="soft" ${a.warnMode==='soft'?'selected':''}>软报警（仅记录）</option>
           </select></div>
-        </div><h4>企业信息</h4>${entFieldsHtml(a.ent)}`
-        : `<div class="detail-grid">
+        </div><h4>企业信息</h4>${entFieldsHtml(a.ent)}`;
+      } else {
+        body = `<div class="detail-grid">
           <div><span>编码</span>${escapeHtml(a.code)}</div>
           <div><span>联系人</span>${escapeHtml(a.contact)}</div>
           <div><span>主授权</span>${escapeHtml((a.mainAreas||[]).join('、'))}</div>
@@ -2675,6 +2694,7 @@
           <div><span>电话</span>${escapeHtml(a.ent?.phone||'—')}</div>
           <div class="span-2"><span>地址</span>${escapeHtml(a.ent?.addr||'—')}</div>
         </div>`;
+      }
       foot = editing
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-l1">保存</button>`
         : `<button class="btn" data-action="close-modal">关闭</button>
@@ -2688,9 +2708,9 @@
       body = `<div class="form-grid">
         <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(d.name||'')}" /></div>
         <div class="form-field"><label>联系人</label><input class="field-input" id="f-contact" value="${escapeHtml(d.contact||'')}" /></div>
-        <div class="form-field span-2"><label>主授权区域（多选） <button type="button" class="btn btn-sm" data-action="select-all-main">全选全国</button></label>${chips(ALL_REGIONS, d.mainAreas||[], 'data-toggle-main', occupiedMainAreas())}</div>
-        <div class="form-field span-2"><label>可销售范围 <button type="button" class="btn btn-sm" data-action="select-all-sale">全选</button></label>${chips(ALL_REGIONS, d.saleAreas||[], 'data-toggle-sale')}</div>
-        <div class="form-field span-2"><label>直销范围（城市） <button type="button" class="btn btn-sm" data-action="select-all-direct">全选当前可售城市</button></label>${chips((d.saleAreas||[]).flatMap((r)=>CITY_MAP[r]||[]), d.directAreas||[], 'data-toggle-direct')}${!(d.saleAreas||[]).length?'<p class="muted" style="margin-top:6px">请先选择可销售范围，再全选直销城市</p>':''}</div>
+        <div class="form-field span-2"><label>主授权区域（多选） ${selectAllBtn('select-all-main', '全选全国', isAllSelected(ALL_REGIONS.filter((r)=>!occupiedMainAreas().has(r)), d.mainAreas))}</label>${chips(ALL_REGIONS, d.mainAreas||[], 'data-toggle-main', occupiedMainAreas())}</div>
+        <div class="form-field span-2"><label>可销售范围 ${selectAllBtn('select-all-sale', '全选', isAllSelected(ALL_REGIONS, d.saleAreas))}</label>${chips(ALL_REGIONS, d.saleAreas||[], 'data-toggle-sale')}</div>
+        <div class="form-field span-2"><label>直销范围（城市） ${selectAllBtn('select-all-direct', '全选当前可售城市', isAllSelected((d.saleAreas||[]).flatMap((r)=>CITY_MAP[r]||[]), d.directAreas))}</label>${chips((d.saleAreas||[]).flatMap((r)=>CITY_MAP[r]||[]), d.directAreas||[], 'data-toggle-direct')}${!(d.saleAreas||[]).length?'<p class="muted" style="margin-top:6px">请先选择可销售范围，再全选直销城市</p>':''}</div>
       </div>${entFieldsHtml(d.ent||{})}`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-l1-ok">创建</button>`;
     } else if (type === 'view-agent-l2' || type === 'edit-l2') {
@@ -2701,7 +2721,7 @@
       body = editing ? `<div class="form-grid">
           <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(a.name)}" /></div>
           <div class="form-field"><label>类型</label><input class="field-input" value="${escapeHtml(a.type)}" readonly /></div>
-          <div class="form-field span-2"><label>围栏城市 <button type="button" class="btn btn-sm" data-action="select-all-city">全选</button></label>${chips(cities.length?cities:['杭州市'], a.areas||[], 'data-toggle-city')}</div>
+          <div class="form-field span-2"><label>围栏城市 ${selectAllBtn('select-all-city', '全选', isAllSelected(cities.length?cities:['杭州市'], a.areas))}</label>${chips(cities.length?cities:['杭州市'], a.areas||[], 'data-toggle-city')}</div>
           <div class="form-field"><label>独立预警倍数</label><input type="number" step="0.1" class="field-input" id="f-warn" value="${a.warnMultiplier ?? ''}" placeholder="空=继承一级" /></div>
           <div class="form-field"><label>独立报警粒度</label><select class="field-input" id="f-warn-mode">
             <option value="" ${!a.warnMode?'selected':''}>继承一级</option>
@@ -2739,7 +2759,7 @@
       body = `<div class="form-field"><label>绑定一级</label>
         <select class="field-input" id="f-parent">${db.agentsL1.filter((x)=>x.status==='启用').map((x)=>`<option value="${x.id}" ${x.id===d.parentId?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</select>
       </div>
-      <div class="form-field"><label>围栏城市 <button type="button" class="btn btn-sm" data-action="select-all-city">全选</button></label>
+      <div class="form-field"><label>围栏城市 ${selectAllBtn('select-all-city', '全选', isAllSelected(cityOpts, d.areas))}</label>
         ${chips(cityOpts, d.areas || [], 'data-toggle-city')}
         ${!cities.length ? '<p class="muted" style="margin-top:6px">该一级无可售城市，请先维护一级可销售范围</p>' : ''}
       </div>`;
@@ -3035,8 +3055,8 @@
         <div class="form-field span-2"><label>说明</label><input class="field-input" id="f-pnote" value="${escapeHtml(cur.note||'')}" /></div>
         ${isKit ? `
           <div class="form-field span-2"><div class="alert alert-info" style="margin:0">${escapeHtml(STANDARD_COMBO_NOTE)}</div></div>
-          <div class="form-field span-2"><label>① 弹力带尺码（多选）SS / S / M / L / LL</label>${chips(BAND_SIZES, cur.sizes||[], 'data-toggle-psize')}</div>
-          <div class="form-field span-2"><label>② 腰带尺码（多选）S / M / L</label>${chips(BELTS, cur.belts||[], 'data-toggle-pbelt')}</div>
+          <div class="form-field span-2"><label>① 弹力带尺码（多选）SS / S / M / L / LL ${selectAllBtn('select-all-psize', '全选', isAllSelected(BAND_SIZES, cur.sizes))}</label>${chips(BAND_SIZES, cur.sizes||[], 'data-toggle-psize')}</div>
+          <div class="form-field span-2"><label>② 腰带尺码（多选）S / M / L ${selectAllBtn('select-all-pbelt', '全选', isAllSelected(BELTS, cur.belts))}</label>${chips(BELTS, cur.belts||[], 'data-toggle-pbelt')}</div>
           <div class="form-field span-2"><label>③ 标品组合（由上面两组尺码自动交集；其他组合下单选非标）</label>
             <div class="page-card table-wrap" style="margin-top:6px"><table class="data">
               <thead><tr><th>档位</th><th>腰带</th><th>弹力带</th><th>组合说明</th></tr></thead>
@@ -3172,7 +3192,7 @@
             <option value="停用" ${d.status==='停用'?'selected':''}>停用</option>
           </select></div>
           <div class="form-field"><label>编码</label><input class="field-input" value="${escapeHtml(d.code || '')}" readonly /></div>` : ''}
-        <div class="form-field span-2"><label>围栏城市 <button type="button" class="btn btn-sm" data-action="select-all-city">全选</button></label>
+        <div class="form-field span-2"><label>围栏城市 ${selectAllBtn('select-all-city', '全选', isAllSelected(cityOpts, d.areas))}</label>
           ${chips(cityOpts, d.areas || [], 'data-toggle-city')}
           ${!cities.length ? '<p class="muted" style="margin-top:6px">一级无可售城市，请先在后台维护一级可销售范围</p>' : ''}
         </div>
@@ -4187,18 +4207,21 @@
       case 'select-all-main': {
         if (!ui.modal?.draft) break;
         const occ = occupiedMainAreas(ui.modal.draft.id);
-        ui.modal.draft.mainAreas = ALL_REGIONS.filter((r) => !occ.has(r));
+        const available = ALL_REGIONS.filter((r) => !occ.has(r));
+        ui.modal.draft.mainAreas = isAllSelected(available, ui.modal.draft.mainAreas) ? [] : [...available];
         render(); break;
       }
       case 'select-all-sale': {
         if (!ui.modal?.draft) break;
-        ui.modal.draft.saleAreas = [...ALL_REGIONS];
+        ui.modal.draft.saleAreas = isAllSelected(ALL_REGIONS, ui.modal.draft.saleAreas) ? [] : [...ALL_REGIONS];
         render(); break;
       }
       case 'select-all-direct': {
         if (!ui.modal?.draft) break;
         const areas = ui.modal.draft.saleAreas || ui.modal.draft.areas || [];
-        ui.modal.draft.directAreas = areas.flatMap((r) => CITY_MAP[r] || []);
+        const cities = areas.flatMap((r) => CITY_MAP[r] || []);
+        if (!cities.length) return toast('请先选择可销售范围', 'warn');
+        ui.modal.draft.directAreas = isAllSelected(cities, ui.modal.draft.directAreas) ? [] : [...cities];
         render(); break;
       }
       case 'select-all-city': {
@@ -4206,8 +4229,19 @@
         if (ui.modal.type === 'create-l2-mini' || ui.modal.type === 'edit-l2-mini') syncMiniL2DraftFromDom();
         const parentId = ui.modal.draft.parentId || $('#f-parent')?.value || currentL1Id();
         const list = citiesForL1(parentId);
-        ui.modal.draft.areas = list.length ? [...list] : ['杭州市'];
+        const opts = list.length ? list : ['杭州市'];
+        ui.modal.draft.areas = isAllSelected(opts, ui.modal.draft.areas) ? [] : [...opts];
         ui.modal.draft.parentId = parentId || ui.modal.draft.parentId;
+        render(); break;
+      }
+      case 'select-all-psize': {
+        if (!ui.modal?.draft) break;
+        ui.modal.draft.sizes = isAllSelected(BAND_SIZES, ui.modal.draft.sizes) ? [] : [...BAND_SIZES];
+        render(); break;
+      }
+      case 'select-all-pbelt': {
+        if (!ui.modal?.draft) break;
+        ui.modal.draft.belts = isAllSelected(BELTS, ui.modal.draft.belts) ? [] : [...BELTS];
         render(); break;
       }
       case 'open-create-product':

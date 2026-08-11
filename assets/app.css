@@ -173,6 +173,19 @@ a { color: inherit; text-decoration: none; }
 .btn-danger { color: var(--danger); border-color: #fecaca; background: #fef2f2; }
 .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
 .btn-block { width: 100%; height: 38px; margin-top: 8px; font-weight: 600; }
+.select-all-btn { margin-left: 6px; vertical-align: middle; }
+.select-all-btn.on,
+.select-all-btn.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.select-all-btn.on:hover,
+.select-all-btn.btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: #fff;
+}
 
 /* ===== App shell ===== */
 .app-bg { height: 100vh; overflow: hidden; }
