@@ -1316,9 +1316,14 @@
   function pageAgentL1() {
     const f = ui.filters['agent-l1'] || {};
     let rows = db.agentsL1.slice();
-    if (f.q) {
-      const q = f.q.toLowerCase();
-      rows = rows.filter((a) => [a.name, a.code, a.contact, ...(a.mainAreas || [])].join(' ').toLowerCase().includes(q));
+    if (f.name) {
+      const q = f.name.toLowerCase();
+      rows = rows.filter((a) => [a.name, a.code, a.contact].join(' ').toLowerCase().includes(q));
+    }
+    if (f.region) {
+      const q = f.region.toLowerCase();
+      rows = rows.filter((a) => [...(a.mainAreas || []), ...(a.saleAreas || a.areas || []), ...(a.directAreas || [])]
+        .join(' ').toLowerCase().includes(q));
     }
     if (f.status) rows = rows.filter((a) => a.status === f.status);
     const tr = rows.map((a) => {
@@ -1340,7 +1345,8 @@
     }).join('');
     return `${pageHeader('一级代理商', '点击行查看详情（编辑/停用在详情内）', '<button class="btn btn-primary" data-action="open-create-l1">新建一级</button>')}
       ${filterBar(`
-        <input class="field-input" placeholder="搜索名称/编码/区域" data-filter="agent-l1:q" value="${escapeHtml(f.q || '')}" />
+        <input class="field-input" placeholder="搜索名称/编码" data-filter="agent-l1:name" value="${escapeHtml(f.name || '')}" />
+        <input class="field-input" placeholder="搜索区域" data-filter="agent-l1:region" value="${escapeHtml(f.region || '')}" />
         <select class="field-input" data-filter="agent-l1:status"><option value="">状态</option><option value="启用" ${f.status==='启用'?'selected':''}>启用</option><option value="停用" ${f.status==='停用'?'selected':''}>停用</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
