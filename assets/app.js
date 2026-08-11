@@ -705,6 +705,7 @@
     'l2-sales-detail': '二级销售详情', 'l2-return-detail': '二级退货详情',
     'mini-scan': '扫码', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
     'mini-service': '售后', 'mini-aftersale': '售后', 'mini-exception': '异常', 'mini-mine': '我的',
+    'mini-mine-l2': '二级代理', 'mini-mine-sub': '子账号',
   };
 
   function currentL1Id() { return ROLES[ui.role]?.l1Id || null; }
@@ -1632,7 +1633,9 @@
 
   function miniAllowedRoutes() {
     const base = miniTabs().map((t) => t.id);
-    if (ui.role === 'l1') return [...base, 'mini-purchase', 'mini-sales', 'mini-aftersale', 'mini-exception'];
+    if (ui.role === 'l1') {
+      return [...base, 'mini-purchase', 'mini-sales', 'mini-aftersale', 'mini-exception', 'mini-mine-l2', 'mini-mine-sub'];
+    }
     if (ui.role === 'l2') return [...base, 'mini-aftersale', 'mini-exception'];
     return base;
   }
@@ -1641,6 +1644,7 @@
     const r = ui.route;
     if (tabId === 'mini-biz') return ['mini-biz', 'mini-purchase', 'mini-sales'].includes(r);
     if (tabId === 'mini-service') return ['mini-service', 'mini-aftersale', 'mini-exception'].includes(r);
+    if (tabId === 'mini-mine') return ['mini-mine', 'mini-mine-l2', 'mini-mine-sub'].includes(r);
     if (tabId === 'mini-scan') return r === 'mini-scan';
     return r === tabId;
   }
@@ -2932,64 +2936,102 @@
   function pageMiniAftersale() { return pageMiniService(); }
   function pageMiniException() { return pageMiniService(); }
 
-  function pageMiniMine() {
-    const r = ROLES[ui.role];
+  function miniMineSubHd(title) {
+    return `<div class="mini-sub-hd">
+      <button type="button" class="mini-sub-back" data-go="mini-mine">‹ 返回</button>
+      <strong>${escapeHtml(title)}</strong>
+      <span class="mini-sub-hd-spacer"></span>
+    </div>`;
+  }
+
+  function pageMiniMineL2() {
+    if (ui.role !== 'l1') return `${miniMineSubHd('二级代理')}${emptyHint('仅一级可管理二级代理')}`;
     const l1Id = currentL1Id();
-    const subs = ui.role === 'l1' ? db.subAccounts.filter((s) => s.l1Id === l1Id) : [];
     const l2q = (ui.filters.miniL2 || {}).q || '';
-    let l2rows = ui.role === 'l1'
-      ? db.agentsL2.filter((a) => a.parentId === l1Id || (a.pending && a.prevParentId === l1Id))
-      : [];
+    let l2rows = db.agentsL2.filter((a) => a.parentId === l1Id || (a.pending && a.prevParentId === l1Id));
     if (l2q) {
       const q = l2q.toLowerCase();
       l2rows = l2rows.filter((a) => [a.name, a.code, a.type, ...(a.areas || [])].join(' ').toLowerCase().includes(q));
     }
     const l2Acc = (a) => db.accounts.find((x) => x.roleId === 'R4' && x.agentId === a.id);
-    return `<div class="mini-page-title">我的</div>
-      <div class="mini-profile">
-        <span class="user-avatar">${r.avatar}</span>
-        <div><strong>${escapeHtml(r.name)}</strong><div style="font-size:12px;color:var(--text-3)">${escapeHtml(r.account)}</div></div>
+    return `${miniMineSubHd('二级代理')}
+      <p class="mini-page-desc">维护下属二级信息与登录账号；新建后进入平台「二级审核」。</p>
+      <button class="btn btn-primary btn-block" data-action="open-create-l2-mini">+ 创建二级代理</button>
+      <input class="field-input" style="margin:8px 0" placeholder="搜索名称/编码/城市" data-filter="miniL2:q" value="${escapeHtml(l2q)}" />
+      <div class="mini-agent-list">
+        ${l2rows.map((a) => {
+          const acc = l2Acc(a);
+          const audit = a.pending ? '待分配' : (a.auditStatus === 'pending' ? '待审核' : (a.auditStatus === 'rejected' ? '已驳回' : '已通过'));
+          const tone = a.pending || a.auditStatus === 'pending' ? 'orange' : (a.auditStatus === 'rejected' ? 'red' : 'green');
+          return `<div class="mini-agent-card">
+            <div class="mini-agent-card-hd">
+              <div>
+                <strong>${escapeHtml(a.name)}</strong>
+                <div class="mini-agent-meta">${escapeHtml(a.code)} · ${escapeHtml(a.type)} · ${escapeHtml((a.areas || []).join('、') || '未设城市')}</div>
+                <div class="mini-agent-meta">登录：${escapeHtml(acc?.username || '未创建账号')}</div>
+              </div>
+              <div class="mini-agent-tags">${tag(a.status, a.status==='启用'?'green':'gray')} ${tag(audit, tone)}</div>
+            </div>
+            <div class="mini-agent-ops">
+              <button class="btn btn-sm" data-action="open-edit-l2-mini" data-id="${a.id}">编辑</button>
+              <button class="btn btn-sm" data-action="toggle-l2-mini" data-id="${a.id}">${a.status==='启用'?'停用':'启用'}</button>
+              <button class="btn btn-sm btn-danger" data-action="delete-l2-mini" data-id="${a.id}">删除</button>
+            </div>
+          </div>`;
+        }).join('') || emptyHint('暂无二级代理，点上方创建')}
+      </div>`;
+  }
+
+  function pageMiniMineSub() {
+    if (ui.role !== 'l1') return `${miniMineSubHd('子账号')}${emptyHint('仅一级可管理子账号')}`;
+    const l1Id = currentL1Id();
+    const subs = db.subAccounts.filter((s) => s.l1Id === l1Id);
+    return `${miniMineSubHd('子账号')}
+      <p class="mini-page-desc">一级可创建仅扫码子账号，不可改单。</p>
+      <button class="btn btn-primary btn-block" data-action="open-create-sub" style="margin-bottom:8px">+ 创建子账号</button>
+      <div class="mini-mine-block">
+        ${subs.map((s)=>`<div class="mini-list-row"><span>${escapeHtml(s.username)} · ${escapeHtml(s.name)}</span>
+          <span><button class="btn btn-sm" data-action="toggle-sub" data-id="${s.id}">${s.status==='启用'?'停用':'启用'}</button></span>
+        </div>`).join('') || emptyHint('暂无子账号')}
+      </div>`;
+  }
+
+  function pageMiniMine() {
+    const r = ROLES[ui.role];
+    const l1Id = currentL1Id();
+    const l2Count = ui.role === 'l1'
+      ? db.agentsL2.filter((a) => a.parentId === l1Id || (a.pending && a.prevParentId === l1Id)).length
+      : 0;
+    const subCount = ui.role === 'l1' ? db.subAccounts.filter((s) => s.l1Id === l1Id).length : 0;
+    return `<div class="mini-mine-page">
+      <div class="mini-mine-main">
+        <div class="mini-page-title">我的</div>
+        <div class="mini-profile">
+          <span class="user-avatar">${r.avatar}</span>
+          <div><strong>${escapeHtml(r.name)}</strong><div style="font-size:12px;color:var(--text-3)">${escapeHtml(r.account)}</div></div>
+        </div>
+        ${ui.role === 'l1' ? `<div class="mini-mine-entries">
+          <button type="button" class="mini-mine-entry" data-go="mini-mine-l2">
+            <span class="mini-mine-entry-text">
+              <strong>二级代理</strong>
+              <span>维护下属二级与登录账号 · ${l2Count} 个</span>
+            </span>
+            <span class="mini-mine-entry-arrow">›</span>
+          </button>
+          <button type="button" class="mini-mine-entry" data-go="mini-mine-sub">
+            <span class="mini-mine-entry-text">
+              <strong>子账号</strong>
+              <span>仅扫码权限 · ${subCount} 个</span>
+            </span>
+            <span class="mini-mine-entry-arrow">›</span>
+          </button>
+        </div>` : `<div class="mini-mine-block"><p class="mini-page-desc" style="margin:0">账号信息与演示操作</p></div>`}
       </div>
-      ${ui.role === 'l1' ? `
-        <div class="mini-mine-block">
-          <div class="mini-section-title">二级代理</div>
-          <p class="mini-page-desc">维护下属二级信息与登录账号；新建后进入平台「二级审核」。</p>
-          <button class="btn btn-primary btn-block" data-action="open-create-l2-mini">+ 创建二级代理</button>
-          <input class="field-input" style="margin:8px 0" placeholder="搜索名称/编码/城市" data-filter="miniL2:q" value="${escapeHtml(l2q)}" />
-          <div class="mini-agent-list">
-            ${l2rows.map((a) => {
-              const acc = l2Acc(a);
-              const audit = a.pending ? '待分配' : (a.auditStatus === 'pending' ? '待审核' : (a.auditStatus === 'rejected' ? '已驳回' : '已通过'));
-              const tone = a.pending || a.auditStatus === 'pending' ? 'orange' : (a.auditStatus === 'rejected' ? 'red' : 'green');
-              return `<div class="mini-agent-card">
-                <div class="mini-agent-card-hd">
-                  <div>
-                    <strong>${escapeHtml(a.name)}</strong>
-                    <div class="mini-agent-meta">${escapeHtml(a.code)} · ${escapeHtml(a.type)} · ${escapeHtml((a.areas || []).join('、') || '未设城市')}</div>
-                    <div class="mini-agent-meta">登录：${escapeHtml(acc?.username || '未创建账号')}</div>
-                  </div>
-                  <div class="mini-agent-tags">${tag(a.status, a.status==='启用'?'green':'gray')} ${tag(audit, tone)}</div>
-                </div>
-                <div class="mini-agent-ops">
-                  <button class="btn btn-sm" data-action="open-edit-l2-mini" data-id="${a.id}">编辑</button>
-                  <button class="btn btn-sm" data-action="toggle-l2-mini" data-id="${a.id}">${a.status==='启用'?'停用':'启用'}</button>
-                  <button class="btn btn-sm btn-danger" data-action="delete-l2-mini" data-id="${a.id}">删除</button>
-                </div>
-              </div>`;
-            }).join('') || emptyHint('暂无二级代理，点上方创建')}
-          </div>
-        </div>
-        <div class="mini-mine-block">
-          <div class="mini-section-title">子账号（仅扫码）</div>
-          <p class="mini-page-desc">一级可创建仅扫码子账号，不可改单。</p>
-          <button class="btn btn-primary btn-block" data-action="open-create-sub" style="margin-bottom:8px">+ 创建子账号</button>
-          ${subs.map((s)=>`<div class="mini-list-row"><span>${escapeHtml(s.username)} · ${escapeHtml(s.name)}</span>
-            <span><button class="btn btn-sm" data-action="toggle-sub" data-id="${s.id}">${s.status==='启用'?'停用':'启用'}</button></span>
-          </div>`).join('') || emptyHint('暂无子账号')}
-        </div>
-      ` : ''}
-      <button class="btn btn-block" data-action="logout" style="margin-top:12px">退出登录</button>
-      <button class="btn btn-block" data-action="reset-demo" style="margin-top:8px">重置演示数据</button>`;
+      <div class="mini-mine-footer">
+        <button class="btn btn-block" data-action="logout">退出登录</button>
+        <button class="btn btn-block" data-action="reset-demo">重置演示数据</button>
+      </div>
+    </div>`;
   }
 
   function renderMiniSnCard(row) {
@@ -3023,7 +3065,7 @@
     'l2-sales-detail': pageL2SalesDetail, 'l2-return-detail': pageL2ReturnDetail,
     'mini-scan': pageMiniScan, 'mini-biz': pageMiniBiz, 'mini-purchase': pageMiniPurchase, 'mini-sales': pageMiniSales,
     'mini-stock': pageMiniStock, 'mini-service': pageMiniService, 'mini-aftersale': pageMiniAftersale, 'mini-exception': pageMiniException,
-    'mini-mine': pageMiniMine,
+    'mini-mine': pageMiniMine, 'mini-mine-l2': pageMiniMineL2, 'mini-mine-sub': pageMiniMineSub,
   };
   /* ---------- Modals ---------- */
   function openModal(type, payload = {}) {

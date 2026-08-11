@@ -1255,6 +1255,80 @@ table.data .col-check input[type="checkbox"] {
   padding: 14px;
   margin-bottom: 12px;
 }
+.mini-mine-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.mini-mine-main { flex: 1 1 auto; }
+.mini-mine-footer {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0 4px;
+  background: linear-gradient(180deg, rgba(242, 244, 247, 0), #f2f4f7 28%);
+}
+.mini-mine-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mini-mine-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+  cursor: pointer;
+}
+.mini-mine-entry:active { background: #f7faf9; }
+.mini-mine-entry-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.mini-mine-entry-text strong { font-size: 15px; color: var(--text-strong); }
+.mini-mine-entry-text span { font-size: 12px; color: var(--text-3); }
+.mini-mine-entry-arrow {
+  flex-shrink: 0;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-3);
+}
+.mini-sub-hd {
+  display: grid;
+  grid-template-columns: 64px 1fr 64px;
+  align-items: center;
+  margin: 0 0 10px;
+}
+.mini-sub-hd strong {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.mini-sub-back {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 0;
+  cursor: pointer;
+  text-align: left;
+}
+.mini-sub-hd-spacer { display: block; }
 .mini-mine-block {
   background: #fff;
   border: 1px solid var(--border);
