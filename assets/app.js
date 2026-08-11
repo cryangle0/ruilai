@@ -2421,7 +2421,7 @@
       body = editing ? `<div class="form-grid">
           <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(a.name)}" /></div>
           <div class="form-field"><label>类型</label><input class="field-input" value="${escapeHtml(a.type)}" readonly /></div>
-          <div class="form-field span-2"><label>围栏城市</label>${chips(cities.length?cities:['杭州市'], a.areas||[], 'data-toggle-city')}</div>
+          <div class="form-field span-2"><label>围栏城市 <button type="button" class="btn btn-sm" data-action="select-all-city">全选</button></label>${chips(cities.length?cities:['杭州市'], a.areas||[], 'data-toggle-city')}</div>
           <div class="form-field"><label>独立预警倍数</label><input type="number" step="0.1" class="field-input" id="f-warn" value="${a.warnMultiplier ?? ''}" placeholder="空=继承一级" /></div>
           <div class="form-field"><label>独立报警粒度</label><select class="field-input" id="f-warn-mode">
             <option value="" ${!a.warnMode?'selected':''}>继承一级</option>
@@ -2449,12 +2449,19 @@
            ${a.type==='法人'&&a.parentId?`<button class="btn btn-danger" data-action="unbind-l2" data-id="${a.id}">解绑法人</button>`:''}`;
     } else if (type === 'rebind-l2') {
       const a = db.agentsL2.find((x) => x.id === payload.id);
+      const d = draft || {};
+      if (!d.parentId) d.parentId = a.prevParentId || db.agentsL1.find((x) => x.status === '启用')?.id || '';
+      const cities = citiesForL1(d.parentId);
+      const cityOpts = cities.length ? cities : ['杭州市'];
+      d.areas = (d.areas || a.prevAreas || a.areas || []).filter((c) => cityOpts.includes(c));
+      ui.modal.draft = d;
       title = `重新绑定 · ${a.name}`;
       body = `<div class="form-field"><label>绑定一级</label>
-        <select class="field-input" id="f-parent">${db.agentsL1.filter((x)=>x.status==='启用').map((x)=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('')}</select>
+        <select class="field-input" id="f-parent">${db.agentsL1.filter((x)=>x.status==='启用').map((x)=>`<option value="${x.id}" ${x.id===d.parentId?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</select>
       </div>
-      <div class="form-field"><label>授权城市（多选，先选一级后在保存时取可选城市）</label>
-        <input class="field-input" id="f-cities" placeholder="如 杭州市,宁波市" value="${escapeHtml((a.prevAreas||a.areas||[]).join(','))}" />
+      <div class="form-field"><label>围栏城市 <button type="button" class="btn btn-sm" data-action="select-all-city">全选</button></label>
+        ${chips(cityOpts, d.areas || [], 'data-toggle-city')}
+        ${!cities.length ? '<p class="muted" style="margin-top:6px">该一级无可售城市，请先维护一级可销售范围</p>' : ''}
       </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="rebind-l2-ok" data-id="${a.id}">绑定</button>`;
     } else if (type === 'view-sn' || type === 'edit-sn') {
@@ -3337,12 +3344,24 @@
         confirmDialog('确认切换该二级代理启用状态？', 'toggle-l2-ok', { id }); break;
       case 'unbind-l2':
         confirmDialog('确认解绑该法人二级？将进入待分配池。', 'unbind-l2-ok', { id }); break;
-      case 'open-rebind-l2': openModal('rebind-l2', { id }); break;
+      case 'open-rebind-l2': {
+        const a = db.agentsL2.find((x) => x.id === id);
+        openModal('rebind-l2', {
+          id,
+          draftSeed: {
+            parentId: a?.prevParentId || a?.parentId || db.agentsL1.find((x) => x.status === '启用')?.id || '',
+            areas: [...(a?.prevAreas || a?.areas || [])],
+          },
+        });
+        break;
+      }
       case 'rebind-l2-ok': {
         const a = db.agentsL2.find((x)=>x.id===id);
-        const parentId = $('#f-parent')?.value;
-        const cities = ($('#f-cities')?.value || '').split(/[,，]/).map((x)=>x.trim()).filter(Boolean);
-        a.parentId = parentId; a.areas = cities; a.pending = false; a.auditStatus = 'approved';
+        const parentId = $('#f-parent')?.value || ui.modal.draft?.parentId;
+        const cities = ui.modal.draft?.areas || [];
+        if (!parentId) return toast('请选择绑定一级', 'err');
+        if (!cities.length) return toast('请选择围栏城市（可用全选）', 'err');
+        a.parentId = parentId; a.areas = [...cities]; a.pending = false; a.auditStatus = 'approved';
         addLog(`重新绑定二级 ${a.name} → ${l1Name(parentId)}`); saveStore(); closeModal(); toast('已绑定'); break;
       }
       case 'audit-l2-ok': {
@@ -3686,6 +3705,13 @@
         ui.modal.draft.directAreas = areas.flatMap((r) => CITY_MAP[r] || []);
         render(); break;
       }
+      case 'select-all-city': {
+        if (!ui.modal?.draft) break;
+        const parentId = ui.modal.draft.parentId || $('#f-parent')?.value;
+        const list = citiesForL1(parentId);
+        ui.modal.draft.areas = list.length ? [...list] : ['杭州市'];
+        render(); break;
+      }
       case 'open-create-product':
         openModal('create-product', { ptype: el.getAttribute('data-ptype') || 'kit', draftSeed: { type: el.getAttribute('data-ptype') || 'kit', sizes: [...BAND_SIZES], belts: [...BELTS], defaultBelt: { ...DEFAULT_BELT }, status: '上架', productLineId: activeLineId(), code: '', name: '', note: '' } });
         break;
@@ -4015,12 +4041,22 @@
       render();
     }));
     document.querySelectorAll('[data-toggle-city]').forEach((el) => el.addEventListener('click', () => {
+      if (!ui.modal?.draft) return;
       const r = el.getAttribute('data-toggle-city');
       const set = new Set(ui.modal.draft.areas || []);
       if (set.has(r)) set.delete(r); else set.add(r);
       ui.modal.draft.areas = [...set];
       render();
     }));
+    if (ui.modal?.type === 'rebind-l2') {
+      $('#f-parent')?.addEventListener('change', () => {
+        if (!ui.modal?.draft) return;
+        ui.modal.draft.parentId = $('#f-parent').value;
+        const opts = citiesForL1(ui.modal.draft.parentId);
+        ui.modal.draft.areas = (ui.modal.draft.areas || []).filter((c) => opts.includes(c));
+        render();
+      });
+    }
     document.querySelectorAll('[data-toggle-psize]').forEach((el) => el.addEventListener('click', () => {
       if (!ui.modal?.draft) return;
       const r = el.getAttribute('data-toggle-psize');
