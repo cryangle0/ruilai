@@ -566,7 +566,7 @@
     home: '工作台', 'agent-l1': '一级代理商', 'agent-l2': '二级代理商', 'agent-l2-audit': '二级审核',
     'agent-pending': '待分配(法人)', sn: 'SN码库', product: '商品库', purchase: '采购单管理',
     sales: '销售单管理', stock: '库存管理', return: '返货管理', exception: '异常管理', customers: '销售客户',
-    stats: '数据统计', role: '角色与权限', log: '操作日志',
+    stats: '数据大屏', role: '角色与权限', log: '操作日志',
     'l1-sales-detail': '一级销售详情', 'l1-return-detail': '一级退货详情',
     'l2-sales-detail': '二级销售详情', 'l2-return-detail': '二级退货详情',
     'mini-scan': '扫码', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
@@ -1187,7 +1187,7 @@
         { id: 'return', title: '返货管理', icon: '↩', badge: pendingReturnCount() || null },
         { id: 'exception', title: '异常管理', icon: '⚠', badge: openExCount() || null },
         { id: 'customers', title: '销售客户', icon: '☺' },
-        { id: 'stats', title: '数据统计', icon: '▤' },
+        { id: 'stats', title: '数据大屏', icon: '◎' },
       ]},
       { group: '系统', items: [
         { id: 'role', title: '角色与权限', icon: '⚙' },
@@ -1715,7 +1715,7 @@
     });
     const monthQty = db.returns.filter((r) => inDateRange(r.createdAt, monthStart(), todayDate())).reduce((n, r) => n + (r.sns || []).length, 0);
     const histQty = db.returns.reduce((n, r) => n + (r.sns || []).length, 0);
-    return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', '<button class="btn" data-go="stats">退货统计</button>')}
+    return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', '<button class="btn" data-go="stats">数据大屏</button>')}
       <div class="metric-grid" style="margin-bottom:10px">
         ${metricCard('本月退货件数', monthQty, 'return')}
         ${metricCard('历史退货件数', histQty, 'return')}
@@ -1814,44 +1814,232 @@
     const poAll = db.purchases.filter((p) => p.status === 'approved');
     const poMonth = poAll.filter((p) => inDateRange(p.createdAt, from, to));
     const poQty = (list) => list.reduce((n, p) => n + purchaseNeedQty(p), 0);
-    const soDist = db.sales.filter((s) => s.channel === 'distribute' && s.status === 'done');
-    const soDir = db.sales.filter((s) => s.channel === 'direct' && s.status === 'done');
-    const qty = (list, fr, t) => list.filter((s) => inDateRange(s.createdAt, fr, t)).reduce((n, s) => n + (s.scanned || []).length, 0);
-    const exOpen = db.exceptions.filter((e) => e.status === '未处理').length;
-    const exAll = db.exceptions.length;
+    const soDone = db.sales.filter((s) => s.status === 'done');
+    const soDist = soDone.filter((s) => s.channel === 'distribute');
+    const soDir = soDone.filter((s) => s.channel === 'direct');
+    const saleQty = (list, fr, t) => list.filter((s) => inDateRange(s.createdAt, fr, t)).reduce((n, s) => n + (s.scanned || []).length, 0);
+    const distRange = saleQty(soDist, from, to);
+    const dirRange = saleQty(soDir, from, to);
+    const saleRange = distRange + dirRange;
     const actMonth = db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, from, to)).length;
+    const actAll = db.sns.filter((s) => s.status === 'bound').length;
     const rtMonth = db.returns.filter((r) => inDateRange(r.createdAt, from, to)).reduce((n, r) => n + (r.sns || []).length, 0);
-    const rtAll = db.returns.reduce((n, r) => n + (r.sns || []).length, 0);
-    return `${pageHeader('数据统计', '点击指标跳转对应列表并带筛选')}
-      ${filterBar(`
-        <input type="date" class="field-input" data-filter="stats:from" value="${from}" />
-        <input type="date" class="field-input" data-filter="stats:to" value="${to}" />
-      `)}
-      <h3 class="section-title">采购报表 (PO)</h3>
-      <div class="metric-grid">
-        ${metricCard('区间采购量', poQty(poMonth), 'purchase')}
-        ${metricCard('历史采购总量', poQty(poAll), 'purchase')}
+    const rtPending = pendingReturnCount();
+    const exOpen = openExCount();
+    const poPending = pendingPoCount();
+    const days = eachDateStr(from, to);
+    const trendSales = days.map((d) => saleQty(soDone, d, d));
+    const trendPo = days.map((d) => poQty(poAll.filter((p) => inDateRange(p.createdAt, d, d))));
+    const trendAct = days.map((d) => db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, d, d)).length);
+    const dayLabels = days.map((d) => d.slice(5));
+    const snStatus = [
+      { label: '原厂', value: db.sns.filter((s) => s.status === 'warehouse').length, color: '#64748b' },
+      { label: '一级', value: db.sns.filter((s) => s.status === 'l1').length, color: '#38bdf8' },
+      { label: '二级', value: db.sns.filter((s) => s.status === 'l2' || s.reIn).length, color: '#2dd4a8' },
+      { label: '已售', value: actAll, color: '#00a46e' },
+      { label: '冷冻/退厂', value: db.sns.filter((s) => s.status === 'frozen' || s.status === 'factory').length, color: '#f59e0b' },
+    ];
+    const channelPie = [
+      { label: '分销', value: distRange || saleQty(soDist), color: '#2dd4a8' },
+      { label: '直销', value: dirRange || saleQty(soDir), color: '#38bdf8' },
+    ];
+    const l1Rank = db.agentsL1.map((a) => {
+      const q = soDone.filter((s) => s.l1Id === a.id && inDateRange(s.createdAt, from, to))
+        .reduce((n, s) => n + (s.scanned || []).length, 0);
+      return { label: a.name.replace(/锐涞|总代|代理/g, '').slice(0, 8) || a.name, value: q };
+    }).sort((a, b) => b.value - a.value);
+    const exByType = {};
+    db.exceptions.forEach((e) => { exByType[e.type || '其他'] = (exByType[e.type || '其他'] || 0) + 1; });
+    const exBars = Object.entries(exByType).map(([label, value]) => ({ label: label.slice(0, 8), value }))
+      .sort((a, b) => b.value - a.value).slice(0, 6);
+    const rtByStatus = [
+      { label: '待审', value: db.returns.filter((r) => r.status === 'pending').length, color: '#f59e0b' },
+      { label: '已通过', value: db.returns.filter((r) => r.status === 'approved').length, color: '#2dd4a8' },
+      { label: '已处理', value: db.returns.filter((r) => r.status === 'done').length, color: '#38bdf8' },
+      { label: '已驳回', value: db.returns.filter((r) => r.status === 'rejected').length, color: '#f87171' },
+    ];
+    const sizeMap = {};
+    soDone.filter((s) => inDateRange(s.createdAt, from, to)).forEach((s) => {
+      Object.entries(s.planBySize || {}).forEach(([sz, q]) => { sizeMap[sz] = (sizeMap[sz] || 0) + Number(q || 0); });
+    });
+    const sizeBars = BAND_SIZES.map((sz) => ({ label: sz, value: sizeMap[sz] || 0 }));
+    const clock = nowStr().slice(11, 16);
+    const kpi = (label, value, go, filter, tone = '') =>
+      `<button type="button" class="dash-kpi ${tone}" ${go ? `data-go="${go}"` : ''}${filter ? ` data-set-filter="${filter}"` : ''}>
+        <span class="dash-kpi-label">${escapeHtml(label)}</span>
+        <strong class="dash-kpi-value num">${value}</strong>
+      </button>`;
+
+    return `<div class="dash">
+      <div class="dash-hd">
+        <div>
+          <div class="dash-eyebrow">RUILAI OPS · COMMAND BOARD</div>
+          <h2 class="dash-title">锐涞运营数据大屏</h2>
+          <p class="dash-sub">区间 ${escapeHtml(from)} ~ ${escapeHtml(to)} · 点击指标可下钻列表</p>
+        </div>
+        <div class="dash-hd-right">
+          <div class="dash-clock num">${escapeHtml(clock)}</div>
+          <div class="dash-filters">
+            <input type="date" class="field-input dash-input" data-filter="stats:from" value="${from}" />
+            <span class="dash-sep">→</span>
+            <input type="date" class="field-input dash-input" data-filter="stats:to" value="${to}" />
+            <button class="btn btn-sm dash-query" data-action="apply-filter">刷新</button>
+          </div>
+        </div>
       </div>
-      <h3 class="section-title">销售报表 (SO) · 点击跳转 SN 总表（已按渠道过滤）</h3>
-      <div class="metric-grid">
-        ${metricCard('分销·区间', qty(soDist, from, to), 'sn', 'sn:channel=distribute')}
-        ${metricCard('分销·历史', qty(soDist), 'sn', 'sn:channel=distribute')}
-        ${metricCard('直销·区间', qty(soDir, from, to), 'sn', 'sn:channel=direct')}
-        ${metricCard('直销·历史', qty(soDir), 'sn', 'sn:channel=direct')}
+
+      <div class="dash-kpis">
+        ${kpi('区间销量 SN', saleRange, 'sn')}
+        ${kpi('区间采购量', poQty(poMonth), 'purchase')}
+        ${kpi('区间激活', actMonth, 'sn', 'sn:status=bound')}
+        ${kpi('待审采购', poPending, 'purchase', '', poPending ? 'warn' : '')}
+        ${kpi('待审退货', rtPending, 'return', 'return:status=pending', rtPending ? 'warn' : '')}
+        ${kpi('未处理异常', exOpen, 'exception', 'exception:status=未处理', exOpen ? 'danger' : '')}
       </div>
-      <h3 class="section-title">退货统计 (RT)</h3>
-      <div class="metric-grid">
-        ${metricCard('区间退货件数', rtMonth, 'return')}
-        ${metricCard('历史退货件数', rtAll, 'return')}
-        ${metricCard('待审退货单', db.returns.filter((r)=>r.status==='pending').length, 'return', 'return:status=pending')}
+
+      <div class="dash-grid">
+        <section class="dash-panel dash-panel--wide">
+          <header class="dash-panel-hd"><h3>业务趋势</h3><span>销量 / 采购入库 / 激活</span></header>
+          ${svgMultiLine(dayLabels, [
+            { name: '销量', color: '#2dd4a8', values: trendSales },
+            { name: '采购', color: '#38bdf8', values: trendPo },
+            { name: '激活', color: '#fbbf24', values: trendAct },
+          ])}
+        </section>
+        <section class="dash-panel">
+          <header class="dash-panel-hd"><h3>销售渠道</h3><span>区间出货构成</span></header>
+          ${svgDonut(channelPie)}
+        </section>
+        <section class="dash-panel">
+          <header class="dash-panel-hd"><h3>一级代理销量榜</h3><span>区间 SN</span></header>
+          ${svgHBars(l1Rank, '#2dd4a8')}
+        </section>
+        <section class="dash-panel">
+          <header class="dash-panel-hd"><h3>SN 生命周期分布</h3><span>全库现状</span></header>
+          ${svgDonut(snStatus)}
+        </section>
+        <section class="dash-panel">
+          <header class="dash-panel-hd"><h3>尺码结构</h3><span>区间计划尺码</span></header>
+          ${svgVBars(sizeBars, '#38bdf8')}
+        </section>
+        <section class="dash-panel">
+          <header class="dash-panel-hd"><h3>异常类型</h3><span>历史累计</span></header>
+          ${svgHBars(exBars, '#f87171')}
+        </section>
+        <section class="dash-panel">
+          <header class="dash-panel-hd"><h3>退货状态</h3><span>区间外全库单量</span></header>
+          ${svgDonut(rtByStatus)}
+          <div class="dash-footnote">区间退货件数 <strong class="num">${rtMonth}</strong></div>
+        </section>
+        <section class="dash-panel dash-panel--wide">
+          <header class="dash-panel-hd"><h3>经营快照</h3><span>可下钻</span></header>
+          <div class="dash-snap">
+            <button type="button" class="dash-snap-item" data-go="purchase"><span>历史采购总量</span><strong class="num">${poQty(poAll)}</strong></button>
+            <button type="button" class="dash-snap-item" data-go="sn" data-set-filter="sn:channel=distribute"><span>分销历史</span><strong class="num">${saleQty(soDist)}</strong></button>
+            <button type="button" class="dash-snap-item" data-go="sn" data-set-filter="sn:channel=direct"><span>直销历史</span><strong class="num">${saleQty(soDir)}</strong></button>
+            <button type="button" class="dash-snap-item" data-go="sn" data-set-filter="sn:status=bound"><span>历史激活</span><strong class="num">${actAll}</strong></button>
+            <button type="button" class="dash-snap-item" data-go="return"><span>历史退货件数</span><strong class="num">${db.returns.reduce((n, r) => n + (r.sns || []).length, 0)}</strong></button>
+            <button type="button" class="dash-snap-item" data-go="exception"><span>异常总量</span><strong class="num">${db.exceptions.length}</strong></button>
+          </div>
+        </section>
       </div>
-      <h3 class="section-title">激活 / 异常 (ACT / EX)</h3>
-      <div class="metric-grid">
-        ${metricCard('区间激活', actMonth, 'sn', 'sn:status=bound')}
-        ${metricCard('历史激活', db.sns.filter((s)=>s.status==='bound').length, 'sn', 'sn:status=bound')}
-        ${metricCard('未处理异常', exOpen, 'exception', 'exception:status=未处理')}
-        ${metricCard('异常总量', exAll, 'exception')}
+    </div>`;
+  }
+
+  function eachDateStr(from, to) {
+    const out = [];
+    const cur = new Date(String(from).replace(/-/g, '/'));
+    const end = new Date(String(to).replace(/-/g, '/'));
+    if (Number.isNaN(cur.getTime()) || Number.isNaN(end.getTime())) return [from];
+    let guard = 0;
+    while (cur <= end && guard < 62) {
+      const p = (n) => String(n).padStart(2, '0');
+      out.push(`${cur.getFullYear()}-${p(cur.getMonth() + 1)}-${p(cur.getDate())}`);
+      cur.setDate(cur.getDate() + 1);
+      guard += 1;
+    }
+    return out.length ? out : [from];
+  }
+
+  function svgMultiLine(labels, series) {
+    const W = 640; const H = 220; const pad = { l: 36, r: 16, t: 18, b: 32 };
+    const iw = W - pad.l - pad.r; const ih = H - pad.t - pad.b;
+    const maxV = Math.max(1, ...series.flatMap((s) => s.values));
+    const n = Math.max(1, labels.length - 1);
+    const xAt = (i) => pad.l + (labels.length <= 1 ? iw / 2 : (i / n) * iw);
+    const yAt = (v) => pad.t + ih - (v / maxV) * ih;
+    const paths = series.map((s) => {
+      const pts = s.values.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ');
+      const area = `${xAt(0)},${pad.t + ih} ${pts} ${xAt(s.values.length - 1)},${pad.t + ih}`;
+      return `<polygon points="${area}" fill="${s.color}22"></polygon>
+        <polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"></polyline>
+        ${s.values.map((v, i) => `<circle cx="${xAt(i)}" cy="${yAt(v)}" r="3" fill="${s.color}"></circle>`).join('')}`;
+    }).join('');
+    const yTicks = [0, 0.5, 1].map((t) => {
+      const v = Math.round(maxV * t);
+      const y = yAt(v);
+      return `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}" stroke="#ffffff12"></line>
+        <text x="${pad.l - 6}" y="${y + 3}" text-anchor="end" class="dash-svg-label">${v}</text>`;
+    }).join('');
+    const step = labels.length > 10 ? Math.ceil(labels.length / 8) : 1;
+    const xLabs = labels.map((lb, i) => (i % step === 0 || i === labels.length - 1)
+      ? `<text x="${xAt(i)}" y="${H - 8}" text-anchor="middle" class="dash-svg-label">${escapeHtml(lb)}</text>` : '').join('');
+    const legend = series.map((s) => `<span><i style="background:${s.color}"></i>${escapeHtml(s.name)}</span>`).join('');
+    return `<div class="dash-chart">${paths ? `<svg viewBox="0 0 ${W} ${H}" class="dash-svg" role="img">${yTicks}${paths}${xLabs}</svg>` : emptyHint('暂无趋势')}
+      <div class="dash-legend">${legend}</div></div>`;
+  }
+
+  function svgDonut(items) {
+    const data = (items || []).filter((x) => x.value > 0);
+    const total = data.reduce((n, x) => n + x.value, 0) || 1;
+    const R = 54; const r = 34; const cx = 70; const cy = 70;
+    let ang = -Math.PI / 2;
+    const arcs = (data.length ? data : [{ label: '空', value: 1, color: '#334155' }]).map((it) => {
+      const sweep = (it.value / total) * Math.PI * 2;
+      const a0 = ang; const a1 = ang + sweep; ang = a1;
+      const large = sweep > Math.PI ? 1 : 0;
+      const x0 = cx + R * Math.cos(a0); const y0 = cy + R * Math.sin(a0);
+      const x1 = cx + R * Math.cos(a1); const y1 = cy + R * Math.sin(a1);
+      const xi0 = cx + r * Math.cos(a1); const yi0 = cy + r * Math.sin(a1);
+      const xi1 = cx + r * Math.cos(a0); const yi1 = cy + r * Math.sin(a0);
+      const d = `M ${x0} ${y0} A ${R} ${R} 0 ${large} 1 ${x1} ${y1} L ${xi0} ${yi0} A ${r} ${r} 0 ${large} 0 ${xi1} ${yi1} Z`;
+      return `<path d="${d}" fill="${it.color || '#2dd4a8'}"><title>${escapeHtml(it.label)} ${it.value}</title></path>`;
+    }).join('');
+    const legend = (items || []).map((it) => `<div class="dash-donut-row"><span><i style="background:${it.color}"></i>${escapeHtml(it.label)}</span><strong class="num">${it.value}</strong></div>`).join('');
+    return `<div class="dash-donut">
+      <svg viewBox="0 0 140 140" class="dash-svg dash-svg--donut">${arcs}
+        <text x="70" y="66" text-anchor="middle" class="dash-svg-center num">${data.reduce((n, x) => n + x.value, 0)}</text>
+        <text x="70" y="84" text-anchor="middle" class="dash-svg-label">合计</text>
+      </svg>
+      <div class="dash-donut-legend">${legend}</div>
+    </div>`;
+  }
+
+  function svgHBars(items, color = '#2dd4a8') {
+    const rows = (items || []).slice(0, 6);
+    const maxV = Math.max(1, ...rows.map((x) => x.value));
+    if (!rows.length) return emptyHint('暂无数据');
+    return `<div class="dash-hbars">${rows.map((it) => {
+      const pct = Math.max(4, Math.round((it.value / maxV) * 100));
+      return `<div class="dash-hbar">
+        <span class="dash-hbar-label" title="${escapeHtml(it.label)}">${escapeHtml(it.label)}</span>
+        <div class="dash-hbar-track"><div class="dash-hbar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <strong class="dash-hbar-val num">${it.value}</strong>
       </div>`;
+    }).join('')}</div>`;
+  }
+
+  function svgVBars(items, color = '#38bdf8') {
+    const rows = items || [];
+    const maxV = Math.max(1, ...rows.map((x) => x.value));
+    return `<div class="dash-vbars">${rows.map((it) => {
+      const pct = Math.max(it.value ? 8 : 2, Math.round((it.value / maxV) * 100));
+      return `<div class="dash-vbar">
+        <strong class="num">${it.value}</strong>
+        <div class="dash-vbar-col"><div class="dash-vbar-fill" style="height:${pct}%;background:${color}"></div></div>
+        <span>${escapeHtml(it.label)}</span>
+      </div>`;
+    }).join('')}</div>`;
   }
 
   function pageRole() {
@@ -3153,9 +3341,9 @@
             </button>`).join('')}`).join('')}
         </div>
         <button class="sidebar-foot" data-action="logout">退出登录</button></aside>
-        <main class="content">
-          <div class="content-bar"><span>首页</span><span class="sep">/</span><strong>${escapeHtml(title)}</strong></div>
-          <div class="content-body"><div class="page page--scroll">${pageFn()}</div></div>
+        <main class="content ${ui.route==='stats'?'content--dash':''}">
+          <div class="content-bar ${ui.route==='stats'?'content-bar--dash':''}"><span>首页</span><span class="sep">/</span><strong>${escapeHtml(title)}</strong></div>
+          <div class="content-body ${ui.route==='stats'?'content-body--dash':''}"><div class="page page--scroll ${ui.route==='stats'?'page--dash':''}">${pageFn()}</div></div>
         </main>
       </div>
     </div>
