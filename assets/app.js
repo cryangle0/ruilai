@@ -1778,7 +1778,10 @@
             <td>${comps}</td>
             <td>${isKit ? (std.map((k)=>tag((k.grade || '') + (k.grade ? '·' : '') + k.size + '+' + k.belt, 'orange')).join(' ') || '—') : '—'}</td>
             <td>${tag(p.status, p.status==='上架'?'green':'gray')}</td>
-            <td class="ops" onclick="event.stopPropagation()"><button class="btn btn-sm" data-action="open-edit-product" data-id="${p.id}">修改</button></td>
+            <td class="ops" onclick="event.stopPropagation()">
+              <button class="btn btn-sm" data-action="open-edit-product" data-id="${p.id}">修改</button>
+              <button class="btn btn-sm" data-action="delete-product" data-id="${p.id}">删除</button>
+            </td>
           </tr>`;
         }).join('') || `<tr><td colspan="7">${emptyHint('暂无商品')}</td></tr>`}</tbody>
       </table></div>`;
@@ -3935,6 +3938,16 @@
           finishScanConfirmSo(pid);
         } else if (act === 'rebind-l2-confirm-ok') {
           finishRebindL2(pid, conf.payload);
+        } else if (act === 'delete-product-ok') {
+          const i = db.products.findIndex((x) => x.id === pid);
+          if (i >= 0) {
+            const name = db.products[i].name;
+            db.products.splice(i, 1);
+            addLog(`删除商品 ${name}`);
+            saveStore();
+            toast('已删除');
+          }
+          render();
         } else if (act === 'delete-l2-mini-ok') {
           finishDeleteL2Mini(pid);
         } else if (act === 'toggle-account-ok') {
@@ -4624,8 +4637,24 @@
       }
       case 'open-edit-product': {
         const p = db.products.find((x) => x.id === id);
+        if (!p) return toast('商品不存在', 'err');
         const draft = migrateProductShape(JSON.parse(JSON.stringify(p)));
         openModal('edit-product', { id, draft }); break;
+      }
+      case 'delete-product': {
+        const p = db.products.find((x) => x.id === id);
+        if (!p) return toast('商品不存在', 'err');
+        const usedSn = (db.sns || []).some((s) => s.productId === id);
+        const usedPo = (db.purchases || []).some((po) =>
+          (po.lines || []).some((l) => l.productId === id)
+          || (po.customLines || []).some((l) => l.productId === id)
+          || (po.parts || []).some((l) => l.partId === id));
+        const usedSo = (db.sales || []).some((s) => s.productId === id);
+        const hint = (usedSn || usedPo || usedSo)
+          ? `商品「${p.name}」已被单据/SN 引用，确认仍要删除？`
+          : `确认删除商品「${p.name}」？不可恢复。`;
+        confirmDialog(hint, 'delete-product-ok', { id }, { title: '删除商品', danger: true, okText: '确认删除' });
+        break;
       }
       case 'save-product': {
         syncProductDraftFromDom();
@@ -5108,8 +5137,12 @@
 
     document.querySelectorAll('[data-row-action]').forEach((el) => el.addEventListener('click', () => {
       const act = el.getAttribute('data-row-action');
-      const id = el.getAttribute('data-id');
-      openModal(act, { id });
+      // open-/delete-/toggle- 是动作名，不是 modal type
+      if (/^(open-|delete-|toggle-)/.test(act)) {
+        handleAction(act, el);
+        return;
+      }
+      openModal(act, { id: el.getAttribute('data-id') });
     }));
 
     // 仅顶栏「管理后台」切换；勿绑定扫码卡片的 data-mode=ship|direct|query
