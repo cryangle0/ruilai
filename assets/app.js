@@ -1878,7 +1878,7 @@
     if (f.channel) rows = rows.filter((s) => s.channel === f.channel);
     if (f.l1) rows = rows.filter((s) => s.l1Id === f.l1);
     if (f.status) rows = rows.filter((s) => s.status === f.status);
-    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情', '<button class="btn btn-primary" data-action="open-order-cart" data-channel="sales">购物车式下单</button>')}
+    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情', '<button class="btn btn-primary" data-action="open-order-cart" data-channel="sales">创建销售单</button>')}
       ${filterBar(`
         <select class="field-input" data-filter="sales:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <select class="field-input" data-filter="sales:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -2391,7 +2391,7 @@
   function pageMiniShipScan(subOnly) {
     const open = db.sales.filter((s) => s.l1Id === currentL1Id() && s.channel === 'distribute' && s.status === 'scanning');
     return `${subOnly?'<div class="mini-page-title">销售扫码</div><p class="mini-page-desc">子账号仅可扫码出货，不可改单</p>':''}
-      ${!subOnly?`<button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">购物车式下单</button>`:''}
+      ${!subOnly?`<button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">创建销售单</button>`:''}
       <div class="mini-list">${open.map((s)=>`<button type="button" class="mini-list-item" data-action="mini-open-scan-so" data-id="${s.id}">
         <strong>${escapeHtml(s.no)}</strong>
         <span>${escapeHtml(l2Name(s.l2Id))} · ${escapeHtml(soProductDetail(s))}</span>
@@ -2442,7 +2442,7 @@
       : db.sales.filter((s) => s.l1Id === currentL1Id() && s.channel !== 'direct');
     list = list.filter((s) => matchTimeSnFilter(s.createdAt, s.scanned || [], f));
     list = list.slice().sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
-    const actions = ui.role === 'l2' ? '' : `<button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">购物车式下单</button>`;
+    const actions = ui.role === 'l2' ? '' : `<button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">创建销售单</button>`;
     return `${actions}
       ${ui.role==='l2'?`<div class="alert alert-info">本级销售记录（点开详情看商品与 SN）</div>`:''}
       ${miniTimeSnFilters('miniSo')}
@@ -2584,24 +2584,40 @@
     const type = ui.role === 'l2' ? 'l2' : 'l1';
     const id = type === 'l2' ? currentL2Id() : currentL1Id();
     const f = ui.filters.miniStock || {};
-    const rows = getStockRows(type, id);
-    const sns = getStockSns(type, id, f).slice(0, 80);
+    const tab = ui.tabs.miniStock || 'product';
+    const rows = getStockRows(type, id).filter((r) => {
+      if (f.size && r.size !== f.size) return false;
+      if (f.belt && r.belt !== f.belt) return false;
+      return true;
+    });
+    const snAll = getStockSns(type, id, f);
+    const sns = snAll.slice(0, 80);
+    const panel = tab === 'sn'
+      ? `<div class="form-field"><input class="field-input" placeholder="搜 SN" data-filter="miniStock:sn" value="${escapeHtml(f.sn||'')}" /></div>
+        <div style="display:flex;gap:6px;margin:8px 0">
+          <select class="field-input" data-filter="miniStock:size"><option value="">弹力带</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
+          <select class="field-input" data-filter="miniStock:belt"><option value="">腰带</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
+        </div>
+        <div class="mini-list">${sns.map((s)=>`<button type="button" class="mini-list-item" data-action="open-view-sn" data-id="${s.sn}">
+          <strong>${escapeHtml(s.sn)}</strong>
+          <span>${escapeHtml(productName(s.productId))} · ${escapeHtml(s.size)}+${escapeHtml(s.belt||'—')}</span>
+        </button>`).join('')||emptyHint('无 SN')}</div>`
+      : `<div style="display:flex;gap:6px;margin:8px 0">
+          <select class="field-input" data-filter="miniStock:size"><option value="">弹力带</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
+          <select class="field-input" data-filter="miniStock:belt"><option value="">腰带</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
+        </div>
+        <div class="mini-list">${rows.map((r)=>`<div class="mini-list-item">
+          <strong>${escapeHtml(productName(r.productId))}</strong>
+          <span>${escapeHtml(r.size)} + ${escapeHtml(r.belt||'—')}</span>
+          <span class="num">×${r.qty}</span>
+        </div>`).join('')||emptyHint('暂无汇总')}</div>`;
     return `<div class="mini-page-title">库存</div>
-      <div class="form-field"><input class="field-input" placeholder="搜 SN" data-filter="miniStock:sn" value="${escapeHtml(f.sn||'')}" /></div>
-      <div style="display:flex;gap:6px;margin:8px 0">
-        <select class="field-input" data-filter="miniStock:size"><option value="">弹力带</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
-        <select class="field-input" data-filter="miniStock:belt"><option value="">腰带</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
-      </div>
-      <div class="mini-list">${rows.map((r)=>`<div class="mini-list-item">
-        <strong>${escapeHtml(productName(r.productId))}</strong>
-        <span>${escapeHtml(r.size)} + ${escapeHtml(r.belt||'—')}</span>
-        <span class="num">×${r.qty}</span>
-      </div>`).join('')||emptyHint('暂无汇总')}</div>
-      <div class="mini-section-title">在库 SN（${sns.length}）</div>
-      <div class="mini-list">${sns.map((s)=>`<button type="button" class="mini-list-item" data-action="open-view-sn" data-id="${s.sn}">
-        <strong>${escapeHtml(s.sn)}</strong>
-        <span>${escapeHtml(s.size)}+${escapeHtml(s.belt||'—')}</span>
-      </button>`).join('')||emptyHint('无 SN')}</div>`;
+      <p class="mini-page-desc">商品汇总与在库 SN 分开展示</p>
+      ${miniSegHtml('miniStock', [
+        { id: 'product', title: '商品', badge: rows.length || null },
+        { id: 'sn', title: '在库SN', badge: snAll.length || null },
+      ])}
+      <div class="mini-seg-panel">${panel}</div>`;
   }
 
   function pageCustomers() {
