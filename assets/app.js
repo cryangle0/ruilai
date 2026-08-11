@@ -1378,7 +1378,7 @@
     return `<div class="confirm-mask" id="confirm-mask">
       <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
         <div class="confirm-hd"><strong id="confirm-title">${escapeHtml(c.title)}</strong></div>
-        <div class="confirm-bd"><p>${escapeHtml(c.message)}</p></div>
+        <div class="confirm-bd"><p style="white-space:pre-wrap;margin:0;line-height:1.55">${escapeHtml(c.message)}</p></div>
         <div class="confirm-ft">
           <button type="button" class="btn" data-action="confirm-cancel">${escapeHtml(c.cancelText || '取消')}</button>
           <button type="button" class="btn ${c.danger ? 'btn-danger' : 'btn-primary'}" data-action="confirm-ok">${escapeHtml(c.okText || '确定')}</button>
@@ -3651,36 +3651,49 @@
     render();
   }
 
-  function doDirectBind(sn, phone, addr, ipRegion) {
+  /** 直销激活预检：硬错误阻断；软异常需二次确认后再记异常并激活 */
+  function analyzeDirectBind(sn, phone, addr, ipRegion) {
     const row = db.sns.find((x) => x.sn === sn);
-    if (!row) return toast('SN 不存在', 'err');
-    if (row.frozen || row.status === 'frozen') return toast('冷冻库 SN 不可扫码', 'err');
+    if (!row) return { err: 'SN 不存在' };
+    if (row.frozen || row.status === 'frozen') return { err: '冷冻库 SN 不可扫码' };
     if (!['l1', 'l2'].includes(row.status) && !(row.status === 'bound' && row.reIn && row.resale)) {
-      return toast(`当前状态不可直销：${snStatusMeta(row).label}`, 'err');
+      return { err: `当前状态不可直销：${snStatusMeta(row).label}` };
     }
     const l1 = db.agentsL1.find((a) => a.id === (currentL1Id() || row.l1Id));
-    if (!l1) return toast('未找到一级代理', 'err');
+    if (!l1) return { err: '未找到一级代理' };
+    if (!phone) return { err: '请填写手机号' };
     const phonePrefix = String(phone).slice(0, 3);
     const phoneLoc = PHONE_LOC[phonePrefix] || '未知';
-    // IP 必须落在直销围栏城市所属省份
     const ipInDirect = (l1.directAreas || []).some((c) => (CITY_MAP[ipRegion] || []).includes(c));
     const ipPass = ipInDirect || ((l1.directAreas || []).length === 0 && (l1.saleAreas || l1.areas || []).includes(ipRegion));
     const exOpts = { l2Id: row.l2Id || (ui.role === 'l2' ? currentL2Id() : null) || undefined };
+    const issues = [];
     if (!ipPass) {
-      pushException('SN激活异常', sn, `跨区激活：IP ${ipRegion} 不在直销围栏 ${(l1.directAreas||[]).join('、')}`, 'activate', exOpts);
+      issues.push({ type: 'SN激活异常', detail: `跨区激活：IP ${ipRegion} 不在直销围栏 ${(l1.directAreas || []).join('、') || '（未配置）'}`, dim: 'activate', opts: { ...exOpts } });
     }
-    // 手机归属地必须与 IP 地区一致
     const phonePass = phoneLoc !== '未知' && phoneLoc === ipRegion;
     if (!phonePass) {
-      pushException('归属地异常', sn, `手机归属 ${phoneLoc} 与 IP 地区 ${ipRegion} 不一致`, 'activate', exOpts);
+      issues.push({ type: '归属地异常', detail: `手机归属 ${phoneLoc} 与 IP 地区 ${ipRegion} 不一致`, dim: 'activate', opts: { ...exOpts } });
     }
     const dup = db.sns.filter((s) => s.user && s.user.phone === phone && s.sn !== sn);
-    if (dup.length) pushException('客户信息重复', sn, `手机号 ${phone} 已激活 ${dup.length} 次`, 'activate', { ...exOpts, dupPhone: phone });
+    if (dup.length) {
+      issues.push({ type: '客户信息重复', detail: `手机号 ${phone} 已激活 ${dup.length} 次`, dim: 'activate', opts: { ...exOpts, dupPhone: phone } });
+    }
     const addrNorm = String(addr || '').replace(/\s+/g, '');
     if (addrNorm) {
       const addrDup = db.sns.filter((s) => s.user && String(s.user.addr || '').replace(/\s+/g, '') === addrNorm && s.user.phone !== phone && s.sn !== sn);
-      if (addrDup.length) pushException('客户信息重复', sn, `同地址多客户：${addr} 已关联其他手机号`, 'activate', exOpts);
+      if (addrDup.length) {
+        issues.push({ type: '客户信息重复', detail: `同地址多客户：${addr} 已关联其他手机号`, dim: 'activate', opts: { ...exOpts } });
+      }
     }
+    return { row, l1, phoneLoc, issues };
+  }
+
+  function doDirectBind(sn, phone, addr, ipRegion) {
+    const a = analyzeDirectBind(sn, phone, addr, ipRegion);
+    if (a.err) return toast(a.err, 'err');
+    const { row, l1, phoneLoc, issues } = a;
+    (issues || []).forEach((it) => pushException(it.type, sn, it.detail, it.dim, it.opts || {}));
 
     row.status = 'bound';
     row.channel = row.l2Id ? 'distribute' : 'direct';
@@ -3697,11 +3710,11 @@
       customer: { phone, addr, phoneLoc },
     });
     db.stockLogs.unshift({ id: uid('H'), agentType: row.l2Id ? 'l2' : 'l1', agentId: row.l2Id || l1.id, productId: row.productId, size: row.size, delta: -1, reason: '直销出库', time: nowStr(), ref: sn });
-    addLog(`直销激活 ${sn}`);
+    addLog(`直销激活 ${sn}${issues.length ? `（异常 ${issues.length}）` : ''}`);
     ui.directStep = 1;
     ui.form.directSn = '';
     saveStore();
-    toast(ipPass && phonePass ? '激活成功' : '已激活（存在异常，已记入异常管理）', ipPass && phonePass ? 'ok' : 'warn');
+    toast(issues.length ? `已激活（已记录 ${issues.length} 条异常）` : '激活成功', issues.length ? 'warn' : 'ok');
   }
 
   /* ---------- Render shells ---------- */
@@ -4555,9 +4568,28 @@
         const sn = ui.form.directSn || $('#direct-sn')?.value?.trim().toUpperCase();
         const phone = $('#direct-phone')?.value?.trim();
         const addr = $('#direct-addr')?.value?.trim();
+        const region = db.demoIpRegion;
         if (!sn) return toast('请先确认 SN', 'err');
         if (!phone) return toast('请填写手机号', 'err');
-        confirmDialog(`确认激活 SN「${sn}」并绑定客户？`, 'mini-direct-bind-ok', { sn, phone, addr, region: db.demoIpRegion }, { title: '直销激活确认', okText: '确认激活' });
+        const check = analyzeDirectBind(sn, phone, addr, region);
+        if (check.err) return toast(check.err, 'err');
+        const payload = { sn, phone, addr, region };
+        if (check.issues.length) {
+          const reasonText = check.issues.map((it, i) => `${i + 1}. 【${it.type}】${it.detail}`).join('\n');
+          confirmDialog(
+            `检测到 ${check.issues.length} 项激活异常，需二次确认：\n\n${reasonText}\n\n确认后将生成异常记录并继续激活；取消则不激活、不记异常。`,
+            'mini-direct-bind-ok',
+            payload,
+            { title: '激活异常确认', danger: true, okText: '确认并激活', cancelText: '取消' },
+          );
+        } else {
+          confirmDialog(
+            `确认激活 SN「${sn}」并绑定客户？\n手机：${phone}\nIP 地区：${region}`,
+            'mini-direct-bind-ok',
+            payload,
+            { title: '直销激活确认', okText: '确认激活' },
+          );
+        }
         break;
       }
       case 'mini-direct-step1': {
@@ -5170,7 +5202,14 @@
     if (l2Stock > 0 && planTotal >= Math.max(1, Math.ceil(l2Stock * overRatio))) {
       pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（超量比 ${overRatio}，代理倍数 ${cfg.mult}）`, 'stock', { mode: cfg.mode, l2Id });
     }
-    db.sales.unshift(so); saveStore(); openModal('scan-so', { id: so.id });
+    db.sales.unshift(so); saveStore();
+    toast('已创建销售单，请扫码出货');
+    if (ui.mode === 'mini') {
+      ui.page = 'mini-scan';
+      ui.scanMode = 'ship';
+    }
+    openModal('scan-so', { id: so.id });
+    render();
   }
 
   function bindEvents() {
