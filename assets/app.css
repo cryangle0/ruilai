@@ -621,6 +621,43 @@ table.data .ops { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .form-grid .span-2 { grid-column: span 2; }
 
+.confirm-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 28, 25, .45);
+  display: grid;
+  place-items: center;
+  z-index: 160;
+  padding: 20px;
+}
+.confirm-box {
+  width: min(420px, 100%);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px #00000026;
+  overflow: hidden;
+  animation: confirm-pop .16s ease;
+}
+@keyframes confirm-pop {
+  from { opacity: 0; transform: translateY(6px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+.confirm-hd { padding: 14px 16px 0; font-size: 15px; }
+.confirm-bd {
+  padding: 10px 16px 4px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.confirm-bd p { margin: 0; }
+.confirm-ft {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px 14px;
+}
+
 .modal-mask {
   position: fixed;
   inset: 0;

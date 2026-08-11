@@ -540,6 +540,7 @@
     account: sessionStorage.getItem('ruilai_account') || '',
     route: (location.hash.replace(/^#/, '') || 'home'),
     modal: null,
+    confirm: null, // 全局二次确认：{ title, message, action, payload, danger, okText, cancelText }
     toast: null,
     tabs: {},
     filters: {},
@@ -1163,8 +1164,35 @@
       return `<button type="button" class="tab ${cur === it.id ? 'active' : ''}" data-tab="${key}:${it.id}">${escapeHtml(it.title)}${badge}</button>`;
     }).join('')}</div></div>`;
   }
-  function confirmDialog(message, action, payload = {}) {
-    openModal('confirm', { message, action, ...payload });
+  function confirmDialog(message, action, payload = {}, opts = {}) {
+    ui.confirm = {
+      title: opts.title || '请确认',
+      message: message || '确认执行该操作？',
+      action,
+      payload: payload || {},
+      danger: !!opts.danger,
+      okText: opts.okText || (opts.danger ? '确认驳回' : '确定'),
+      cancelText: opts.cancelText || '取消',
+    };
+    render();
+  }
+  function closeConfirm() {
+    ui.confirm = null;
+    render();
+  }
+  function confirmOverlayHtml() {
+    const c = ui.confirm;
+    if (!c) return '';
+    return `<div class="confirm-mask" id="confirm-mask">
+      <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="confirm-hd"><strong id="confirm-title">${escapeHtml(c.title)}</strong></div>
+        <div class="confirm-bd"><p>${escapeHtml(c.message)}</p></div>
+        <div class="confirm-ft">
+          <button type="button" class="btn" data-action="confirm-cancel">${escapeHtml(c.cancelText || '取消')}</button>
+          <button type="button" class="btn ${c.danger ? 'btn-danger' : 'btn-primary'}" data-action="confirm-ok">${escapeHtml(c.okText || '确定')}</button>
+        </div>
+      </div>
+    </div>`;
   }
 
   function adminMenus() {
@@ -2543,11 +2571,7 @@
     const { type, payload, draft } = ui.modal;
     let title = '', body = '', foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="modal-ok">确定</button>`;
 
-    if (type === 'confirm') {
-      title = '请确认';
-      body = `<p>${escapeHtml(payload.message || '确认执行该操作？')}</p>`;
-      foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="confirm-ok">确定</button>`;
-    } else if (type === 'view-agent-l1' || type === 'edit-l1') {
+    if (type === 'view-agent-l1' || type === 'edit-l1') {
       const a = type === 'edit-l1' ? draft : db.agentsL1.find((x) => x.id === payload.id);
       const editing = type === 'edit-l1';
       const occ = occupiedMainAreas(a.id);
@@ -3292,6 +3316,7 @@
       <p class="mini-stage-hint">代理端仅小程序 · 底栏 4–5 项（玻璃态）· 顶栏可切换演示身份</p>
     </div>
     ${modalContent()}
+    ${confirmOverlayHtml()}
     <div class="toast-wrap">${ui.toast ? `<div class="toast ${ui.toast.kind}">${escapeHtml(ui.toast.msg)}</div>` : ''}</div>`;
   }
 
@@ -3340,6 +3365,7 @@
       </div>
     </div>
     ${modalContent()}
+    ${confirmOverlayHtml()}
     <div class="toast-wrap">${ui.toast?`<div class="toast ${ui.toast.kind}">${escapeHtml(ui.toast.msg)}</div>`:''}</div>
     </div>`;
   }
@@ -3367,6 +3393,7 @@
     ui.route = id;
     location.hash = id;
     ui.modal = null;
+    ui.confirm = null;
     ui.notifyOpen = false;
     ui._skipExLeave = false;
     ui._pendingNav = null;
@@ -3470,14 +3497,24 @@
         db.agentsL1.push(d); addLog(`创建一级 ${d.name}`); saveStore(); closeModal(); toast('已创建'); break;
       }
       case 'disable-l1':
-        confirmDialog(`确认${db.agentsL1.find(a=>a.id===id)?.status==='启用'?'停用':'启用'}该一级代理？停用后下属法人二级将进入待分配。`, 'disable-l1-ok', { id }); break;
+        confirmDialog(
+          `确认${db.agentsL1.find(a=>a.id===id)?.status==='启用'?'停用':'启用'}该一级代理？停用后下属法人二级将进入待分配。`,
+          'disable-l1-ok',
+          { id },
+          { title: '一级代理状态确认', danger: db.agentsL1.find(a=>a.id===id)?.status==='启用' }
+        );
+        break;
+      case 'confirm-cancel':
+        closeConfirm(); break;
       case 'confirm-ok': {
-        const act = ui.modal.payload.action;
-        const pid = ui.modal.payload.id;
-        closeModal();
+        const conf = ui.confirm;
+        if (!conf?.action) { closeConfirm(); break; }
+        const act = conf.action;
+        const pid = conf.payload?.id;
+        ui.confirm = null;
         if (act === 'disable-l1-ok') {
           const a = db.agentsL1.find((x)=>x.id===pid);
-          if (!a) break;
+          if (!a) { render(); break; }
           if (a.status === '启用') {
             a.status = '停用';
             db.agentsL2.filter((l)=>l.parentId===a.id && l.type==='法人').forEach((l)=>{
@@ -3489,25 +3526,50 @@
           saveStore(); toast('已更新'); render();
         } else if (act === 'po-reject-ok') {
           const p = db.purchases.find((x)=>x.id===pid);
-          if (p) { p.status = 'rejected'; addLog(`驳回采购 ${p.no}`); saveStore(); toast('已驳回'); render(); }
+          if (p) { p.status = 'rejected'; addLog(`驳回采购 ${p.no}`); saveStore(); toast('已驳回'); }
+          ui.modal = null; render();
         } else if (act === 'po-confirm-ok') {
           finishPoConfirm(pid);
         } else if (act === 'revoke-po-ok') {
           const p = db.purchases.find((x)=>x.id===pid);
-          if (p && p.status === 'approvedPending') { p.status = 'cosigning'; p.cosign = { admin1: false, admin2: false }; addLog(`撤销采购审核 ${p.no}`); saveStore(); toast('已撤销'); render(); }
+          if (p && p.status === 'approvedPending') { p.status = 'cosigning'; p.cosign = { admin1: false, admin2: false }; addLog(`撤销采购审核 ${p.no}`); saveStore(); toast('已撤销'); }
+          render();
         } else if (act === 'close-ex-ok') {
           const e = db.exceptions.find((x)=>x.id===pid);
-          if (e) { e.status = '已处理'; addLog(`处理异常 ${e.type}`); saveStore(); toast('已标记处理'); render(); }
+          if (e) { e.status = '已处理'; addLog(`处理异常 ${e.type}`); saveStore(); toast('已标记处理'); }
+          ui.modal = null; render();
         } else if (act === 'toggle-l2-ok') {
           const a = db.agentsL2.find((x)=>x.id===pid);
-          if (a) { a.status = a.status==='启用'?'停用':'启用'; addLog(`${a.status}二级 ${a.name}`); saveStore(); toast('已更新'); render(); }
+          if (a) { a.status = a.status==='启用'?'停用':'启用'; addLog(`${a.status}二级 ${a.name}`); saveStore(); toast('已更新'); }
+          render();
         } else if (act === 'unbind-l2-ok') {
           const a = db.agentsL2.find((x)=>x.id===pid);
           if (a && a.type==='法人') {
             a.pending = true; a.prevParentId = a.parentId; a.prevAreas = [...(a.areas||[])]; a.parentId = null; a.areas = [];
             pushNotify('二级待分配', `${a.name} 已解绑`, '原厂');
-            addLog(`解绑二级 ${a.name}`); saveStore(); toast('已解绑并进入待分配'); render();
+            addLog(`解绑二级 ${a.name}`); saveStore(); toast('已解绑并进入待分配');
           }
+          ui.modal = null; render();
+        } else if (act === 'audit-l2-ok') {
+          const a = db.agentsL2.find((x)=>x.id===pid);
+          if (a) { a.auditStatus = 'approved'; addLog(`二级审核通过 ${a.name}`); saveStore(); toast('已通过'); }
+          ui.modal = null; render();
+        } else if (act === 'audit-l2-reject-ok') {
+          const a = db.agentsL2.find((x)=>x.id===pid);
+          if (a) { a.auditStatus = 'rejected'; addLog(`二级审核驳回 ${a.name}`); saveStore(); toast('已驳回'); }
+          ui.modal = null; render();
+        } else if (act === 'approve-return-ok') {
+          approveReturn(pid); ui.modal = null; render();
+        } else if (act === 'reject-return-ok') {
+          const r = db.returns.find((x)=>x.id===pid);
+          if (r) { r.status = 'rejected'; addLog(`驳回退货 ${r.no}`); saveStore(); toast('已驳回'); }
+          ui.modal = null; render();
+        } else if (act === 'scan-confirm-so-ok') {
+          finishScanConfirmSo(pid);
+        } else if (act === 'rebind-l2-confirm-ok') {
+          finishRebindL2(pid, conf.payload);
+        } else {
+          render();
         }
         break;
       }
@@ -3528,9 +3590,11 @@
         addLog(`编辑二级 ${d.name}`); saveStore(); closeModal(); toast('已保存'); break;
       }
       case 'toggle-l2':
-        confirmDialog('确认切换该二级代理启用状态？', 'toggle-l2-ok', { id }); break;
+        confirmDialog('确认切换该二级代理启用状态？', 'toggle-l2-ok', { id }, { title: '二级代理状态确认' });
+        break;
       case 'unbind-l2':
-        confirmDialog('确认解绑该法人二级？将进入待分配池。', 'unbind-l2-ok', { id }); break;
+        confirmDialog('确认解绑该法人二级？将进入待分配池。', 'unbind-l2-ok', { id }, { title: '解绑确认', danger: true });
+        break;
       case 'open-rebind-l2': {
         const a = db.agentsL2.find((x) => x.id === id);
         openModal('rebind-l2', {
@@ -3543,19 +3607,22 @@
         break;
       }
       case 'rebind-l2-ok': {
-        const a = db.agentsL2.find((x)=>x.id===id);
         const parentId = $('#f-parent')?.value || ui.modal.draft?.parentId;
         const cities = ui.modal.draft?.areas || [];
         if (!parentId) return toast('请选择绑定一级', 'err');
         if (!cities.length) return toast('请选择围栏城市（可用全选）', 'err');
-        a.parentId = parentId; a.areas = [...cities]; a.pending = false; a.auditStatus = 'approved';
-        addLog(`重新绑定二级 ${a.name} → ${l1Name(parentId)}`); saveStore(); closeModal(); toast('已绑定'); break;
+        confirmDialog(`确认绑定到「${l1Name(parentId)}」并授权 ${cities.length} 个围栏城市？`, 'rebind-l2-confirm-ok', { id, parentId, cities }, { title: '确认绑定二级' });
+        break;
       }
       case 'audit-l2-ok': {
-        const a = db.agentsL2.find((x)=>x.id===id); a.auditStatus = 'approved'; addLog(`二级审核通过 ${a.name}`); saveStore(); closeModal(); toast('已通过'); break;
+        const a = db.agentsL2.find((x)=>x.id===id);
+        confirmDialog(`确认通过二级代理「${a?.name || ''}」的审核？`, 'audit-l2-ok', { id }, { title: '二级审核通过', okText: '确认通过' });
+        break;
       }
       case 'audit-l2-reject': {
-        const a = db.agentsL2.find((x)=>x.id===id); a.auditStatus = 'rejected'; addLog(`二级审核驳回 ${a.name}`); saveStore(); closeModal(); toast('已驳回'); break;
+        const a = db.agentsL2.find((x)=>x.id===id);
+        confirmDialog(`确认驳回二级代理「${a?.name || ''}」？`, 'audit-l2-reject-ok', { id }, { title: '二级审核驳回', danger: true });
+        break;
       }
       case 'open-audit-po': {
         const p = db.purchases.find((x)=>x.id===id);
@@ -3580,14 +3647,17 @@
       case 'po-reject':
         syncDraftFromAuditDom();
         ui.form._poDraft = JSON.parse(JSON.stringify(ui.modal.draft));
-        confirmDialog('确认驳回该采购单？', 'po-reject-ok', { id: ui.modal.draft.id }); break;
+        confirmDialog(`确认驳回采购单 ${ui.modal.draft?.no || ''}？`, 'po-reject-ok', { id: ui.modal.draft.id }, { title: '采购单驳回', danger: true });
+        break;
       case 'po-confirm':
         syncDraftFromAuditDom();
         if (!segmentsMatch(ui.modal.draft)) return toast('段号数量不匹配', 'err');
         ui.form._poDraft = JSON.parse(JSON.stringify(ui.modal.draft));
-        confirmDialog('确认提交会签？两位管理员均确认后采购单立即生效。', 'po-confirm-ok', { id: ui.modal.draft.id }); break;
+        confirmDialog(`确认对采购单 ${ui.modal.draft?.no || ''} 提交会签？两位管理员均确认后立即生效。`, 'po-confirm-ok', { id: ui.modal.draft.id }, { title: '采购会签确认', okText: '确认会签' });
+        break;
       case 'revoke-po':
-        confirmDialog('确认撤销审核？将回到会签中。', 'revoke-po-ok', { id }); break;
+        confirmDialog('确认撤销审核？将回到会签中。', 'revoke-po-ok', { id }, { title: '撤销采购审核', danger: true });
+        break;
       case 'save-sn': {
         const row = db.sns.find((s)=>s.sn===id);
         if (!row) { toast('找不到该 SN', 'err'); break; }
@@ -3697,13 +3767,19 @@
         pushSnEvent(row, '冷冻库重分配', l1Name(l1Id), 'reassign');
         addLog(`冷冻SN重分配 ${id} → ${l1Name(l1Id)}`); saveStore(); closeModal(); toast('已解冻并分配'); break;
       }
-      case 'approve-return': approveReturn(id); closeModal(); break;
+      case 'approve-return': {
+        const r = db.returns.find((x)=>x.id===id);
+        confirmDialog(`确认审核通过退货单 ${r?.no || ''}？`, 'approve-return-ok', { id }, { title: '退货审核通过', okText: '确认通过' });
+        break;
+      }
       case 'reject-return': {
-        const r = db.returns.find((x)=>x.id===id); if (r) { r.status = 'rejected'; addLog(`驳回退货 ${r.no}`); saveStore(); toast('已驳回'); closeModal(); }
+        const r = db.returns.find((x)=>x.id===id);
+        confirmDialog(`确认驳回退货单 ${r?.no || ''}？`, 'reject-return-ok', { id }, { title: '退货驳回', danger: true });
         break;
       }
       case 'close-exception':
-        confirmDialog('是否已处理？选择确定后该异常不再加粗提醒。', 'close-ex-ok', { id }); break;
+        confirmDialog('是否已处理？选择确定后该异常不再加粗提醒。', 'close-ex-ok', { id }, { title: '异常处理确认' });
+        break;
       case 'save-ex-mult': {
         const v = Number(document.querySelector('[data-filter="exception:mult"]')?.value || db.exceptionMultiplier);
         db.exceptionMultiplier = v; saveStore(); toast(`预警倍数已设为 ${v}`); break;
@@ -3834,22 +3910,10 @@
       }
       case 'scan-confirm-so': {
         const s = db.sales.find((x)=>x.id===id);
+        if (!s) return toast('销售单不存在', 'err');
         if ((s.scanned||[]).length < s.planTotal) return toast('未扫满', 'err');
-        s.scanned.forEach((sn) => {
-          const row = db.sns.find((x)=>x.sn===sn);
-          row.status = 'l2'; row.l2Id = s.l2Id;
-          pushSnEvent(row, '销售转入二级', s.no, 'sales');
-        });
-        s.status = 'done';
-        db.stockLogs.unshift({ id: uid('H'), agentType: 'l2', agentId: s.l2Id, productId: s.productId, size: Object.keys(s.planBySize)[0], delta: s.scanned.length, reason: '销售转入', time: nowStr(), ref: s.no });
-        const cfg = resolveWarnConfig(s.l1Id, s.l2Id);
-        const turn = Number(cfg.rules.stockTurnover || cfg.mult || 1.5);
-        const l1Left = db.sns.filter((x) => x.l1Id === s.l1Id && x.status === 'l1' && !x.frozen).length;
-        const l2Now = db.sns.filter((x) => x.l2Id === s.l2Id && x.status === 'l2' && !x.frozen).length;
-        if (l1Left > 0 && l2Now > l1Left * turn) {
-          pushException('销售库存异常', l2Name(s.l2Id), `二级在库 ${l2Now} 超过一级在库 ${l1Left} × 周转比 ${turn}`, 'stock', { mode: cfg.mode });
-        }
-        addLog(`完成出货 ${s.no}`); saveStore(); closeModal(); toast('出货完成'); break;
+        confirmDialog(`确认完成出货 ${s.no}（已扫 ${(s.scanned||[]).length}/${s.planTotal}）？`, 'scan-confirm-so-ok', { id }, { title: '确认出货', okText: '确认出货' });
+        break;
       }
       case 'mini-direct-bind': {
         db.demoIpRegion = $('#demo-ip')?.value || db.demoIpRegion;
@@ -4095,9 +4159,9 @@
   }
 
   function finishPoConfirm(id) {
-    const draft = ui.form._poDraft;
+    const draft = ui.form._poDraft || (ui.modal?.type === 'audit-po' ? ui.modal.draft : null);
     const p = db.purchases.find((x) => x.id === id);
-    if (!p) return;
+    if (!p) { render(); return; }
     if (draft && draft.id === id) {
       Object.assign(p, {
         lines: draft.lines, customLines: draft.customLines, parts: draft.parts, segments: draft.segments, cosign: draft.cosign || p.cosign,
@@ -4119,6 +4183,48 @@
     ui.form._poDraft = null;
     saveStore();
     ui.modal = null;
+    render();
+  }
+
+  function finishScanConfirmSo(id) {
+    const s = db.sales.find((x) => x.id === id);
+    if (!s) { render(); return; }
+    if ((s.scanned || []).length < s.planTotal) { toast('未扫满', 'err'); render(); return; }
+    s.scanned.forEach((sn) => {
+      const row = db.sns.find((x) => x.sn === sn);
+      row.status = 'l2'; row.l2Id = s.l2Id;
+      pushSnEvent(row, '销售转入二级', s.no, 'sales');
+    });
+    s.status = 'done';
+    db.stockLogs.unshift({ id: uid('H'), agentType: 'l2', agentId: s.l2Id, productId: s.productId, size: Object.keys(s.planBySize)[0], delta: s.scanned.length, reason: '销售转入', time: nowStr(), ref: s.no });
+    const cfg = resolveWarnConfig(s.l1Id, s.l2Id);
+    const turn = Number(cfg.rules.stockTurnover || cfg.mult || 1.5);
+    const l1Left = db.sns.filter((x) => x.l1Id === s.l1Id && x.status === 'l1' && !x.frozen).length;
+    const l2Now = db.sns.filter((x) => x.l2Id === s.l2Id && x.status === 'l2' && !x.frozen).length;
+    if (l1Left > 0 && l2Now > l1Left * turn) {
+      pushException('销售库存异常', l2Name(s.l2Id), `二级在库 ${l2Now} 超过一级在库 ${l1Left} × 周转比 ${turn}`, 'stock', { mode: cfg.mode });
+    }
+    addLog(`完成出货 ${s.no}`);
+    saveStore();
+    ui.modal = null;
+    toast('出货完成');
+    render();
+  }
+
+  function finishRebindL2(id, payload = {}) {
+    const a = db.agentsL2.find((x) => x.id === id);
+    if (!a) { render(); return; }
+    const parentId = payload.parentId || $('#f-parent')?.value || ui.modal?.draft?.parentId;
+    const cities = payload.cities || ui.modal?.draft?.areas || [];
+    if (!parentId || !cities.length) { toast('绑定信息不完整', 'err'); render(); return; }
+    a.parentId = parentId;
+    a.areas = [...cities];
+    a.pending = false;
+    a.auditStatus = 'approved';
+    addLog(`重新绑定二级 ${a.name} → ${l1Name(parentId)}`);
+    saveStore();
+    ui.modal = null;
+    toast('已绑定');
     render();
   }
 
@@ -4261,7 +4367,8 @@
       render();
     }));
 
-    $('#modal-mask')?.addEventListener('click', (e) => { if (e.target.id === 'modal-mask') closeModal(); });
+    $('#modal-mask')?.addEventListener('click', (e) => { if (e.target.id === 'modal-mask' && !ui.confirm) closeModal(); });
+    $('#confirm-mask')?.addEventListener('click', (e) => { if (e.target.id === 'confirm-mask') closeConfirm(); });
     $('#scan-sn-input')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         const btn = document.querySelector('[data-action="scan-add-sn"]');
