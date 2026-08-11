@@ -2786,16 +2786,23 @@
       const d = draft || {};
       if (!d.parentId) d.parentId = a.prevParentId || db.agentsL1.find((x) => x.status === '启用')?.id || '';
       const cities = citiesForL1(d.parentId);
-      const cityOpts = cities.length ? cities : ['杭州市'];
-      d.areas = (d.areas || a.prevAreas || a.areas || []).filter((c) => cityOpts.includes(c));
+      const cityOpts = cities.length ? cities : [];
+      const rawAreas = Array.isArray(d.areas) && d.areas.length
+        ? d.areas
+        : [...(a.prevAreas || a.areas || [])];
+      d.areas = rawAreas.filter((c) => cityOpts.includes(c));
       ui.modal.draft = d;
+      const dropped = rawAreas.filter((c) => !cityOpts.includes(c));
       title = `重新绑定 · ${a.name}`;
       body = `<div class="form-field"><label>绑定一级</label>
         <select class="field-input" id="f-parent">${db.agentsL1.filter((x)=>x.status==='启用').map((x)=>`<option value="${x.id}" ${x.id===d.parentId?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</select>
       </div>
-      <div class="form-field"><label>围栏城市 ${selectAllBtn('select-all-city', '全选', isAllSelected(cityOpts, d.areas))}</label>
-        ${chips(cityOpts, d.areas || [], 'data-toggle-city')}
-        ${!cities.length ? '<p class="muted" style="margin-top:6px">该一级无可售城市，请先维护一级可销售范围</p>' : ''}
+      <div class="form-field"><label>授权城市（点击多选） ${selectAllBtn('select-all-city', '全选', isAllSelected(cityOpts, d.areas))}</label>
+        ${cityOpts.length
+          ? chips(cityOpts, d.areas || [], 'data-toggle-city')
+          : '<p class="muted" style="margin-top:6px">该一级暂无可售城市，请先在一级详情维护可销售范围</p>'}
+        ${dropped.length ? `<p class="muted" style="margin-top:6px">原城市「${escapeHtml(dropped.join('、'))}」不在当前一级可售范围内，已取消勾选</p>` : ''}
+        <p class="muted" style="margin-top:6px">切换绑定一级后，可选城市会随一级可销售范围更新</p>
       </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="rebind-l2-ok" data-id="${a.id}">绑定</button>`;
     } else if (type === 'view-sn' || type === 'edit-sn') {
@@ -4322,9 +4329,13 @@
       case 'select-all-city': {
         if (!ui.modal?.draft) break;
         if (ui.modal.type === 'create-l2-mini' || ui.modal.type === 'edit-l2-mini') syncMiniL2DraftFromDom();
+        if (ui.modal.type === 'rebind-l2' && $('#f-parent')?.value) {
+          ui.modal.draft.parentId = $('#f-parent').value;
+        }
         const parentId = ui.modal.draft.parentId || $('#f-parent')?.value || currentL1Id();
         const list = citiesForL1(parentId);
-        const opts = list.length ? list : ['杭州市'];
+        const opts = list.length ? list : (ui.modal.type === 'rebind-l2' ? [] : ['杭州市']);
+        if (!opts.length) return toast('当前一级无可选城市', 'warn');
         ui.modal.draft.areas = isAllSelected(opts, ui.modal.draft.areas) ? [] : [...opts];
         ui.modal.draft.parentId = parentId || ui.modal.draft.parentId;
         render(); break;
