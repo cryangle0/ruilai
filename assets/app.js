@@ -311,8 +311,8 @@
     return {
       exceptionMultiplier: 1.5,
       exceptionRules: {
-        overOrderRatio: 1.0,   // 二级在库≥出货量×此值 → 超量预警
-        stockTurnover: 1.5,    // 二级在库 > 一级在库×倍数 → 库存异常
+        overOrderRatio: 1.0,   // 仅二级：在库充足仍超量申请分销单 → 销售库存异常
+        stockTurnover: 1.5,    // 仅二级：周转/压货预警系数（一级分销给二级不触发）
         softAutoClose: false,
       },
       activeProductLineId: 'PL-MED',
@@ -405,7 +405,7 @@
         { id: 'EX2', time: '2026-07-28 11:02', type: 'SN激活异常', target: 'RL202607210001', detail: '跨区激活：IP 浙江 不在直销围栏', notify: '一级+原厂', status: '未处理', dim: 'activate' },
         { id: 'EX3', time: '2026-08-02 16:10', type: '销售库存异常', target: '广州天河渠道 · 锐涞运动款LL', detail: '本次新增 5 > 预警线（区间销量 × 倍数）', notify: '一级+原厂', status: '未处理', dim: 'stock' },
         { id: 'EX4', time: '2026-07-22 10:40', type: '销售库存异常', target: '宁波海曙店 · 锐涞经典款L', detail: '本次新增 4 > 预警线', notify: '一级+原厂', status: '已处理', dim: 'stock' },
-        { id: 'EX5', time: '2026-08-05 09:20', type: '超量下单预警', target: '杭州城西专营', detail: '2级库存充足仍大量申请下单，需一级填写说明', notify: '一级+原厂', status: '未处理', dim: 'scan', explain: '' },
+        { id: 'EX5', time: '2026-08-05 09:20', type: '超量下单预警', target: '杭州城西专营', detail: '2级库存充足仍大量申请下单，需一级填写说明', notify: '一级+原厂', status: '未处理', dim: 'stock', explain: '' },
         { id: 'EX6', time: '2026-08-06 14:00', type: '扫码尺码不匹配', target: 'RL202608010001', detail: '出货计划 M，实扫 SN 为 L', notify: '原厂', status: '未处理', dim: 'scan' },
         { id: 'EX7', time: '2026-08-07 10:10', type: '客户信息重复', target: 'RL202607200003', detail: '手机号 138****1003 已激活 1 次 · 可查看历史绑定', notify: '一级+原厂', status: '未处理', dim: 'activate', dupPhone: '138****1003' },
       ],
@@ -512,10 +512,11 @@
         (parsed.exceptions || []).forEach((e) => {
           if (e.dim === 'nonSn') e.dim = 'scan';
           else if (e.dim === 'sn') e.dim = 'activate';
+          // 超量下单 / 库存压货 → 销售库存异常（兼容旧数据误标为扫码）
+          if (/超量|库存|压货|周转|下单预警/.test(e.type || '')) e.dim = 'stock';
           else if (!e.dim) {
-            e.dim = /库存|压货/.test(e.type) ? 'stock'
-              : (/激活|归属地|客户信息|跨区/.test(e.type) ? 'activate'
-                : (/扫码|尺码不匹配|超量|采购|下单/.test(e.type) ? 'scan' : 'activate'));
+            e.dim = /激活|归属地|客户信息|跨区/.test(e.type) ? 'activate'
+              : (/扫码|尺码不匹配/.test(e.type) ? 'scan' : 'activate');
           }
           if (e.status === '已关闭') e.status = '已处理';
         });
@@ -644,13 +645,14 @@
   }
 
   function exceptionDim(e) {
-    // 三类：扫码异常 / 激活异常 / 销售库存异常（兼容旧 dim）
+    // 三类：扫码异常 / 激活异常 / 销售库存异常（仅二级库存风险；一级分销给二级不属此类）
+    // 超量下单预警一律归销售库存（兼容旧 dim=scan）
+    if (/超量|库存|压货|周转|下单预警/.test(e.type || '')) return 'stock';
     if (e.dim === 'scan' || e.dim === 'activate' || e.dim === 'stock') return e.dim;
     if (e.dim === 'nonSn') return 'scan';
     if (e.dim === 'sn') return 'activate';
-    if (/库存|压货/.test(e.type)) return 'stock';
-    if (/激活|归属地|客户信息|跨区/.test(e.type)) return 'activate';
-    if (/扫码|尺码不匹配|超量|采购|下单/.test(e.type)) return 'scan';
+    if (/激活|归属地|客户信息|跨区/.test(e.type || '')) return 'activate';
+    if (/扫码|尺码不匹配/.test(e.type || '')) return 'scan';
     return 'activate';
   }
 
@@ -1824,15 +1826,15 @@
     };
     const histTotal = db.exceptions.filter((e) => exceptionDim(e) === dim).length;
     const openN = getOpenExceptionIdsInFilter().length;
-    return `${pageHeader('异常管理', '扫码 / 激活 / 销售库存 · 未处理加粗')}
+    return `${pageHeader('异常管理', '扫码 / 激活 / 销售库存（仅二级）· 未处理加粗')}
       <div class="page-card" style="margin-bottom:12px;padding:14px;border:1px solid var(--primary);background:rgba(15,118,110,.04)">
-        <div style="font-weight:600;margin-bottom:8px">异常标准配置（平台可改）</div>
+        <div style="font-weight:600;margin-bottom:8px">异常标准配置（平台可改 · 仅针对二级）</div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
           <label style="font-size:12px">全局倍数 <input class="field-input" style="width:70px" type="number" step="0.1" value="${db.exceptionMultiplier}" id="f-ex-mult" /></label>
           <label style="font-size:12px">超量比 <input class="field-input" style="width:70px" type="number" step="0.1" value="${rules.overOrderRatio}" id="f-ex-over" /></label>
           <label style="font-size:12px">周转比 <input class="field-input" style="width:70px" type="number" step="0.1" value="${rules.stockTurnover}" id="f-ex-turn" /></label>
           <button class="btn btn-sm btn-primary" data-action="save-ex-rules">保存标准</button>
-          <span class="muted">一级/二级详情可单独设严格/软报警</span>
+          <span class="muted">一级分销给二级不触发库存异常；二级详情可单独设严格/软报警</span>
         </div>
       </div>
       ${tabsHtml('exception', [
@@ -4466,13 +4468,7 @@
     });
     s.status = 'done';
     db.stockLogs.unshift({ id: uid('H'), agentType: 'l2', agentId: s.l2Id, productId: s.productId, size: Object.keys(s.planBySize)[0], delta: s.scanned.length, reason: '销售转入', time: nowStr(), ref: s.no });
-    const cfg = resolveWarnConfig(s.l1Id, s.l2Id);
-    const turn = Number(cfg.rules.stockTurnover || cfg.mult || 1.5);
-    const l1Left = db.sns.filter((x) => x.l1Id === s.l1Id && x.status === 'l1' && !x.frozen).length;
-    const l2Now = db.sns.filter((x) => x.l2Id === s.l2Id && x.status === 'l2' && !x.frozen).length;
-    if (l1Left > 0 && l2Now > l1Left * turn) {
-      pushException('销售库存异常', l2Name(s.l2Id), `二级在库 ${l2Now} 超过一级在库 ${l1Left} × 周转比 ${turn}`, 'stock', { mode: cfg.mode });
-    }
+    // 一级分销给二级：仅调库，不做销售库存异常（库存异常只针对二级经营侧）
     addLog(`完成出货 ${s.no}`);
     saveStore();
     ui.modal = null;
@@ -4655,7 +4651,7 @@
     const overRatio = Number(cfg.rules.overOrderRatio || 1);
     const l2Stock = db.sns.filter((x) => x.l2Id === l2Id && x.status === 'l2' && !x.frozen && x.productId === productId).length;
     if (l2Stock > 0 && planTotal >= Math.max(1, Math.ceil(l2Stock * overRatio))) {
-      pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（超量比 ${overRatio}，代理倍数 ${cfg.mult}）`, 'scan', { mode: cfg.mode });
+      pushException('超量下单预警', l2Name(l2Id), `二级在库 ${l2Stock} 仍出货 ${planTotal}（超量比 ${overRatio}，代理倍数 ${cfg.mult}）`, 'stock', { mode: cfg.mode });
     }
     db.sales.unshift(so); saveStore(); openModal('scan-so', { id: so.id });
   }
