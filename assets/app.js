@@ -705,7 +705,7 @@
     'l2-sales-detail': '二级销售详情', 'l2-return-detail': '二级退货详情',
     'mini-scan': '扫码', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
     'mini-service': '售后', 'mini-aftersale': '售后', 'mini-exception': '异常', 'mini-mine': '我的',
-    'mini-mine-l2': '二级代理', 'mini-mine-sub': '子账号',
+    'mini-mine-l2': '二级代理', 'mini-mine-sub': '子账号', 'mini-mine-customers': '客户',
   };
 
   function currentL1Id() { return ROLES[ui.role]?.l1Id || null; }
@@ -1634,9 +1634,9 @@
   function miniAllowedRoutes() {
     const base = miniTabs().map((t) => t.id);
     if (ui.role === 'l1') {
-      return [...base, 'mini-purchase', 'mini-sales', 'mini-aftersale', 'mini-exception', 'mini-mine-l2', 'mini-mine-sub'];
+      return [...base, 'mini-purchase', 'mini-sales', 'mini-aftersale', 'mini-exception', 'mini-mine-l2', 'mini-mine-sub', 'mini-mine-customers'];
     }
-    if (ui.role === 'l2') return [...base, 'mini-aftersale', 'mini-exception'];
+    if (ui.role === 'l2') return [...base, 'mini-aftersale', 'mini-exception', 'mini-mine-customers'];
     return base;
   }
 
@@ -1644,7 +1644,7 @@
     const r = ui.route;
     if (tabId === 'mini-biz') return ['mini-biz', 'mini-purchase', 'mini-sales'].includes(r);
     if (tabId === 'mini-service') return ['mini-service', 'mini-aftersale', 'mini-exception'].includes(r);
-    if (tabId === 'mini-mine') return ['mini-mine', 'mini-mine-l2', 'mini-mine-sub'].includes(r);
+    if (tabId === 'mini-mine') return ['mini-mine', 'mini-mine-l2', 'mini-mine-sub', 'mini-mine-customers'].includes(r);
     if (tabId === 'mini-scan') return r === 'mini-scan';
     return r === tabId;
   }
@@ -2999,6 +2999,82 @@
       </div>`;
   }
 
+  function listMiniCustomers() {
+    const map = new Map();
+    const inScope = (s) => {
+      if (ui.role === 'l2') return s.l2Id === currentL2Id();
+      if (ui.role === 'l1') return s.l1Id === currentL1Id();
+      return false;
+    };
+    db.sns.filter((s) => (s.user || s.prevUser) && inScope(s)).forEach((s) => {
+      const u = s.user || s.prevUser;
+      const phone = u.phone || '';
+      const addr = (u.addr || '').replace(/\s+/g, '');
+      const key = phone || addr || s.sn;
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key,
+          phone,
+          addr: u.addr || '',
+          phoneLoc: u.phoneLoc || '',
+          sns: [],
+          products: [],
+        });
+      }
+      const row = map.get(key);
+      row.sns.push(s.sn);
+      row.products.push(`${productName(s.productId)}/${s.size}${s.belt ? '+' + s.belt : ''}`);
+    });
+    const rows = [...map.values()];
+    const addrPhones = {};
+    rows.forEach((r) => {
+      const a = (r.addr || '').replace(/\s+/g, '');
+      if (!a) return;
+      addrPhones[a] = addrPhones[a] || new Set();
+      if (r.phone) addrPhones[a].add(r.phone);
+    });
+    rows.forEach((r) => {
+      r.dupPhone = (r.sns || []).length > 1;
+      const a = (r.addr || '').replace(/\s+/g, '');
+      r.dupAddr = !!(a && addrPhones[a] && addrPhones[a].size > 1);
+      r.mark = r.dupPhone || r.dupAddr;
+    });
+    rows.sort((a, b) => (b.sns.length - a.sns.length) || String(a.phone).localeCompare(String(b.phone)));
+    return rows;
+  }
+
+  function pageMiniMineCustomers() {
+    if (ui.role !== 'l1' && ui.role !== 'l2') {
+      return `${miniMineSubHd('客户')}${emptyHint('当前角色无客户列表')}`;
+    }
+    const f = ui.filters.miniCustomers || {};
+    let rows = listMiniCustomers();
+    if (f.q) {
+      const q = f.q.toLowerCase();
+      rows = rows.filter((r) =>
+        [r.phone, r.addr, r.phoneLoc, ...(r.sns || []), ...(r.products || [])].join(' ').toLowerCase().includes(q));
+    }
+    if (f.mark === '1') rows = rows.filter((r) => r.mark);
+    return `${miniMineSubHd('客户')}
+      <p class="mini-page-desc">${ui.role === 'l2' ? '本二级相关 C 端客户' : '本一级体系下 C 端客户'} · 可搜手机/地址/SN</p>
+      <input class="field-input" style="margin-bottom:8px" placeholder="搜索手机/地址/SN/商品" data-filter="miniCustomers:q" value="${escapeHtml(f.q || '')}" />
+      <select class="field-input" style="margin-bottom:10px" data-filter="miniCustomers:mark">
+        <option value="">全部客户</option>
+        <option value="1" ${f.mark === '1' ? 'selected' : ''}>仅重复标记</option>
+      </select>
+      <div class="mini-list">${rows.map((r) => {
+        const sn0 = r.sns[0] || '';
+        return `<button type="button" class="mini-list-item" data-action="open-view-cend" data-id="CO_${escapeHtml(sn0)}">
+          <strong class="rt-row-hd"><span>${escapeHtml(r.phone || '未留手机')}</span>
+            ${r.dupPhone ? tag('重复手机', 'orange') : ''}${r.dupAddr ? tag('重复地址', 'orange') : ''}
+          </strong>
+          <span>${escapeHtml(r.addr || '—')} · ${escapeHtml(r.phoneLoc || '归属地未知')}</span>
+          <span>${escapeHtml([...new Set(r.products)].join('，') || '—')}</span>
+          <span class="muted">${escapeHtml((r.sns || []).join(' '))}</span>
+        </button>`;
+      }).join('') || emptyHint('暂无客户')}</div>`;
+  }
+
   function pageMiniMine() {
     const r = ROLES[ui.role];
     const l1Id = currentL1Id();
@@ -3006,15 +3082,10 @@
       ? db.agentsL2.filter((a) => a.parentId === l1Id || (a.pending && a.prevParentId === l1Id)).length
       : 0;
     const subCount = ui.role === 'l1' ? db.subAccounts.filter((s) => s.l1Id === l1Id).length : 0;
-    return `<div class="mini-mine-page">
-      <div class="mini-mine-main">
-        <div class="mini-page-title">我的</div>
-        <div class="mini-profile">
-          <span class="user-avatar">${r.avatar}</span>
-          <div><strong>${escapeHtml(r.name)}</strong><div style="font-size:12px;color:var(--text-3)">${escapeHtml(r.account)}</div></div>
-        </div>
-        ${ui.role === 'l1' ? `<div class="mini-mine-entries">
-          <button type="button" class="mini-mine-entry" data-go="mini-mine-l2">
+    const customerCount = (ui.role === 'l1' || ui.role === 'l2') ? listMiniCustomers().length : 0;
+    const entries = [];
+    if (ui.role === 'l1') {
+      entries.push(`<button type="button" class="mini-mine-entry" data-go="mini-mine-l2">
             <span class="mini-mine-entry-text">
               <strong>二级代理</strong>
               <span>维护下属二级与登录账号 · ${l2Count} 个</span>
@@ -3027,8 +3098,27 @@
               <span>仅扫码权限 · ${subCount} 个</span>
             </span>
             <span class="mini-mine-entry-arrow">›</span>
-          </button>
-        </div>` : `<div class="mini-mine-block"><p class="mini-page-desc" style="margin:0">账号信息与演示操作</p></div>`}
+          </button>`);
+    }
+    if (ui.role === 'l1' || ui.role === 'l2') {
+      entries.push(`<button type="button" class="mini-mine-entry" data-go="mini-mine-customers">
+            <span class="mini-mine-entry-text">
+              <strong>客户</strong>
+              <span>C 端客户信息 · ${customerCount} 位</span>
+            </span>
+            <span class="mini-mine-entry-arrow">›</span>
+          </button>`);
+    }
+    return `<div class="mini-mine-page">
+      <div class="mini-mine-main">
+        <div class="mini-page-title">我的</div>
+        <div class="mini-profile">
+          <span class="user-avatar">${r.avatar}</span>
+          <div><strong>${escapeHtml(r.name)}</strong><div style="font-size:12px;color:var(--text-3)">${escapeHtml(r.account)}</div></div>
+        </div>
+        ${entries.length
+          ? `<div class="mini-mine-entries">${entries.join('')}</div>`
+          : `<div class="mini-mine-block"><p class="mini-page-desc" style="margin:0">账号信息与演示操作</p></div>`}
       </div>
       <div class="mini-mine-footer">
         <button class="btn btn-block" data-action="logout">退出登录</button>
@@ -3069,6 +3159,7 @@
     'mini-scan': pageMiniScan, 'mini-biz': pageMiniBiz, 'mini-purchase': pageMiniPurchase, 'mini-sales': pageMiniSales,
     'mini-stock': pageMiniStock, 'mini-service': pageMiniService, 'mini-aftersale': pageMiniAftersale, 'mini-exception': pageMiniException,
     'mini-mine': pageMiniMine, 'mini-mine-l2': pageMiniMineL2, 'mini-mine-sub': pageMiniMineSub,
+    'mini-mine-customers': pageMiniMineCustomers,
   };
   /* ---------- Modals ---------- */
   function openModal(type, payload = {}) {
