@@ -2860,13 +2860,16 @@
           <select class="field-input" data-filter="miniStock:size"><option value="">弹力带</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
           <select class="field-input" data-filter="miniStock:belt"><option value="">腰带</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
         </div>
-        <div class="mini-list">${rows.map((r)=>`<div class="mini-list-item">
+        <div class="mini-list">${rows.map((r)=>{
+          const stockId = `${type}_${id}_${r.productId}_${r.size}_${r.belt || ''}`;
+          return `<button type="button" class="mini-list-item" data-action="open-view-stock" data-id="${escapeHtml(stockId)}">
           <strong>${escapeHtml(productName(r.productId))}</strong>
           <span>${escapeHtml(r.size)} + ${escapeHtml(r.belt||'—')}</span>
           <span class="num">×${r.qty}</span>
-        </div>`).join('')||emptyHint('暂无汇总')}</div>`;
+        </button>`;
+        }).join('')||emptyHint('暂无汇总')}</div>`;
     return `<div class="mini-page-title">库存</div>
-      <p class="mini-page-desc">商品汇总与在库 SN 分开展示</p>
+      <p class="mini-page-desc">点商品可看流水与 SN 详情 · 商品汇总与在库 SN 分开展示</p>
       ${miniSegHtml('miniStock', [
         { id: 'product', title: '商品', badge: rows.length || null },
         { id: 'sn', title: '在库SN', badge: snAll.length || null },
@@ -3399,22 +3402,28 @@
           </tr>`).join('') || `<tr><td colspan="5">${emptyHint('暂无流水')}</td></tr>`}</tbody>
         </table></div>
         <h4 style="margin-top:12px">SN码（${row.sns.length}）</h4>
-        <p class="muted" style="margin:0 0 8px">点击 SN 跳转码库并按该码筛选</p>
+        <p class="muted" style="margin:0 0 8px">${ui.mode === 'mini' ? '点击 SN 查看详情' : '点击 SN 跳转码库并按该码筛选'}</p>
         <div class="page-card table-wrap"><table class="data">
           <thead><tr><th>SN</th><th>规格</th><th>状态</th><th></th></tr></thead>
           <tbody>${row.sns.map((sn)=>{
             const s = db.sns.find((x) => x.sn === sn);
             const st = snStatusMeta(s);
+            const snBtn = ui.mode === 'mini'
+              ? `<button type="button" class="btn btn-sm btn-ghost" data-action="open-view-sn" data-id="${escapeHtml(sn)}" style="font-family:var(--font-num)">${escapeHtml(sn)}</button>`
+              : `<button type="button" class="btn btn-sm btn-ghost" data-action="goto-sn-one" data-sn="${escapeHtml(sn)}" style="font-family:var(--font-num)">${escapeHtml(sn)}</button>`;
             return `<tr>
-              <td><button type="button" class="btn btn-sm btn-ghost" data-action="goto-sn-one" data-sn="${escapeHtml(sn)}" style="font-family:var(--font-num)">${escapeHtml(sn)}</button></td>
+              <td>${snBtn}</td>
               <td>${escapeHtml(stockSpecText(s?.size || row.size, s?.belt || row.belt))}</td>
               <td>${tag(st.label, st.tone)}</td>
               <td class="ops"><button class="btn btn-sm" data-action="open-view-sn" data-id="${escapeHtml(sn)}">详情</button></td>
             </tr>`;
           }).join('') || `<tr><td colspan="4">${emptyHint('暂无 SN')}</td></tr>`}</tbody>
         </table></div>`;
-        foot = `<button class="btn" data-action="close-modal">关闭</button>
-          <button class="btn btn-primary" data-action="goto-sn-filtered" data-product="${escapeHtml(row.productId || '')}" data-l1="${escapeHtml(row.l1Id || '')}" data-l2="${escapeHtml(row.l2Id || '')}" data-size="${escapeHtml(row.size || '')}" data-belt="${escapeHtml(row.belt || '')}" data-status="${row.agentType === 'l2' ? 'l2' : 'l1'}">在 SN 码库查看</button>`;
+        foot = ui.mode === 'mini'
+          ? `<button class="btn" data-action="close-modal">关闭</button>
+            <button class="btn btn-primary" data-action="goto-mini-stock-sn" data-size="${escapeHtml(row.size || '')}" data-belt="${escapeHtml(row.belt || '')}">查看在库 SN</button>`
+          : `<button class="btn" data-action="close-modal">关闭</button>
+            <button class="btn btn-primary" data-action="goto-sn-filtered" data-product="${escapeHtml(row.productId || '')}" data-l1="${escapeHtml(row.l1Id || '')}" data-l2="${escapeHtml(row.l2Id || '')}" data-size="${escapeHtml(row.size || '')}" data-belt="${escapeHtml(row.belt || '')}" data-status="${row.agentType === 'l2' ? 'l2' : 'l1'}">在 SN 码库查看</button>`;
       }
     } else if (type === 'view-sale') {
       const s = db.sales.find((x) => x.id === payload.id);
@@ -5202,6 +5211,18 @@
       case 'open-view-sale': openModal('view-sale', { id }); break;
       case 'open-view-cend': openModal('view-cend', { id }); break;
       case 'open-view-stock': openModal('view-stock', { id }); break;
+      case 'goto-mini-stock-sn': {
+        ui.tabs.miniStock = 'sn';
+        ui.filters.miniStock = {
+          ...(ui.filters.miniStock || {}),
+          sn: '',
+          size: el.getAttribute('data-size') || '',
+          belt: el.getAttribute('data-belt') || '',
+        };
+        ui.modal = null;
+        navigate('mini-stock');
+        break;
+      }
       case 'goto-sn-one': {
         const sn = el.getAttribute('data-sn') || id;
         ui.filters.sn = {
