@@ -930,20 +930,50 @@
       const s = db.sales.find((x) => x.id === order.id);
       return saleDetailHtml(s);
     }
-    const row = order.snRow || db.sns.find((x) => x.sn === order.sns[0]);
-    const u = row?.user || row?.prevUser || {};
+    const snRows = (order.sns || []).map((sn) => db.sns.find((x) => x.sn === sn)).filter(Boolean);
+    if (!snRows.length && order.snRow) snRows.push(order.snRow);
+    const u = snRows[0]?.user || snRows[0]?.prevUser || {};
+    const productMap = {};
+    snRows.forEach((row) => {
+      const key = `${row.productId}_${row.size}_${row.belt || ''}`;
+      if (!productMap[key]) {
+        productMap[key] = { productId: row.productId, size: row.size, belt: row.belt || '—', qty: 0 };
+      }
+      productMap[key].qty += 1;
+    });
+    const productRows = Object.values(productMap);
     return `<div class="detail-grid">
         <div><span>订单号</span>${escapeHtml(order.no)}</div>
-        <div><span>状态</span>${tag(row?.status === 'bound' ? '已销售' : '已归档', 'green')}</div>
+        <div><span>状态</span>${tag(snRows[0]?.status === 'bound' ? '已到货' : '已归档', 'green')}</div>
         <div><span>客户手机</span>${escapeHtml(u.phone || '—')}</div>
         <div><span>归属地</span>${escapeHtml(u.phoneLoc || '—')}</div>
         <div class="span-2"><span>地址</span>${escapeHtml(u.addr || '—')}</div>
-        <div><span>商品</span>${escapeHtml(productName(row?.productId))}</div>
-        <div><span>尺码</span>${escapeHtml(row?.size || '—')} / ${escapeHtml(row?.belt || '—')}</div>
-        <div><span>SN码</span><code>${escapeHtml(row?.sn || '—')}</code></div>
         <div><span>时间</span>${escapeHtml(order.createdAt || '—')}</div>
-        <div><span>代理</span>${escapeHtml(row?.l2Id ? l2Name(row.l2Id) : l1Name(row?.l1Id))}</div>
-      </div>`;
+        <div><span>代理</span>${escapeHtml(snRows[0]?.l2Id ? l2Name(snRows[0].l2Id) : l1Name(snRows[0]?.l1Id))}</div>
+      </div>
+      <h4 style="margin-top:12px">商品明细</h4>
+      <div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>商品</th><th>弹力带</th><th>腰带</th><th>数量</th></tr></thead>
+        <tbody>${productRows.map((r)=>`<tr>
+          <td>${escapeHtml(productName(r.productId))}</td>
+          <td>${escapeHtml(r.size)}</td>
+          <td>${escapeHtml(r.belt)}</td>
+          <td class="num">${r.qty}</td>
+        </tr>`).join('') || `<tr><td colspan="4">${emptyHint('无商品明细')}</td></tr>`}</tbody>
+      </table></div>
+      <h4 style="margin-top:12px">SN码（${snRows.length}）</h4>
+      <div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>SN</th><th>尺码</th><th>腰带</th><th>客户</th></tr></thead>
+        <tbody>${snRows.map((row)=>{
+          const cu = row.user || row.prevUser;
+          return `<tr>
+            <td><code>${escapeHtml(row.sn)}</code></td>
+            <td>${escapeHtml(row.size || '—')}</td>
+            <td>${escapeHtml(row.belt || '—')}</td>
+            <td>${escapeHtml(cu ? `${cu.phone || ''} ${cu.addr || ''}`.trim() : '—')}</td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="4">${emptyHint('暂无 SN')}</td></tr>`}</tbody>
+      </table></div>`;
   }
 
   function tryAddSnToSale(s, sn) {
@@ -3081,7 +3111,8 @@
       const s = db.sales.find((x) => x.id === payload.id);
       title = `销售单 ${s.no}`;
       body = saleDetailHtml(s);
-      foot = `<button class="btn" data-action="close-modal">关闭</button>`;
+      foot = `<button class="btn" data-action="close-modal">关闭</button>
+        ${s.status === 'scanning' && ui.role !== 'l2' ? `<button class="btn btn-primary" data-action="mini-open-scan-so" data-id="${s.id}">去扫码</button>` : ''}`;
     } else if (type === 'view-cend') {
       const order = listCendOrders().find((o) => o.id === payload.id)
         || { id: payload.id, kind: String(payload.id).startsWith('CO_') ? 'bind' : 'sale', no: payload.id, sns: [], snRow: db.sns.find((x) => x.sn === String(payload.id).replace(/^CO_/, '')) };
@@ -5080,21 +5111,30 @@
       let planTotal = 0;
       lines.forEach((l) => { planBySize[l.size] = (planBySize[l.size] || 0) + l.qty; planTotal += l.qty; });
       customLines.forEach((r) => { planBySize[r.size] = (planBySize[r.size] || 0) + r.qty; planTotal += r.qty; });
-      db.sales.unshift({
+      const so = {
         id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`,
         channel: 'distribute', l1Id: currentL1Id(), l2Id, productId: cartPid,
         planTotal, planBySize, parts, scanned: [], status: 'scanning', createdAt: nowStr(),
-      });
+      };
+      db.sales.unshift(so);
       addLog('购物车提交销售单');
-      ui.modal = null; toast('已创建销售单，可去扫码出货');
-    } else {
-      db.purchases.unshift({
-        id: uid('PO'), no: `PO${todayCompact()}${String(++db.seq.po).padStart(3, '0')}`, l1Id: currentL1Id() || 'L1A',
-        lines, customLines, parts, status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
-      });
-      addLog('购物车提交采购申请');
-      ui.modal = null; toast('已提交采购申请');
+      saveStore();
+      toast('已创建销售单，请扫码出货');
+      // 创建后直接进入扫码入口
+      if (ui.mode === 'mini') {
+        ui.page = 'mini-scan';
+        ui.scanMode = 'ship';
+      }
+      openModal('scan-so', { id: so.id });
+      render();
+      return;
     }
+    db.purchases.unshift({
+      id: uid('PO'), no: `PO${todayCompact()}${String(++db.seq.po).padStart(3, '0')}`, l1Id: currentL1Id() || 'L1A',
+      lines, customLines, parts, status: 'pending', createdAt: nowStr(), segments: {}, cosign: { admin1: false, admin2: false },
+    });
+    addLog('购物车提交采购申请');
+    ui.modal = null; toast('已提交采购申请');
     saveStore(); render();
   }
 
