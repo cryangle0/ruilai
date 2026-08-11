@@ -3866,7 +3866,7 @@
       case 'open-create-l2-mini': {
         if (ui.role !== 'l1') return toast('仅一级可创建二级代理', 'err');
         openModal('create-l2-mini', {
-          draftSeed: { name: '', type: '个人', areas: [], username: '', password: '******', ent: {} },
+          draftSeed: { name: '', type: '个人', areas: [], username: '', password: '******', ent: {}, parentId: currentL1Id() },
         });
         break;
       }
@@ -4151,9 +4151,11 @@
       }
       case 'select-all-city': {
         if (!ui.modal?.draft) break;
-        const parentId = ui.modal.draft.parentId || $('#f-parent')?.value;
+        if (ui.modal.type === 'create-l2-mini' || ui.modal.type === 'edit-l2-mini') syncMiniL2DraftFromDom();
+        const parentId = ui.modal.draft.parentId || $('#f-parent')?.value || currentL1Id();
         const list = citiesForL1(parentId);
         ui.modal.draft.areas = list.length ? [...list] : ['杭州市'];
+        ui.modal.draft.parentId = parentId || ui.modal.draft.parentId;
         render(); break;
       }
       case 'open-create-product':
