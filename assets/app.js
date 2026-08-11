@@ -1013,8 +1013,14 @@
   function pendingL2Count() {
     return db.agentsL2.filter((a) => a.pending && a.type === '法人').length;
   }
+  function pendingL2AuditCount() {
+    return db.agentsL2.filter((a) => a.auditStatus === 'pending').length;
+  }
   function pendingPoCount() {
     return db.purchases.filter((p) => ['pending', 'cosigning'].includes(p.status)).length;
+  }
+  function pendingReturnCount() {
+    return db.returns.filter((r) => r.status === 'pending').length;
   }
   function openExCount() {
     return db.exceptions.filter((e) => e.status === '未处理').length;
@@ -1162,14 +1168,13 @@
   }
 
   function adminMenus() {
-    const pending = pendingL2Count();
     return [
       { group: '概览', items: [{ id: 'home', title: '工作台', icon: '⌂' }] },
       { group: '渠道', items: [
         { id: 'agent-l1', title: '一级代理商', icon: '①' },
         { id: 'agent-l2', title: '二级代理商', icon: '②' },
-        { id: 'agent-l2-audit', title: '二级审核', icon: '✓' },
-        { id: 'agent-pending', title: '待分配(法人)', icon: '⌛', badge: pending },
+        { id: 'agent-l2-audit', title: '二级审核', icon: '✓', badge: pendingL2AuditCount() || null },
+        { id: 'agent-pending', title: '待分配(法人)', icon: '⌛', badge: pendingL2Count() || null },
       ]},
       { group: '货品', items: [
         { id: 'sn', title: 'SN码库', icon: '#' },
@@ -1179,8 +1184,8 @@
         { id: 'stock', title: '库存管理', icon: '▦' },
       ]},
       { group: '售后与风控', items: [
-        { id: 'return', title: '返货管理', icon: '↩' },
-        { id: 'exception', title: '异常管理', icon: '⚠', badge: openExCount() },
+        { id: 'return', title: '返货管理', icon: '↩', badge: pendingReturnCount() || null },
+        { id: 'exception', title: '异常管理', icon: '⚠', badge: openExCount() || null },
         { id: 'customers', title: '销售客户', icon: '☺' },
         { id: 'stats', title: '数据统计', icon: '▤' },
       ]},
@@ -1252,7 +1257,9 @@
   /* ---------- Pages: Admin ---------- */
   function pageHome() {
     const pendingL2 = pendingL2Count();
+    const pendingL2Audit = pendingL2AuditCount();
     const pendingPo = pendingPoCount();
+    const pendingReturn = pendingReturnCount();
     const openEx = openExCount();
     const monthSales = db.sales.filter((s) => inDateRange(s.createdAt, monthStart(), todayDate()) && s.status === 'done')
       .reduce((n, s) => n + (s.scanned || []).length, 0);
@@ -1270,10 +1277,10 @@
         <h3 class="section-title">待办事项</h3>
         <div>
           <button class="todo-row" data-go="agent-pending"><span>待分配二级（法人）</span><span class="todo-count ${pendingL2 ? 'hot' : ''}">${pendingL2}</span></button>
-          <button class="todo-row" data-go="agent-l2-audit"><span>二级审核待处理</span><span class="todo-count">${db.agentsL2.filter((a) => a.auditStatus === 'pending').length}</span></button>
+          <button class="todo-row" data-go="agent-l2-audit"><span>二级审核待处理</span><span class="todo-count">${pendingL2Audit}</span></button>
           <button class="todo-row" data-go="purchase"><span>采购单待审核/会签</span><span class="todo-count">${pendingPo}</span></button>
           <button class="todo-row" data-go="exception"><span>未处理异常</span><span class="todo-count ${openEx ? 'hot' : ''}">${openEx}</span></button>
-          <button class="todo-row" data-go="return"><span>退货待审批</span><span class="todo-count">${db.returns.filter((r) => r.status === 'pending').length}</span></button>
+          <button class="todo-row" data-go="return"><span>退货待审批</span><span class="todo-count">${pendingReturn}</span></button>
         </div>
       </div>`;
   }
