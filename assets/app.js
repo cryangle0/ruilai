@@ -27,34 +27,124 @@
   function nonstdBeltForGrade(gradeId) {
     return (NONSTD_GRADES.find((g) => g.id === gradeId) || NONSTD_GRADES[0]).belt;
   }
+  function productCompAName(p) { return (p && p.compAName) || '腰带'; }
+  function productCompBName(p) { return (p && p.compBName) || '弹力带'; }
+  function productBelts(p) { return (p && p.belts && p.belts.length) ? p.belts : [...BELTS]; }
+  function productSizes(p) { return (p && p.sizes && p.sizes.length) ? p.sizes : [...BAND_SIZES]; }
+  function comboKey(belt, size) { return `${normalizeBelt(belt)}__${size}`; }
+  function comboLabel(p, grade, belt, size) {
+    const a = productCompAName(p);
+    const b = productCompBName(p);
+    const g = grade ? `${grade}（` : '';
+    const ge = grade ? '）' : '';
+    return `${g}${a}${normalizeBelt(belt)}+${b}${size}${ge}`;
+  }
+  function ensureProductStdCombos(p) {
+    if (!p || p.type !== 'kit') return [];
+    if (Array.isArray(p.stdCombos) && p.stdCombos.length) {
+      return p.stdCombos.map((k) => ({
+        key: k.key || comboKey(k.belt, k.size),
+        grade: k.grade || '',
+        belt: normalizeBelt(k.belt),
+        size: k.size,
+        label: k.label || comboLabel(p, k.grade, k.belt, k.size),
+      }));
+    }
+    // 兼容旧商品：按全局标品规则与尺码交集生成
+    const sizes = new Set(productSizes(p));
+    const belts = new Set(productBelts(p).map(normalizeBelt));
+    return STANDARD_KITS
+      .filter((k) => sizes.has(k.size) && belts.has(normalizeBelt(k.belt)))
+      .map((k) => ({ ...k, belt: normalizeBelt(k.belt), label: comboLabel(p, k.grade, k.belt, k.size) }));
+  }
   function kitStdCombos(p) {
-    const sizes = new Set((p && p.sizes && p.sizes.length) ? p.sizes : BAND_SIZES);
-    const belts = new Set((p && p.belts && p.belts.length) ? p.belts : BELTS);
-    return STANDARD_KITS.filter((k) => sizes.has(k.size) && belts.has(k.belt));
+    return ensureProductStdCombos(p);
   }
   function nonstdGradesForProduct(p) {
-    const sizes = new Set((p && p.sizes && p.sizes.length) ? p.sizes : BAND_SIZES);
-    const belts = new Set((p && p.belts && p.belts.length) ? p.belts : BELTS);
-    return NONSTD_GRADES
-      .filter((g) => belts.has(g.belt))
-      .map((g) => ({ ...g, bands: g.bands.filter((b) => sizes.has(b)) }))
-      .filter((g) => g.bands.length > 0);
+    const sizes = productSizes(p);
+    const belts = productBelts(p).map(normalizeBelt);
+    const std = new Set(kitStdCombos(p).map((k) => comboKey(k.belt, k.size)));
+    // 旧医疗腰带商品：优先用全局非标档位规则
+    const classic = belts.every((b) => BELTS.includes(b)) && sizes.every((s) => BAND_SIZES.includes(s));
+    if (classic && !(p && p.stdCombos && p.stdCombos.length && p.compAName && p.compAName !== '腰带')) {
+      return NONSTD_GRADES
+        .filter((g) => belts.includes(g.belt))
+        .map((g) => ({ ...g, bands: g.bands.filter((b) => sizes.includes(b) && !std.has(comboKey(g.belt, b))) }))
+        .filter((g) => g.bands.length > 0);
+    }
+    // 自定义组件：每个 A 尺码下，排除标品后的 B 尺码均为非标
+    return belts.map((belt) => {
+      const bands = sizes.filter((s) => !std.has(comboKey(belt, s)));
+      return { id: String(belt), belt, bands };
+    }).filter((g) => g.bands.length > 0);
   }
   function nonstdBandsForProductGrade(p, gradeId) {
-    const g = nonstdGradesForProduct(p).find((x) => x.id === gradeId);
+    const g = nonstdGradesForProduct(p).find((x) => x.id === gradeId || x.belt === normalizeBelt(gradeId));
     return g ? g.bands : [];
   }
-  function customComboLabel(belt, size) {
-    const g = NONSTD_GRADES.find((x) => x.belt === normalizeBelt(belt))?.id || '';
-    return `${g ? g + '（' + normalizeBelt(belt) + '）' : normalizeBelt(belt)} + 弹力带${size}`;
+  function componentSizeLabel(compName, size) {
+    const n = String(compName || '');
+    const s = String(size || '');
+    if (!s) return n;
+    if (n && s.startsWith(n)) return s;
+    return `${n}${s}`;
+  }
+  function nonstdGradeOptionLabel(p, g) {
+    const short = componentSizeLabel(productCompAName(p), g.belt);
+    if (g.id && g.id !== g.belt) return `${g.id}（${short}）`;
+    return short;
+  }
+  function customComboLabel(belt, size, p) {
+    const nb = normalizeBelt(belt);
+    const g = nonstdGradesForProduct(p || {}).find((x) => x.belt === nb);
+    const a = productCompAName(p);
+    const b = productCompBName(p);
+    const aPart = componentSizeLabel(a, nb);
+    return `${g && g.id !== g.belt ? g.id + '（' + aPart + '）' : aPart} + ${componentSizeLabel(b, size)}`;
+  }
+  function productComboNote(p) {
+    if (!p) return STANDARD_COMBO_NOTE;
+    const a = productCompAName(p);
+    const b = productCompBName(p);
+    const std = kitStdCombos(p);
+    const stdHint = std.length
+      ? `标品 ${std.length} 档：${std.map((k) => k.label).join('；')}。`
+      : '尚未配置标品组合，下单时仅可下非标。';
+    return `${stdHint}其他组合请下非标。当前可选：${a} ${productBelts(p).join('/')} · ${b} ${productSizes(p).join('/')}`;
+  }
+  function syncProductDraftFromDom() {
+    if (!ui.modal || (ui.modal.type !== 'create-product' && ui.modal.type !== 'edit-product')) return;
+    const d = ui.modal.draft || (ui.modal.draft = {});
+    d.code = $('#f-pcode')?.value?.trim() ?? d.code;
+    d.name = $('#f-pname')?.value?.trim() ?? d.name;
+    d.status = $('#f-pstatus')?.value || d.status || '上架';
+    d.note = $('#f-pnote')?.value ?? d.note;
+    if (d.type === 'kit') {
+      d.compAName = $('#f-comp-a')?.value?.trim() || d.compAName || '腰带';
+      d.compBName = $('#f-comp-b')?.value?.trim() || d.compBName || '弹力带';
+      (d.stdCombos || []).forEach((k, i) => {
+        const grade = document.querySelector(`[data-std-grade="${i}"]`)?.value;
+        const belt = document.querySelector(`[data-std-belt="${i}"]`)?.value;
+        const size = document.querySelector(`[data-std-size="${i}"]`)?.value;
+        if (grade != null) k.grade = grade.trim();
+        if (belt != null) k.belt = normalizeBelt(belt);
+        if (size != null) k.size = size;
+        k.key = comboKey(k.belt, k.size);
+        k.label = comboLabel(d, k.grade, k.belt, k.size);
+      });
+    } else {
+      d.sizes = ($('#f-psizes')?.value || '').split(/[,，]/).map((x) => x.trim()).filter(Boolean);
+    }
   }
   function normalizeBelt(b) {
-    if (!b) return '腰带M';
-    if (BELTS.includes(b)) return b;
-    if (/SS|S$/i.test(b) && !/腰带M|腰带L/.test(b)) return '腰带S';
-    if (/LL|L$/i.test(b) && !/腰带S|腰带M/.test(b)) return '腰带L';
-    if (/M/i.test(b)) return '腰带M';
-    return '腰带M';
+    if (b == null || b === '') return '';
+    const s = String(b).trim();
+    if (!s) return '';
+    if (BELTS.includes(s)) return s;
+    if (/^腰带/.test(s)) return s;
+    // 仅对「腰带S/M/L」短写做兼容，不强制改写自定义尺码（如袜子 S）
+    if (s === '腰带S' || s === '腰带M' || s === '腰带L') return s;
+    return s;
   }
   const PERM_LABELS = {
     all: '全部权限',
@@ -203,12 +293,30 @@
       { id: 'PL-MED', code: 'MED', name: '医疗版', active: true, note: '当前主产品线' },
       { id: 'PL-YOUTH', code: 'YOUTH', name: '青春版', active: false, note: '预留扩展，暂未上线 SKU' },
     ];
+    const classicStd = STANDARD_KITS.map((k) => ({ ...k }));
     const products = [
-      { id: 'P1', code: 'P-1001', name: '锐涞经典款套件', type: 'kit', productLineId: 'PL-MED', sizes: kitSizes, belts: [...BELTS], defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配 · 标品五档' },
-      { id: 'P2', code: 'P-1002', name: '锐涞运动款套件', type: 'kit', productLineId: 'PL-MED', sizes: kitSizes, belts: [...BELTS], defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配 · 标品五档' },
-      { id: 'PART-BELT', code: 'PART-BELT', name: '腰带规格', type: 'part', productLineId: 'PL-MED', sizes: BELTS, status: '上架', note: '配件·不生成SN' },
-      { id: 'PART-SIL', code: 'PART-SIL', name: '主体硅胶带', type: 'part', productLineId: 'PL-MED', sizes: BAND_SIZES, status: '上架', note: '配件·不生成SN' },
-      { id: 'P-Y1', code: 'Y-2001', name: '青春版弹性套件（预留）', type: 'kit', productLineId: 'PL-YOUTH', sizes: kitSizes, belts: [...BELTS], defaultBelt: { ...DEFAULT_BELT }, status: '下架', note: '多产品线预留' },
+      {
+        id: 'P1', code: 'P-1001', name: '锐涞经典款套件', type: 'kit',
+        compAName: '腰带', compBName: '弹力带', sizes: kitSizes, belts: [...BELTS],
+        stdCombos: classicStd, defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配 · 标品五档',
+      },
+      {
+        id: 'P2', code: 'P-1002', name: '锐涞运动款套件', type: 'kit',
+        compAName: '腰带', compBName: '弹力带', sizes: kitSizes, belts: [...BELTS],
+        stdCombos: classicStd.map((k) => ({ ...k })), defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配 · 标品五档',
+      },
+      {
+        id: 'P-SOCK', code: 'P-SOCK-01', name: '袜子+鞋套套件', type: 'kit',
+        compAName: '袜子', compBName: '鞋套', sizes: ['S', 'M', 'L'], belts: ['S', 'M', 'L'],
+        stdCombos: [
+          { key: comboKey('S', 'S'), grade: '小', belt: 'S', size: 'S', label: '小（袜子S+鞋套S）' },
+          { key: comboKey('M', 'M'), grade: '中', belt: 'M', size: 'M', label: '中（袜子M+鞋套M）' },
+          { key: comboKey('L', 'L'), grade: '大', belt: 'L', size: 'L', label: '大（袜子L+鞋套L）' },
+        ],
+        status: '上架', note: '自定义双组件标品示例',
+      },
+      { id: 'PART-BELT', code: 'PART-BELT', name: '腰带规格', type: 'part', sizes: [...BELTS], status: '上架', note: '配件·不生成SN' },
+      { id: 'PART-SIL', code: 'PART-SIL', name: '主体硅胶带', type: 'part', sizes: [...BAND_SIZES], status: '上架', note: '配件·不生成SN' },
     ];
 
     const agentsL1 = [
@@ -473,13 +581,21 @@
           if (!s.events) s.events = [];
         });
         (parsed.products || []).forEach((p) => {
-          if (!p.productLineId) p.productLineId = 'PL-MED';
-          if (p.type === 'kit') {
-            if (!p.sizes || !p.sizes.length) p.sizes = [...BAND_SIZES];
-            if (!p.belts || !p.belts.length) p.belts = [...BELTS];
-            p.defaultBelt = { ...DEFAULT_BELT, ...(p.defaultBelt || {}) };
-          }
+          migrateProductShape(p);
         });
+        if (!(parsed.products || []).some((p) => p.id === 'P-SOCK')) {
+          parsed.products = parsed.products || [];
+          parsed.products.push({
+            id: 'P-SOCK', code: 'P-SOCK-01', name: '袜子+鞋套套件', type: 'kit',
+            compAName: '袜子', compBName: '鞋套', sizes: ['S', 'M', 'L'], belts: ['S', 'M', 'L'],
+            stdCombos: [
+              { key: comboKey('S', 'S'), grade: '小', belt: 'S', size: 'S', label: '小（袜子S+鞋套S）' },
+              { key: comboKey('M', 'M'), grade: '中', belt: 'M', size: 'M', label: '中（袜子M+鞋套M）' },
+              { key: comboKey('L', 'L'), grade: '大', belt: 'L', size: 'L', label: '大（袜子L+鞋套L）' },
+            ],
+            status: '上架', note: '自定义双组件标品示例',
+          });
+        }
         (parsed.agentsL1 || []).forEach((a) => {
           if (!a.mainAreas) a.mainAreas = a.mainArea ? [a.mainArea] : [];
           if (!a.saleAreas) a.saleAreas = a.areas || [];
@@ -601,16 +717,23 @@
   function l2Name(id) { return db.agentsL2.find((a) => a.id === id)?.name || '—'; }
   function activeLineId() { return db.activeProductLineId || 'PL-MED'; }
   function kitProducts() {
-    const line = activeLineId();
-    const byLine = db.products.filter((p) => p.type === 'kit' && (p.productLineId || 'PL-MED') === line && (p.status === '上架' || line !== 'PL-MED'));
-    // 预留产品线无上架 SKU 时回退到医疗版，避免出货/导入弹窗空商品
-    if (byLine.length) return byLine;
     return db.products.filter((p) => p.type === 'kit' && p.status === '上架');
   }
   function partProducts() {
-    return db.products.filter((p) => p.type === 'part' && (p.productLineId || 'PL-MED') === activeLineId());
+    return db.products.filter((p) => p.type === 'part' && p.status === '上架');
   }
   function lineName(id) { return (db.productLines || []).find((l) => l.id === id)?.name || id; }
+  function migrateProductShape(p) {
+    if (!p) return p;
+    if (p.type === 'kit') {
+      p.compAName = p.compAName || '腰带';
+      p.compBName = p.compBName || '弹力带';
+      p.sizes = productSizes(p);
+      p.belts = productBelts(p).map(normalizeBelt);
+      if (!Array.isArray(p.stdCombos) || !p.stdCombos.length) p.stdCombos = ensureProductStdCombos(p);
+    }
+    return p;
+  }
 
   function soProductDetail(s) {
     const map = {};
@@ -966,6 +1089,23 @@
     if (row.resale && !tags.includes('可再销售')) tags.push('可再销售');
     if ((row.events || []).some((e) => /修改|维修/.test(e.title)) && !tags.includes('修改过')) tags.push('修改过');
     return tags;
+  }
+
+  /** SN 销售渠道：优先取关联销售单，否则按二级归属推断；未进入分销/直售则为空 */
+  function snChannelOf(row) {
+    if (!row) return '';
+    if (row.channel === 'direct' || row.channel === 'distribute') return row.channel;
+    const so = (db.sales || []).find((s) => (s.scanned || []).includes(row.sn));
+    if (so) return so.channel || (so.l2Id ? 'distribute' : 'direct');
+    if (row.status === 'bound' && !row.l2Id) return 'direct';
+    if (row.l2Id || row.status === 'l2') return 'distribute';
+    return '';
+  }
+  function snChannelMeta(row) {
+    const c = snChannelOf(row);
+    if (c === 'direct') return { id: 'direct', label: '直售', tone: 'orange' };
+    if (c === 'distribute') return { id: 'distribute', label: '分销', tone: 'blue' };
+    return { id: '', label: '—', tone: 'gray' };
   }
 
   function getSnLifecycle(row) {
@@ -1600,46 +1740,47 @@
   }
 
   function pageProduct() {
-    const kits = kitProducts();
-    const parts = partProducts();
-    const lines = db.productLines || [];
-    const allKits = db.products.filter((p) => p.type === 'kit');
-    return `${pageHeader('商品库', '套件 = 腰带 + 弹力带（分别选尺码）；配件不生成 SN',
+    const f = ui.filters.product || {};
+    const tab = ui.tabs.product || 'all';
+    let rows = db.products.slice();
+    if (tab === 'kit') rows = rows.filter((p) => p.type === 'kit');
+    if (tab === 'part') rows = rows.filter((p) => p.type === 'part');
+    if (f.q) {
+      const q = String(f.q).toLowerCase();
+      rows = rows.filter((p) => [p.code, p.name, p.compAName, p.compBName, p.note].join(' ').toLowerCase().includes(q));
+    }
+    if (f.status) rows = rows.filter((p) => p.status === f.status);
+    const kitN = db.products.filter((p) => p.type === 'kit').length;
+    const partN = db.products.filter((p) => p.type === 'part').length;
+    return `${pageHeader('商品库', '可自定义双组件套件（如袜子+鞋套）与配件；点击行编辑',
       '<button class="btn btn-primary" data-action="open-create-product" data-ptype="kit">新建套件</button><button class="btn" data-action="open-create-product" data-ptype="part">新建配件</button>')}
-      <div class="alert alert-info">${escapeHtml(STANDARD_COMBO_NOTE)} 当前产品线：<strong>${escapeHtml(lineName(activeLineId()))}</strong>
-        ${(lines).map((l)=>`<button class="btn btn-sm ${activeLineId()===l.id?'btn-primary':''}" data-action="switch-line" data-id="${l.id}" style="margin-left:6px">${escapeHtml(l.name)}${l.active?'':' ·预留'}</button>`).join('')}
-      </div>
-      <h3 class="section-title">产品线（12.4）</h3>
+      ${tabsHtml('product', [
+        { id: 'all', title: '全部', badge: db.products.length || null },
+        { id: 'kit', title: '套件', badge: kitN || null },
+        { id: 'part', title: '配件', badge: partN || null },
+      ])}
+      ${filterBar(`
+        <input class="field-input" placeholder="搜索编码/名称/组件" data-filter="product:q" value="${escapeHtml(f.q || '')}" />
+        <select class="field-input" data-filter="product:status"><option value="">状态</option><option value="上架" ${f.status==='上架'?'selected':''}>上架</option><option value="下架" ${f.status==='下架'?'selected':''}>下架</option></select>
+      `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>编码</th><th>名称</th><th>状态</th><th>SKU数</th><th>说明</th></tr></thead>
-        <tbody>${lines.map((l)=>`<tr>
-          <td>${escapeHtml(l.code)}</td><td>${escapeHtml(l.name)}</td>
-          <td>${tag(activeLineId()===l.id?'当前':'预留', activeLineId()===l.id?'green':'gray')}</td>
-          <td class="num">${allKits.filter((p)=> (p.productLineId||'PL-MED')===l.id).length}</td>
-          <td>${escapeHtml(l.note||'')}</td>
-        </tr>`).join('')}</tbody>
-      </table></div>
-      <h3 class="section-title" style="margin-top:16px">套件商品（${escapeHtml(lineName(activeLineId()))}）</h3>
-      <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>编码</th><th>名称</th><th>弹力带尺码</th><th>腰带尺码</th><th>标品组合</th><th>状态</th><th>操作</th></tr></thead>
-        <tbody>${kits.map((p)=>`<tr>
-          <td>${escapeHtml(p.code)}</td><td>${escapeHtml(p.name)}</td>
-          <td>${(p.sizes||BAND_SIZES).map((s)=>tag(s,'blue')).join(' ')}</td>
-          <td>${(p.belts||BELTS).map((b)=>tag(String(b).replace(/^腰带/,''),'green')).join(' ')}</td>
-          <td>${kitStdCombos(p).map((k)=>tag(k.grade+'·'+k.size+'+'+String(k.belt).replace(/^腰带/,''),'orange')).join(' ') || '—'}</td>
-          <td>${tag(p.status, p.status==='上架'?'green':'gray')}</td>
-          <td class="ops"><button class="btn btn-sm" data-action="open-edit-product" data-id="${p.id}">修改</button></td>
-        </tr>`).join('')}</tbody>
-      </table></div>
-      <h3 class="section-title" style="margin-top:16px">配件（无 SN）</h3>
-      <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>编码</th><th>名称</th><th>规格</th><th>状态</th><th>说明</th><th>操作</th></tr></thead>
-        <tbody>${parts.map((p)=>`<tr>
-          <td>${escapeHtml(p.code)}</td><td>${escapeHtml(p.name)}</td>
-          <td>${(p.sizes||[]).map((s)=>tag(s)).join(' ')}</td>
-          <td>${tag(p.status,'green')}</td><td>${escapeHtml(p.note||'')}</td>
-          <td class="ops"><button class="btn btn-sm" data-action="open-edit-product" data-id="${p.id}">修改</button></td>
-        </tr>`).join('')}</tbody>
+        <thead><tr><th>编码</th><th>名称</th><th>类型</th><th>组件/规格</th><th>标品组合</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody>${rows.map((p)=>{
+          const isKit = p.type === 'kit';
+          const comps = isKit
+            ? `${escapeHtml(productCompAName(p))}(${productBelts(p).join('/')}) + ${escapeHtml(productCompBName(p))}(${productSizes(p).join('/')})`
+            : (p.sizes || []).map((s) => tag(s)).join(' ') || '—';
+          const std = isKit ? kitStdCombos(p) : [];
+          return `<tr class="row-clickable" data-row-action="open-edit-product" data-id="${p.id}">
+            <td>${escapeHtml(p.code)}</td>
+            <td>${escapeHtml(p.name)}</td>
+            <td>${tag(isKit ? '套件' : '配件', isKit ? 'blue' : 'gray')}</td>
+            <td>${comps}</td>
+            <td>${isKit ? (std.map((k)=>tag((k.grade || '') + (k.grade ? '·' : '') + k.size + '+' + k.belt, 'orange')).join(' ') || '—') : '—'}</td>
+            <td>${tag(p.status, p.status==='上架'?'green':'gray')}</td>
+            <td class="ops" onclick="event.stopPropagation()"><button class="btn btn-sm" data-action="open-edit-product" data-id="${p.id}">修改</button></td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="7">${emptyHint('暂无商品')}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -1651,8 +1792,7 @@
     if (f.l2) rows = rows.filter((s) => s.l2Id === f.l2);
     if (f.size) rows = rows.filter((s) => s.size === f.size);
     if (f.belt) rows = rows.filter((s) => s.belt === f.belt);
-    if (f.channel === 'direct') rows = rows.filter((s) => s.status === 'bound' && !s.l2Id);
-    if (f.channel === 'distribute') rows = rows.filter((s) => s.l2Id && (s.status === 'l2' || s.status === 'bound'));
+    if (f.channel) rows = rows.filter((s) => snChannelOf(s) === f.channel);
     if (f.status) rows = rows.filter((s) => (f.status === 'frozen' ? (s.frozen || s.status === 'frozen') : s.status === f.status));
     if (f.factoryFrom || f.factoryTo) rows = rows.filter((s) => inDateRange(s.factoryAt || '', f.factoryFrom, f.factoryTo));
     if (f.soldFrom || f.soldTo) rows = rows.filter((s) => inDateRange(s.soldAt || s.bindAt || '', f.soldFrom, f.soldTo));
@@ -1661,7 +1801,7 @@
       rows = rows.filter((s) => inDateRange(s.soldAt || s.factoryAt || s.returnAt || s.bindAt || '', f.from, f.to));
     }
     rows = rows.slice(0, 200);
-    return `${pageHeader('SN码库', '多维筛选 · 点击行查看生命周期/编辑', '<button class="btn" data-action="open-gen-sn">系统生成SN</button><button class="btn" data-action="open-import-sn-seg">Excel导入段号</button>')}
+    return `${pageHeader('SN码库', '多维筛选 · 点击行查看生命周期/编辑', '<button class="btn" data-action="open-import-sn-seg">Excel导入段号</button>')}
       ${filterBar(`
         <input class="field-input" placeholder="SN" data-filter="sn:sn" value="${escapeHtml(f.sn||'')}" />
         <select class="field-input" data-filter="sn:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -1669,25 +1809,27 @@
         <select class="field-input" data-filter="sn:size"><option value="">弹力带尺码</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
         <select class="field-input" data-filter="sn:belt"><option value="">腰带尺码</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
         <select class="field-input" data-filter="sn:status"><option value="">状态</option>${Object.entries(SN_STATUS_LABEL).map(([k,v])=>`<option value="${k}" ${f.status===k?'selected':''}>${v}</option>`).join('')}</select>
-        <select class="field-input" data-filter="sn:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直销</option></select>
+        <select class="field-input" data-filter="sn:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <label class="muted">出厂</label><input type="date" class="field-input" data-filter="sn:factoryFrom" value="${escapeHtml(f.factoryFrom||'')}" /><input type="date" class="field-input" data-filter="sn:factoryTo" value="${escapeHtml(f.factoryTo||'')}" />
         <label class="muted">销售</label><input type="date" class="field-input" data-filter="sn:soldFrom" value="${escapeHtml(f.soldFrom||'')}" /><input type="date" class="field-input" data-filter="sn:soldTo" value="${escapeHtml(f.soldTo||'')}" />
         <label class="muted">退货</label><input type="date" class="field-input" data-filter="sn:returnFrom" value="${escapeHtml(f.returnFrom||'')}" /><input type="date" class="field-input" data-filter="sn:returnTo" value="${escapeHtml(f.returnTo||'')}" />
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>SN</th><th>商品</th><th>尺寸</th><th>腰带</th><th>一级</th><th>二级</th><th>状态</th><th>历史标签</th></tr></thead>
+        <thead><tr><th>SN</th><th>商品</th><th>尺寸</th><th>腰带</th><th>渠道</th><th>一级</th><th>二级</th><th>状态</th><th>历史标签</th></tr></thead>
         <tbody>${rows.map((s)=>{
           const st = snStatusMeta(s);
+          const ch = snChannelMeta(s);
           const hist = snHistoryTags(s);
           return `<tr class="row-clickable" data-row-action="view-sn" data-id="${s.sn}">
             <td class="num">${escapeHtml(s.sn)}</td>
             <td>${escapeHtml(productName(s.productId))}</td>
             <td>${escapeHtml(s.size)}</td><td>${escapeHtml(s.belt||'—')}</td>
+            <td>${ch.id ? tag(ch.label, ch.tone) : '—'}</td>
             <td>${escapeHtml(l1Name(s.l1Id))}</td><td>${escapeHtml(l2Name(s.l2Id))}</td>
             <td>${tag(st.label, st.tone)}</td>
             <td>${hist.map((t)=>tag(t,'orange')).join(' ')||'—'}</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
+        }).join('') || `<tr><td colspan="9">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
   function pagePurchase() {
@@ -1701,7 +1843,7 @@
       { id: 'approved', title: '已生效' },
       { id: 'rejected', title: '已驳回' },
     ];
-    return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即生效', '<button class="btn btn-primary" data-action="mini-create-po">新建采购申请</button><button class="btn" data-action="open-order-cart" data-channel="purchase" style="margin-left:8px">购物车式下单</button>')}
+    return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即生效（下单仅一级小程序）')}
       ${tabsHtml('purchase', tabItems)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>时间</th></tr></thead>
@@ -1749,30 +1891,17 @@
 
   function pageStock() {
     const f = ui.filters.stock || {};
+    const tab = ui.tabs.stock || 'summary';
     const agentType = f.type || 'l1';
     const agentId = f.agent || (agentType === 'l1' ? db.agentsL1[0]?.id : db.agentsL2[0]?.id);
     const rows = getStockRows(agentType, agentId);
     const snRows = getStockSns(agentType, agentId, f).slice(0, 200);
     const agents = agentType === 'l1' ? db.agentsL1 : db.agentsL2.filter((a) => !a.pending);
-    return `${pageHeader('库存管理', '汇总 + SN 明细筛选')}
-      ${filterBar(`
-        <select class="field-input" data-filter="stock:type"><option value="l1" ${agentType==='l1'?'selected':''}>一级</option><option value="l2" ${agentType==='l2'?'selected':''}>二级</option></select>
-        <select class="field-input" data-filter="stock:agent">${agents.map((a)=>`<option value="${a.id}" ${a.id===agentId?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
-        <input class="field-input" placeholder="SN" data-filter="stock:sn" value="${escapeHtml(f.sn||'')}" />
-        <select class="field-input" data-filter="stock:productId"><option value="">商品</option>${kitProducts().map((p)=>`<option value="${p.id}" ${f.productId===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select>
-        <select class="field-input" data-filter="stock:size"><option value="">弹力带尺码</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
-        <select class="field-input" data-filter="stock:belt"><option value="">腰带尺码</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
-      `)}
-      <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>商品</th><th>弹力带尺码</th><th>腰带尺码</th><th>数量</th></tr></thead>
-        <tbody>${rows.map((r)=>`<tr>
-          <td>${escapeHtml(productName(r.productId))}</td><td>${escapeHtml(r.size)}</td>
-          <td>${escapeHtml(r.belt||'—')}</td><td class="num">${r.qty}</td>
-        </tr>`).join('') || `<tr><td colspan="4">${emptyHint()}</td></tr>`}</tbody>
-      </table></div>
-      <h3 class="section-title" style="margin-top:12px">在库 SN 明细（${snRows.length}）</h3>
-      <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>SN</th><th>商品</th><th>弹力带</th><th>腰带</th><th>状态</th></tr></thead>
+    const logs = db.stockLogs.slice(0, 40);
+    let table = '';
+    if (tab === 'sn') {
+      table = `<div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>SN</th><th>商品</th><th>组件B</th><th>组件A</th><th>状态</th></tr></thead>
         <tbody>${snRows.map((s)=>{
           const st = snStatusMeta(s);
           return `<tr class="row-clickable" data-row-action="view-sn" data-id="${s.sn}">
@@ -1782,18 +1911,42 @@
             <td>${tag(st.label, st.tone)}</td>
           </tr>`;
         }).join('') || `<tr><td colspan="5">${emptyHint()}</td></tr>`}</tbody>
-      </table></div>
-      <h3 class="section-title" style="margin-top:12px">库存流水</h3>
-      <div class="page-card table-wrap"><table class="data">
+      </table></div>`;
+    } else if (tab === 'flow') {
+      table = `<div class="page-card table-wrap"><table class="data">
         <thead><tr><th>时间</th><th>代理</th><th>商品</th><th>变动</th><th>原因</th><th>单号</th></tr></thead>
-        <tbody>${db.stockLogs.slice(0,40).map((h)=>`<tr>
+        <tbody>${logs.map((h)=>`<tr>
           <td>${escapeHtml(h.time)}</td>
           <td>${escapeHtml(h.agentType==='l1'?l1Name(h.agentId):l2Name(h.agentId))}</td>
           <td>${escapeHtml(productName(h.productId))}/${escapeHtml(h.size)}</td>
           <td class="num">${h.delta>0?'+':''}${h.delta}</td>
           <td>${escapeHtml(h.reason)}</td><td>${escapeHtml(h.ref||'')}</td>
-        </tr>`).join('')}</tbody>
+        </tr>`).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
+    } else {
+      table = `<div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>商品</th><th>组件B尺码</th><th>组件A尺码</th><th>数量</th></tr></thead>
+        <tbody>${rows.map((r)=>`<tr>
+          <td>${escapeHtml(productName(r.productId))}</td><td>${escapeHtml(r.size)}</td>
+          <td>${escapeHtml(r.belt||'—')}</td><td class="num">${r.qty}</td>
+        </tr>`).join('') || `<tr><td colspan="4">${emptyHint()}</td></tr>`}</tbody>
+      </table></div>`;
+    }
+    return `${pageHeader('库存管理', '汇总 / SN 明细 / 流水 · 顶部切换')}
+      ${tabsHtml('stock', [
+        { id: 'summary', title: '库存汇总', badge: rows.length || null },
+        { id: 'sn', title: '在库 SN', badge: snRows.length || null },
+        { id: 'flow', title: '库存流水', badge: logs.length || null },
+      ])}
+      ${filterBar(`
+        <select class="field-input" data-filter="stock:type"><option value="l1" ${agentType==='l1'?'selected':''}>一级</option><option value="l2" ${agentType==='l2'?'selected':''}>二级</option></select>
+        <select class="field-input" data-filter="stock:agent">${agents.map((a)=>`<option value="${a.id}" ${a.id===agentId?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        ${tab==='sn'?`<input class="field-input" placeholder="SN" data-filter="stock:sn" value="${escapeHtml(f.sn||'')}" />
+        <select class="field-input" data-filter="stock:productId"><option value="">商品</option>${kitProducts().map((p)=>`<option value="${p.id}" ${f.productId===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select>
+        <input class="field-input" placeholder="组件B尺码" data-filter="stock:size" value="${escapeHtml(f.size||'')}" />
+        <input class="field-input" placeholder="组件A尺码" data-filter="stock:belt" value="${escapeHtml(f.belt||'')}" />`:''}
+      `)}
+      ${table}`;
   }
 
   function pageReturn() {
@@ -2119,20 +2272,10 @@
   }
 
   function pageRole() {
-    return `${pageHeader('角色与权限', '查看账号 / 编辑角色权限。二级代理账号与一级子账号请由一级在小程序「我的」创建')}
-      <div class="alert alert-info">后台不再提供「创建二级代理账号 / 创建一级子账号」；启停仍可在此管理。</div>
-      <h3 class="section-title">角色</h3>
-      <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>角色</th><th>说明</th><th>权限</th><th>账号数</th><th>操作</th></tr></thead>
-        <tbody>${db.roles.map((r)=>`<tr>
-          <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.desc)}</td>
-          <td>${(r.perms||[]).map((p)=>tag(permLabel(p))).join(' ') || '—'}</td>
-          <td class="num">${db.accounts.filter((a)=>a.roleId===r.id).length}</td>
-          <td class="ops"><button class="btn btn-sm" data-action="open-edit-role" data-id="${r.id}">编辑权限</button></td>
-        </tr>`).join('')}</tbody>
-      </table></div>
-      <h3 class="section-title" style="margin-top:12px">账号</h3>
-      <div class="page-card table-wrap"><table class="data">
+    const tab = ui.tabs.role || 'roles';
+    let table = '';
+    if (tab === 'accounts') {
+      table = `<div class="page-card table-wrap"><table class="data">
         <thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>关联代理</th><th>状态</th><th>操作</th></tr></thead>
         <tbody>${db.accounts.map((a)=>{
           const role = db.roles.find((r)=>r.id===a.roleId);
@@ -2143,10 +2286,10 @@
             <td>${tag(a.status, a.status==='启用'?'green':'gray')}</td>
             <td class="ops"><button class="btn btn-sm" data-action="toggle-account" data-id="${a.id}">${a.status==='启用'?'停用':'启用'}</button></td>
           </tr>`;
-        }).join('')}</tbody>
-      </table></div>
-      <h3 class="section-title" style="margin-top:12px">一级子账号（只读）</h3>
-      <div class="page-card table-wrap"><table class="data">
+        }).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
+      </table></div>`;
+    } else if (tab === 'subs') {
+      table = `<div class="page-card table-wrap"><table class="data">
         <thead><tr><th>用户名</th><th>姓名</th><th>所属一级</th><th>状态</th><th>操作</th></tr></thead>
         <tbody>${db.subAccounts.map((s)=>`<tr>
           <td>${escapeHtml(s.username)}</td><td>${escapeHtml(s.name)}</td>
@@ -2155,6 +2298,25 @@
           <td class="ops"><button class="btn btn-sm" data-action="toggle-sub" data-id="${s.id}">${s.status==='启用'?'停用':'启用'}</button></td>
         </tr>`).join('') || `<tr><td colspan="5">${emptyHint('暂无子账号')}</td></tr>`}</tbody>
       </table></div>`;
+    } else {
+      table = `<div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>角色</th><th>说明</th><th>权限</th><th>账号数</th><th>操作</th></tr></thead>
+        <tbody>${db.roles.map((r)=>`<tr>
+          <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.desc)}</td>
+          <td>${(r.perms||[]).map((p)=>tag(permLabel(p))).join(' ') || '—'}</td>
+          <td class="num">${db.accounts.filter((a)=>a.roleId===r.id).length}</td>
+          <td class="ops"><button class="btn btn-sm" data-action="open-edit-role" data-id="${r.id}">编辑权限</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+    }
+    return `${pageHeader('角色与权限', '查看账号 / 编辑角色权限。二级代理账号与一级子账号请由一级在小程序「我的」创建')}
+      <div class="alert alert-info">后台不再提供「创建二级代理账号 / 创建一级子账号」；启停仍可在此管理。</div>
+      ${tabsHtml('role', [
+        { id: 'roles', title: '角色', badge: db.roles.length || null },
+        { id: 'accounts', title: '账号', badge: db.accounts.length || null },
+        { id: 'subs', title: '一级子账号', badge: db.subAccounts.length || null },
+      ])}
+      ${table}`;
   }
 
   function pageLog() {
@@ -2244,8 +2406,7 @@
     list = list.filter((p) => matchTimeSnFilter(p.createdAt, purchaseSnHaystack(p), f));
     list = list.slice().sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
     return `<p class="mini-page-desc">发起采购申请（标准/非标/配件）</p>
-      <button class="btn btn-primary btn-block" data-action="mini-create-po">新建采购申请</button>
-      <button class="btn btn-block" data-action="open-order-cart" data-channel="purchase" style="margin-top:8px">购物车式下单</button>
+      <button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="purchase">新建采购申请</button>
       ${miniTimeSnFilters('miniPo')}
       <div class="mini-list" style="margin-top:8px">${list.map((p)=>`<button type="button" class="mini-list-item" data-action="open-view-purchase" data-id="${p.id}">
         <strong class="rt-row-hd"><span>${escapeHtml(p.no)}</span>${tag(PO_STATUS[p.status]||p.status)}</strong>
@@ -3056,14 +3217,16 @@
         belt: beltOpts.includes(normalizeBelt(c.belt)) ? normalizeBelt(c.belt) : beltOpts[0],
       }));
       ui.modal.draft.customLines = customs;
-      body = `<div class="alert alert-info">${escapeHtml(STANDARD_COMBO_NOTE)}<br>当前商品可选：弹力带 ${bandOpts.join('/')} · 腰带 ${beltOpts.map((b)=>String(b).replace(/^腰带/,'')).join('/')}；下单选项已按商品维护过滤。</div>
+      const aName = productCompAName(poProd);
+      const bName = productCompBName(poProd);
+      body = `<div class="alert alert-info">${escapeHtml(productComboNote(poProd))}</div>
         <div class="form-grid">
         <div class="form-field span-2"><label>商品</label><select class="field-input" id="f-pid">${kits.map((p)=>`<option value="${p.id}" ${p.id===poPid?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
         ${stdKits.map((k)=>`<div class="form-field"><label>标准 ${escapeHtml(k.label)}</label><input type="number" class="field-input" data-size-qty="${k.size}" data-std-belt="${k.belt}" value="0" /></div>`).join('') || `<p class="muted span-2">该商品未配置可用标品组合</p>`}
         </div>
         <h4 style="margin-top:12px">非标（可多款） <button type="button" class="btn btn-sm btn-primary" data-action="po-draft-add-custom">+ 新增非标行</button></h4>
         <div class="page-card table-wrap"><table class="data">
-          <thead><tr><th>弹力带</th><th>腰带</th><th>数量</th><th></th></tr></thead>
+          <thead><tr><th>${escapeHtml(bName)}</th><th>${escapeHtml(aName)}</th><th>数量</th><th></th></tr></thead>
           <tbody>${customs.map((c,i)=>`<tr>
             <td><select class="field-input" data-po-custom-size="${i}">${bandOpts.map((s)=>`<option value="${s}" ${s===c.size?'selected':''}>${s}</option>`).join('')}</select></td>
             <td><select class="field-input" data-po-custom-belt="${i}">${beltOpts.map((s)=>`<option value="${s}" ${s===normalizeBelt(c.belt)?'selected':''}>${s}</option>`).join('')}</select></td>
@@ -3079,36 +3242,64 @@
         </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-po-ok">提交</button>`;
     } else if (type === 'edit-product' || type === 'create-product') {
-      const cur = draft || db.products.find((x) => x.id === payload.id) || { type: payload.ptype || 'kit', sizes: [...BAND_SIZES], belts: [...BELTS], defaultBelt: { ...DEFAULT_BELT }, status: '上架' };
-      const isKit = (cur.type || 'kit') === 'kit';
+      const cur = draft || db.products.find((x) => x.id === payload.id) || { type: payload.ptype || 'kit', sizes: [...BAND_SIZES], belts: [...BELTS], status: '上架' };
+      if (!ui.modal.draft) ui.modal.draft = cur;
+      const d = ui.modal.draft;
+      const isKit = (d.type || 'kit') === 'kit';
       if (isKit) {
-        cur.sizes = cur.sizes || [...BAND_SIZES];
-        cur.belts = cur.belts || [...BELTS];
-        cur.defaultBelt = { ...DEFAULT_BELT, ...(cur.defaultBelt || {}) };
+        d.compAName = d.compAName || '腰带';
+        d.compBName = d.compBName || '弹力带';
+        d.sizes = (d.sizes && d.sizes.length) ? d.sizes : [...BAND_SIZES];
+        d.belts = (d.belts && d.belts.length) ? d.belts.map(normalizeBelt) : [...BELTS];
+        if (!Array.isArray(d.stdCombos)) d.stdCombos = ensureProductStdCombos(d);
       }
-      const combos = isKit ? kitStdCombos(cur) : [];
-      title = type === 'edit-product' ? `修改商品 · ${cur.name || ''}` : `新建${isKit ? '套件' : '配件'}`;
+      const aName = productCompAName(d);
+      const bName = productCompBName(d);
+      const belts = productBelts(d);
+      const sizes = productSizes(d);
+      const combos = isKit ? (d.stdCombos || []) : [];
+      title = type === 'edit-product' ? `修改商品 · ${d.name || ''}` : `新建${isKit ? '套件' : '配件'}`;
       body = `<div class="form-grid">
-        <div class="form-field"><label>编码</label><input class="field-input" id="f-pcode" value="${escapeHtml(cur.code||'')}" /></div>
-        <div class="form-field"><label>名称</label><input class="field-input" id="f-pname" value="${escapeHtml(cur.name||'')}" /></div>
-        <div class="form-field"><label>状态</label><select class="field-input" id="f-pstatus"><option value="上架" ${(cur.status||'上架')==='上架'?'selected':''}>上架</option><option value="下架" ${cur.status==='下架'?'selected':''}>下架</option></select></div>
-        <div class="form-field"><label>产品线</label><select class="field-input" id="f-pline">${(db.productLines||[]).map((l)=>`<option value="${l.id}" ${(cur.productLineId||activeLineId())===l.id?'selected':''}>${escapeHtml(l.name)}</option>`).join('')}</select></div>
-        <div class="form-field span-2"><label>说明</label><input class="field-input" id="f-pnote" value="${escapeHtml(cur.note||'')}" /></div>
+        <div class="form-field"><label>编码</label><input class="field-input" id="f-pcode" value="${escapeHtml(d.code||'')}" /></div>
+        <div class="form-field"><label>商品名称</label><input class="field-input" id="f-pname" value="${escapeHtml(d.name||'')}" placeholder="如：袜子+鞋套套件" /></div>
+        <div class="form-field"><label>状态</label><select class="field-input" id="f-pstatus"><option value="上架" ${(d.status||'上架')==='上架'?'selected':''}>上架</option><option value="下架" ${d.status==='下架'?'selected':''}>下架</option></select></div>
+        <div class="form-field"><label>说明</label><input class="field-input" id="f-pnote" value="${escapeHtml(d.note||'')}" /></div>
         ${isKit ? `
-          <div class="form-field span-2"><div class="alert alert-info" style="margin:0">${escapeHtml(STANDARD_COMBO_NOTE)}</div></div>
-          <div class="form-field span-2"><label>① 弹力带尺码（多选）SS / S / M / L / LL ${selectAllBtn('select-all-psize', '全选', isAllSelected(BAND_SIZES, cur.sizes))}</label>${chips(BAND_SIZES, cur.sizes||[], 'data-toggle-psize')}</div>
-          <div class="form-field span-2"><label>② 腰带尺码（多选）S / M / L ${selectAllBtn('select-all-pbelt', '全选', isAllSelected(BELTS, cur.belts))}</label>${chips(BELTS, cur.belts||[], 'data-toggle-pbelt')}</div>
-          <div class="form-field span-2"><label>③ 标品组合（由上面两组尺码自动交集；其他组合下单选非标）</label>
+          <div class="form-field span-2"><div class="alert alert-info" style="margin:0">自定义双组件套件：先命名组件并维护尺码，再配置「标准套件」组合。未列入标品的组合，下单时走非标。</div></div>
+          <div class="form-field"><label>组件 A 名称</label><input class="field-input" id="f-comp-a" value="${escapeHtml(aName)}" placeholder="如：腰带 / 袜子" /></div>
+          <div class="form-field"><label>组件 B 名称</label><input class="field-input" id="f-comp-b" value="${escapeHtml(bName)}" placeholder="如：弹力带 / 鞋套" /></div>
+          <div class="form-field span-2"><label>${escapeHtml(aName)}尺码 ${selectAllBtn('select-all-pbelt', '全选', isAllSelected(belts, belts))}</label>
+            ${chips(belts, belts, 'data-toggle-pbelt')}
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+              <input class="field-input" id="f-add-asize" placeholder="新增${escapeHtml(aName)}尺码，如 S" style="flex:1" />
+              <button type="button" class="btn btn-sm btn-primary" data-action="product-add-asize">+ 添加尺码</button>
+            </div>
+          </div>
+          <div class="form-field span-2"><label>${escapeHtml(bName)}尺码 ${selectAllBtn('select-all-psize', '全选', isAllSelected(sizes, sizes))}</label>
+            ${chips(sizes, sizes, 'data-toggle-psize')}
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+              <input class="field-input" id="f-add-bsize" placeholder="新增${escapeHtml(bName)}尺码，如 M" style="flex:1" />
+              <button type="button" class="btn btn-sm btn-primary" data-action="product-add-bsize">+ 添加尺码</button>
+            </div>
+          </div>
+          <div class="form-field span-2"><label>标准套件组合（下单「标准套件」来源；可增删改）</label>
             <div class="page-card table-wrap" style="margin-top:6px"><table class="data">
-              <thead><tr><th>档位</th><th>腰带</th><th>弹力带</th><th>组合说明</th></tr></thead>
-              <tbody>${combos.map((k)=>`<tr>
-                <td>${tag(k.grade,'orange')}</td>
-                <td>${escapeHtml(k.belt)}</td>
-                <td>${escapeHtml(k.size)}</td>
-                <td>${escapeHtml(k.label)}</td>
-              </tr>`).join('') || `<tr><td colspan="4">${emptyHint('请至少选中对应的腰带与弹力带尺码')}</td></tr>`}</tbody>
+              <thead><tr><th>档位</th><th>${escapeHtml(aName)}</th><th>${escapeHtml(bName)}</th><th>组合说明</th><th></th></tr></thead>
+              <tbody>${combos.map((k,i)=>`<tr>
+                <td><input class="field-input" data-std-grade="${i}" value="${escapeHtml(k.grade||'')}" style="width:72px" /></td>
+                <td><select class="field-input" data-std-belt="${i}">${belts.map((b)=>`<option value="${escapeHtml(b)}" ${normalizeBelt(k.belt)===b?'selected':''}>${escapeHtml(b)}</option>`).join('')}</select></td>
+                <td><select class="field-input" data-std-size="${i}">${sizes.map((s)=>`<option value="${escapeHtml(s)}" ${k.size===s?'selected':''}>${escapeHtml(s)}</option>`).join('')}</select></td>
+                <td class="muted">${escapeHtml(comboLabel(d, k.grade, k.belt, k.size))}</td>
+                <td><button type="button" class="btn btn-sm" data-action="product-del-std" data-idx="${i}">删除</button></td>
+              </tr>`).join('') || `<tr><td colspan="5">${emptyHint('暂无标品，下方添加')}</td></tr>`}</tbody>
             </table></div>
-          </div>` : `<div class="form-field span-2"><label>规格（逗号分隔）</label><input class="field-input" id="f-psizes" value="${escapeHtml((cur.sizes||[]).join(','))}" /></div>`}
+            <div class="form-grid" style="margin-top:10px">
+              <div class="form-field"><label>档位</label><input class="field-input" id="f-std-grade" placeholder="小/中/大" value="中" /></div>
+              <div class="form-field"><label>${escapeHtml(aName)}</label><select class="field-input" id="f-std-belt">${belts.map((b)=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}</select></div>
+              <div class="form-field"><label>${escapeHtml(bName)}</label><select class="field-input" id="f-std-size">${sizes.map((s)=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}</select></div>
+              <div class="form-field" style="display:flex;align-items:flex-end"><button type="button" class="btn btn-primary btn-block" data-action="product-add-std">+ 添加标品</button></div>
+            </div>
+          </div>` : `<div class="form-field span-2"><label>规格尺码（逗号分隔）</label><input class="field-input" id="f-psizes" value="${escapeHtml((d.sizes||[]).join(','))}" placeholder="S,M,L" /></div>`}
       </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-product">${type==='edit-product'?'保存':'创建'}</button>`;
     } else if (type === 'order-cart') {
@@ -3133,8 +3324,10 @@
         return g && g.bands.includes(r.size);
       });
       const l2Options = db.agentsL2.filter((a) => a.parentId === currentL1Id() && !a.pending);
+      const aName = productCompAName(cartProd);
+      const bName = productCompBName(cartProd);
       title = channel === 'sales' ? '提交销售单（购物车）' : '提交采购单（购物车）';
-      body = `<div class="alert alert-info">${escapeHtml(STANDARD_COMBO_NOTE)}<br>当前商品可选：弹力带 ${(cartProd?.sizes||BAND_SIZES).join('/')} · 腰带 ${(cartProd?.belts||BELTS).map((b)=>String(b).replace(/^腰带/,'')).join('/')}；下单选项已按商品维护过滤。</div>
+      body = `<div class="alert alert-info">${escapeHtml(productComboNote(cartProd))}</div>
         <div class="form-grid">
           <div class="form-field span-2"><label>商品名称</label><select class="field-input" id="f-cart-pid">${kits.map((p)=>`<option value="${p.id}" ${p.id===cartPid?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
           ${channel==='sales'?`<div class="form-field span-2"><label>二级代理</label><select class="field-input" id="f-cart-l2">${l2Options.map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}${l2Options.length?'':'<option value="">暂无可选二级</option>'}</select></div>`:''}
@@ -3142,24 +3335,24 @@
         <h4>标准套件（${stdKits.length}）</h4>
         <div class="form-grid">
           ${stdKits.map((k)=>`<div class="form-field"><label>${escapeHtml(k.label)}</label>
-            <input type="number" class="field-input" data-std-key="${k.key}" data-std-size="${k.size}" data-std-belt="${k.belt}" value="${d.stdQty[k.key]||0}" min="0" /></div>`).join('') || `<p class="muted">该商品未配置可用标品组合，请先在商品库勾选对应尺码</p>`}
+            <input type="number" class="field-input" data-std-key="${k.key}" data-std-size="${k.size}" data-std-belt="${k.belt}" value="${d.stdQty[k.key]||0}" min="0" /></div>`).join('') || `<p class="muted">该商品未配置可用标品组合，请先在商品库添加标品</p>`}
         </div>
         <h4 style="margin-top:14px">非标套件</h4>
         ${nonstdOpts.length ? `<div class="form-grid">
-          <div class="form-field"><label>腰带</label>
+          <div class="form-field"><label>${escapeHtml(aName)}</label>
             <select class="field-input" id="f-cart-c-grade">
-              ${nonstdOpts.map((g)=>`<option value="${g.id}" ${d.nonstdGrade===g.id?'selected':''}>${g.id}（${g.belt}）</option>`).join('')}
+              ${nonstdOpts.map((g)=>`<option value="${g.id}" ${d.nonstdGrade===g.id?'selected':''}>${escapeHtml(nonstdGradeOptionLabel(cartProd, g))}</option>`).join('')}
             </select>
           </div>
-          <div class="form-field"><label>弹力带</label>
-            <select class="field-input" id="f-cart-c-size">${bands.map((s)=>`<option value="${s}">${s}</option>`).join('')}</select>
+          <div class="form-field"><label>${escapeHtml(bName)}</label>
+            <select class="field-input" id="f-cart-c-size">${bands.map((s)=>`<option value="${s}">${escapeHtml(s)}</option>`).join('')}</select>
           </div>
           <div class="form-field"><label>数量</label><input type="number" class="field-input" id="f-cart-c-qty" value="1" min="1" /></div>
         </div>
         <p class="muted" style="margin:6px 0">非标仅展示「本商品已维护尺码」中排除标品后的组合。可多次添加。</p>
-        <button class="btn btn-sm btn-primary" data-action="cart-add-custom">+ 添加</button>` : `<p class="muted">该商品无可下非标组合（腰带/弹力带尺码不足）</p>`}
+        <button class="btn btn-sm btn-primary" data-action="cart-add-custom">+ 添加</button>` : `<p class="muted">该商品无可下非标组合（${escapeHtml(aName)}/${escapeHtml(bName)}尺码不足）</p>`}
         <div class="segment-rows" style="margin-top:8px">${d.customRows.map((r,i)=>`<div class="segment-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border,#eee)">
-          <span>已添加：${escapeHtml(customComboLabel(r.belt, r.size))} ×${r.qty}</span>
+          <span>已添加：${escapeHtml(customComboLabel(r.belt, r.size, cartProd))} ×${r.qty}</span>
           <button type="button" class="btn btn-sm" data-action="cart-del-custom" data-idx="${i}">删除</button>
         </div>`).join('') || emptyHint('暂无非标，点「+ 添加」')}</div>
         <h4 style="margin-top:14px">配件（非必选；勾选后须填尺码数量）</h4>
@@ -3263,7 +3456,7 @@
       body = `<p>${escapeHtml(payload.message || type)}</p>`;
     }
 
-    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'view-agent-l1' || type === 'edit-l1' || type === 'view-agent-l2' || type === 'edit-l2' || type === 'order-cart' || type === 'view-exception';
+    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'view-agent-l1' || type === 'edit-l1' || type === 'view-agent-l2' || type === 'edit-l2' || type === 'order-cart' || type === 'view-exception' || type === 'create-product' || type === 'edit-product';
     return `<div class="modal-mask" id="modal-mask"><div class="modal ${wide ? 'modal--wide' : ''}" id="modal-box">
       <div class="modal-hd"><strong>${escapeHtml(title)}</strong><button class="btn btn-sm btn-ghost" data-action="close-modal">×</button></div>
       <div class="modal-bd">${body}</div>
@@ -3421,6 +3614,7 @@
     }
 
     row.status = 'bound';
+    row.channel = row.l2Id ? 'distribute' : 'direct';
     row.soldAt = nowStr();
     row.bindAt = nowStr();
     row.bindIpRegion = ipRegion;
@@ -4342,46 +4536,129 @@
       }
       case 'select-all-psize': {
         if (!ui.modal?.draft) break;
-        ui.modal.draft.sizes = isAllSelected(BAND_SIZES, ui.modal.draft.sizes) ? [] : [...BAND_SIZES];
+        syncProductDraftFromDom();
+        const cur = ui.modal.draft.sizes || [];
+        if (cur.length) {
+          ui.modal.draft.sizes = [];
+          ui.modal.draft.stdCombos = [];
+        } else {
+          ui.modal.draft.sizes = [...BAND_SIZES];
+        }
         render(); break;
       }
       case 'select-all-pbelt': {
         if (!ui.modal?.draft) break;
-        ui.modal.draft.belts = isAllSelected(BELTS, ui.modal.draft.belts) ? [] : [...BELTS];
+        syncProductDraftFromDom();
+        const cur = ui.modal.draft.belts || [];
+        if (cur.length) {
+          ui.modal.draft.belts = [];
+          ui.modal.draft.stdCombos = [];
+        } else {
+          ui.modal.draft.belts = [...BELTS];
+        }
         render(); break;
       }
-      case 'open-create-product':
-        openModal('create-product', { ptype: el.getAttribute('data-ptype') || 'kit', draftSeed: { type: el.getAttribute('data-ptype') || 'kit', sizes: [...BAND_SIZES], belts: [...BELTS], defaultBelt: { ...DEFAULT_BELT }, status: '上架', productLineId: activeLineId(), code: '', name: '', note: '' } });
+      case 'product-add-asize': {
+        syncProductDraftFromDom();
+        const v = ($('#f-add-asize')?.value || '').trim();
+        if (!v) return toast('请输入组件 A 尺码', 'err');
+        const belts = ui.modal.draft.belts || (ui.modal.draft.belts = []);
+        if (belts.includes(v)) return toast('该尺码已存在', 'warn');
+        belts.push(v);
+        render(); break;
+      }
+      case 'product-add-bsize': {
+        syncProductDraftFromDom();
+        const v = ($('#f-add-bsize')?.value || '').trim();
+        if (!v) return toast('请输入组件 B 尺码', 'err');
+        const sizes = ui.modal.draft.sizes || (ui.modal.draft.sizes = []);
+        if (sizes.includes(v)) return toast('该尺码已存在', 'warn');
+        sizes.push(v);
+        render(); break;
+      }
+      case 'product-add-std': {
+        syncProductDraftFromDom();
+        const d = ui.modal.draft;
+        const grade = ($('#f-std-grade')?.value || '').trim();
+        const belt = normalizeBelt($('#f-std-belt')?.value);
+        const size = $('#f-std-size')?.value;
+        if (!belt || !size) return toast('请选择两个组件的尺码', 'err');
+        d.stdCombos = d.stdCombos || [];
+        if (d.stdCombos.some((k) => comboKey(k.belt, k.size) === comboKey(belt, size))) {
+          return toast('该标品组合已存在', 'warn');
+        }
+        d.stdCombos.push({
+          key: comboKey(belt, size),
+          grade,
+          belt,
+          size,
+          label: comboLabel(d, grade, belt, size),
+        });
+        render(); toast('已添加标品'); break;
+      }
+      case 'product-del-std': {
+        syncProductDraftFromDom();
+        const idx = Number(el.getAttribute('data-idx'));
+        (ui.modal.draft.stdCombos || []).splice(idx, 1);
+        render(); break;
+      }
+      case 'open-create-product': {
+        const ptype = el.getAttribute('data-ptype') || 'kit';
+        const draftSeed = ptype === 'part'
+          ? { type: 'part', sizes: ['S', 'M', 'L'], status: '上架', code: '', name: '', note: '' }
+          : {
+            type: 'kit',
+            compAName: '腰带',
+            compBName: '弹力带',
+            sizes: [...BAND_SIZES],
+            belts: [...BELTS],
+            stdCombos: STANDARD_KITS.map((k) => ({ ...k })),
+            defaultBelt: { ...DEFAULT_BELT },
+            status: '上架',
+            code: '',
+            name: '',
+            note: '',
+          };
+        openModal('create-product', { ptype, draftSeed });
         break;
+      }
       case 'open-edit-product': {
         const p = db.products.find((x) => x.id === id);
-        const draft = JSON.parse(JSON.stringify(p));
-        if (draft.type === 'kit') {
-          draft.sizes = draft.sizes || [...BAND_SIZES];
-          draft.belts = draft.belts || [...BELTS];
-          draft.defaultBelt = { ...DEFAULT_BELT, ...(draft.defaultBelt || {}) };
-        }
+        const draft = migrateProductShape(JSON.parse(JSON.stringify(p)));
         openModal('edit-product', { id, draft }); break;
       }
       case 'save-product': {
+        syncProductDraftFromDom();
         const d = ui.modal.draft || {};
-        d.code = $('#f-pcode')?.value?.trim() || d.code;
-        d.name = $('#f-pname')?.value?.trim() || d.name;
+        d.code = ($('#f-pcode')?.value || '').trim() || d.code;
+        d.name = ($('#f-pname')?.value || '').trim() || d.name;
         d.status = $('#f-pstatus')?.value || d.status || '上架';
-        d.productLineId = $('#f-pline')?.value || d.productLineId || activeLineId();
         d.note = $('#f-pnote')?.value || '';
         d.type = d.type || 'kit';
-        if (d.type !== 'kit') d.sizes = ($('#f-psizes')?.value || '').split(/[,，]/).map((x) => x.trim()).filter(Boolean);
-        else {
-          if (!(d.sizes || []).length) return toast('请至少选择一个弹力带尺码', 'err');
-          if (!(d.belts || []).length) return toast('请至少选择一个腰带尺码', 'err');
-          d.defaultBelt = { ...DEFAULT_BELT, ...(d.defaultBelt || {}) };
-          // 按标品规则固化 defaultBelt
-          STANDARD_KITS.forEach((k) => {
-            if ((d.sizes || []).includes(k.size) && (d.belts || []).includes(k.belt)) d.defaultBelt[k.size] = k.belt;
-          });
+        if (d.type !== 'kit') {
+          d.sizes = ($('#f-psizes')?.value || '').split(/[,，]/).map((x) => x.trim()).filter(Boolean);
+          if (!d.sizes.length) return toast('请填写配件规格尺码', 'err');
+        } else {
+          d.compAName = ($('#f-comp-a')?.value || '').trim() || d.compAName || '腰带';
+          d.compBName = ($('#f-comp-b')?.value || '').trim() || d.compBName || '弹力带';
+          d.sizes = (d.sizes || []).filter(Boolean);
+          d.belts = (d.belts || []).map(normalizeBelt).filter(Boolean);
+          if (!d.sizes.length) return toast(`请至少添加一个${d.compBName}尺码`, 'err');
+          if (!d.belts.length) return toast(`请至少添加一个${d.compAName}尺码`, 'err');
+          d.stdCombos = (d.stdCombos || [])
+            .filter((k) => d.belts.includes(normalizeBelt(k.belt)) && d.sizes.includes(k.size))
+            .map((k) => ({
+              key: comboKey(k.belt, k.size),
+              grade: k.grade || '',
+              belt: normalizeBelt(k.belt),
+              size: k.size,
+              label: comboLabel(d, k.grade, k.belt, k.size),
+            }));
+          d.defaultBelt = {};
+          d.stdCombos.forEach((k) => { d.defaultBelt[k.size] = k.belt; });
         }
         if (!d.code || !d.name) return toast('请填写编码与名称', 'err');
+        migrateProductShape(d);
         if (ui.modal.type === 'edit-product') {
           const i = db.products.findIndex((x) => x.id === d.id);
           if (i >= 0) db.products[i] = d;
@@ -4402,13 +4679,13 @@
         const cartProd = kitProducts().find((p) => p.id === cartPid) || kitProducts()[0];
         const grade = ui.modal.draft.nonstdGrade || '小';
         const gradeOpt = nonstdGradesForProduct(cartProd).find((g) => g.id === grade);
-        if (!gradeOpt) return toast('当前商品无此非标腰带档', 'err');
+        if (!gradeOpt) return toast(`当前商品无此非标${productCompAName(cartProd)}档`, 'err');
         const belt = gradeOpt.belt;
         const size = $('#f-cart-c-size')?.value;
         const qty = Number($('#f-cart-c-qty')?.value) || 0;
-        if (!size) return toast('请选择弹力带', 'err');
+        if (!size) return toast(`请选择${productCompBName(cartProd)}`, 'err');
         if (!qty) return toast('请填写非标数量', 'err');
-        if (!gradeOpt.bands.includes(size)) return toast('该腰带档位不可选此弹力带（或不在商品维护尺码内）', 'err');
+        if (!gradeOpt.bands.includes(size)) return toast(`该${productCompAName(cartProd)}档位不可选此${productCompBName(cartProd)}（或不在商品维护尺码内）`, 'err');
         ui.modal.draft.customRows = ui.modal.draft.customRows || [];
         ui.modal.draft.customRows.push({ belt, size, qty, grade });
         if ($('#f-cart-c-qty')) $('#f-cart-c-qty').value = '1';
@@ -4568,6 +4845,7 @@
     s.scanned.forEach((sn) => {
       const row = db.sns.find((x) => x.sn === sn);
       row.status = 'l2'; row.l2Id = s.l2Id;
+      row.channel = s.channel || 'distribute';
       pushSnEvent(row, '销售转入二级', s.no, 'sales');
     });
     s.status = 'done';
@@ -4915,20 +5193,42 @@
     }
     document.querySelectorAll('[data-toggle-psize]').forEach((el) => el.addEventListener('click', () => {
       if (!ui.modal?.draft) return;
+      if (ui.modal.type === 'create-product' || ui.modal.type === 'edit-product') syncProductDraftFromDom();
       const r = el.getAttribute('data-toggle-psize');
       const set = new Set(ui.modal.draft.sizes || []);
       if (set.has(r)) set.delete(r); else set.add(r);
       ui.modal.draft.sizes = [...set];
+      if (ui.modal.draft.stdCombos) {
+        ui.modal.draft.stdCombos = ui.modal.draft.stdCombos.filter((k) => set.has(k.size));
+      }
       render();
     }));
     document.querySelectorAll('[data-toggle-pbelt]').forEach((el) => el.addEventListener('click', () => {
       if (!ui.modal?.draft) return;
+      if (ui.modal.type === 'create-product' || ui.modal.type === 'edit-product') syncProductDraftFromDom();
       const r = el.getAttribute('data-toggle-pbelt');
       const set = new Set(ui.modal.draft.belts || []);
       if (set.has(r)) set.delete(r); else set.add(r);
       ui.modal.draft.belts = [...set];
+      if (ui.modal.draft.stdCombos) {
+        ui.modal.draft.stdCombos = ui.modal.draft.stdCombos.filter((k) => set.has(normalizeBelt(k.belt)));
+      }
       render();
     }));
+    if (ui.modal?.type === 'create-product' || ui.modal?.type === 'edit-product') {
+      ['#f-comp-a', '#f-comp-b'].forEach((sel) => {
+        $(sel)?.addEventListener('change', () => { syncProductDraftFromDom(); render(); });
+      });
+      document.querySelectorAll('[data-std-grade], [data-std-belt], [data-std-size]').forEach((inp) => {
+        inp.addEventListener('change', () => { syncProductDraftFromDom(); render(); });
+      });
+      $('#f-add-asize')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleAction('product-add-asize', e.currentTarget); }
+      });
+      $('#f-add-bsize')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleAction('product-add-bsize', e.currentTarget); }
+      });
+    }
 
     $('#modal-mask')?.addEventListener('click', (e) => { if (e.target.id === 'modal-mask' && !ui.confirm) closeModal(); });
     $('#confirm-mask')?.addEventListener('click', (e) => { if (e.target.id === 'confirm-mask') closeConfirm(); });
