@@ -566,7 +566,7 @@
     home: '工作台', 'agent-l1': '一级代理商', 'agent-l2': '二级代理商', 'agent-l2-audit': '二级审核',
     'agent-pending': '待分配(法人)', sn: 'SN码库', product: '商品库', purchase: '采购单管理',
     sales: '销售单管理', stock: '库存管理', return: '返货管理', exception: '异常管理', customers: '销售客户',
-    stats: '数据大屏', role: '角色与权限', log: '操作日志',
+    stats: '数据统计', role: '角色与权限', log: '操作日志',
     'l1-sales-detail': '一级销售详情', 'l1-return-detail': '一级退货详情',
     'l2-sales-detail': '二级销售详情', 'l2-return-detail': '二级退货详情',
     'mini-scan': '扫码', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
@@ -1187,7 +1187,7 @@
         { id: 'return', title: '返货管理', icon: '↩', badge: pendingReturnCount() || null },
         { id: 'exception', title: '异常管理', icon: '⚠', badge: openExCount() || null },
         { id: 'customers', title: '销售客户', icon: '☺' },
-        { id: 'stats', title: '数据大屏', icon: '◎' },
+        { id: 'stats', title: '数据统计', icon: '▤' },
       ]},
       { group: '系统', items: [
         { id: 'role', title: '角色与权限', icon: '⚙' },
@@ -1715,7 +1715,7 @@
     });
     const monthQty = db.returns.filter((r) => inDateRange(r.createdAt, monthStart(), todayDate())).reduce((n, r) => n + (r.sns || []).length, 0);
     const histQty = db.returns.reduce((n, r) => n + (r.sns || []).length, 0);
-    return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', '<button class="btn" data-go="stats">数据大屏</button>')}
+    return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', '<button class="btn" data-go="stats">数据统计</button>')}
       <div class="metric-grid" style="margin-bottom:10px">
         ${metricCard('本月退货件数', monthQty, 'return')}
         ${metricCard('历史退货件数', histQty, 'return')}
@@ -1873,8 +1873,8 @@
     return `<div class="dash">
       <div class="dash-hd">
         <div>
-          <div class="dash-eyebrow">RUILAI OPS · COMMAND BOARD</div>
-          <h2 class="dash-title">锐涞运营数据大屏</h2>
+          <div class="dash-eyebrow">RUILAI OPS · ANALYTICS</div>
+          <h2 class="dash-title">数据统计</h2>
           <p class="dash-sub">区间 ${escapeHtml(from)} ~ ${escapeHtml(to)} · 点击指标可下钻列表</p>
         </div>
         <div class="dash-hd-right">
@@ -1978,7 +1978,7 @@
     const yTicks = [0, 0.5, 1].map((t) => {
       const v = Math.round(maxV * t);
       const y = yAt(v);
-      return `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}" stroke="#ffffff12"></line>
+      return `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}" stroke="#e7eeec"></line>
         <text x="${pad.l - 6}" y="${y + 3}" text-anchor="end" class="dash-svg-label">${v}</text>`;
     }).join('');
     const step = labels.length > 10 ? Math.ceil(labels.length / 8) : 1;
