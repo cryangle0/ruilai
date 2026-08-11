@@ -421,6 +421,7 @@
 
     const soScannedA = ['RL202607200009', 'RL202607200010', 'RL202607200011', 'RL202607200012'];
     const soScannedB = ['RL202607210003', 'RL202607210004', 'RL202607210005', 'RL202607210006'];
+    const customers = buildCustomersFromSns(sns);
 
     return {
       exceptionMultiplier: 1.5,
@@ -569,11 +570,12 @@
         { id: 'SUB2', l1Id: 'L1A', username: 'hd_scan_02', name: '仓管小周', status: '启用' },
         { id: 'SUB3', l1Id: 'L1B', username: 'hn_scan_01', name: '华南仓管阿强', status: '启用' },
       ],
-      seq: { po: 32, so: 101, rt: 10, snBatch: 1, notify: 5 },
+      customers,
+      seq: { po: 32, so: 101, rt: 10, snBatch: 1, notify: 5, cu: customers.length },
     };
   }
 
-  const persistKey = 'ruilai_proto_v10';
+  const persistKey = 'ruilai_proto_v11';
   function loadStore() {
     try {
       const raw = localStorage.getItem(persistKey);
@@ -652,15 +654,19 @@
         });
         if (!parsed.logs) parsed.logs = seed().logs;
         normalizeDemoLogTimes(parsed.logs);
+        ensureCustomersStore(parsed);
         return parsed;
       }
     } catch (_) {}
-    return seed();
+    const fresh = seed();
+    ensureCustomersStore(fresh);
+    return fresh;
   }
   function saveStore() { localStorage.setItem(persistKey, JSON.stringify(db)); }
 
   let db = loadStore();
   normalizeDemoLogTimes(db.logs);
+  ensureCustomersStore(db);
   try { saveStore(); } catch (_) {}
 
   const ui = {
@@ -2877,28 +2883,75 @@
       <div class="mini-seg-panel">${panel}</div>`;
   }
 
-  function pageCustomers() {
-    const f = ui.filters.customers || {};
+  function buildCustomersFromSns(snsList) {
     const map = new Map();
-    db.sns.filter((s) => s.user || s.prevUser).forEach((s) => {
+    let n = 0;
+    (snsList || []).forEach((s) => {
       const u = s.user || s.prevUser;
+      if (!u) return;
       const phone = u.phone || '';
-      const addr = (u.addr || '').replace(/\s+/g, '');
-      const key = phone || addr || s.sn;
-      if (!map.has(key)) map.set(key, { phone, addr: u.addr || '', phoneLoc: u.phoneLoc || '', sns: [], products: [] });
-      const row = map.get(key);
-      row.sns.push(s.sn);
-      row.products.push(`${productName(s.productId)}/${s.size}`);
+      const key = phone || String(u.addr || '').replace(/\s+/g, '') || s.sn;
+      if (!map.has(key)) {
+        n += 1;
+        map.set(key, {
+          id: `CU${String(n).padStart(3, '0')}`,
+          name: '',
+          phone,
+          addr: u.addr || '',
+          phoneLoc: u.phoneLoc || '',
+          note: '',
+          sns: [],
+          createdAt: s.soldAt || s.bindAt || s.returnAt || nowStr(),
+          updatedAt: s.soldAt || s.bindAt || s.returnAt || nowStr(),
+        });
+      }
+      const c = map.get(key);
+      if (!c.sns.includes(s.sn)) c.sns.push(s.sn);
     });
-    let rows = [...map.values()];
-    // duplicate marks
-    const phoneCount = {};
-    const addrCount = {};
-    rows.forEach((r) => {
-      if (r.phone) phoneCount[r.phone] = (phoneCount[r.phone] || 0) + 1;
-      if (r.addr) addrCount[r.addr.replace(/\s+/g,'')] = (addrCount[r.addr.replace(/\s+/g,'')] || 0) + 1;
+    return [...map.values()];
+  }
+
+  function ensureCustomersStore(store) {
+    if (!store) return;
+    store.seq = store.seq || {};
+    if (!Array.isArray(store.customers) || !store.customers.length) {
+      store.customers = buildCustomersFromSns(store.sns || []);
+    }
+    store.customers.forEach((c, i) => {
+      if (!c.id) c.id = `CU${String(i + 1).padStart(3, '0')}`;
+      if (!Array.isArray(c.sns)) c.sns = [];
+      if (c.name == null) c.name = '';
+      if (c.note == null) c.note = '';
+      if (!c.createdAt) c.createdAt = nowStr();
+      if (!c.updatedAt) c.updatedAt = c.createdAt;
     });
-    // recount by actual purchases: same phone across multiple SN entries already in one row; mark if sns.length>1 or shared addr across phones
+    const maxN = store.customers.reduce((m, c) => {
+      const n = Number(String(c.id || '').replace(/\D/g, '')) || 0;
+      return Math.max(m, n);
+    }, 0);
+    if (!store.seq.cu || store.seq.cu < maxN) store.seq.cu = maxN;
+  }
+
+  function enrichCustomer(c) {
+    const products = [];
+    const snRows = [];
+    (c.sns || []).forEach((sn) => {
+      const s = db.sns.find((x) => x.sn === sn);
+      if (!s) return;
+      snRows.push(s);
+      products.push(`${productName(s.productId)}/${s.size}${s.belt ? '+' + s.belt : ''}`);
+    });
+    return {
+      ...c,
+      products: [...new Set(products)],
+      snRows,
+      dupPhone: (c.sns || []).length > 1,
+    };
+  }
+
+  function listAdminCustomers() {
+    ensureCustomersStore(db);
+    const rows = (db.customers || []).map(enrichCustomer);
     const addrPhones = {};
     rows.forEach((r) => {
       const a = (r.addr || '').replace(/\s+/g, '');
@@ -2907,32 +2960,136 @@
       if (r.phone) addrPhones[a].add(r.phone);
     });
     rows.forEach((r) => {
-      r.dupPhone = (r.sns || []).length > 1;
       const a = (r.addr || '').replace(/\s+/g, '');
       r.dupAddr = !!(a && addrPhones[a] && addrPhones[a].size > 1);
       r.mark = r.dupPhone || r.dupAddr;
     });
-    if (f.sn) rows = rows.filter((r) => r.sns.some((sn) => sn.toLowerCase().includes(f.sn.toLowerCase())));
-    if (f.phone) rows = rows.filter((r) => (r.phone || '').includes(f.phone));
+    return rows;
+  }
+
+  function syncCustomerToSns(c) {
+    const payload = { phone: c.phone || '', addr: c.addr || '', phoneLoc: c.phoneLoc || '' };
+    (c.sns || []).forEach((sn) => {
+      const s = db.sns.find((x) => x.sn === sn);
+      if (!s) return;
+      if (s.user) s.user = { ...s.user, ...payload };
+      else if (s.prevUser) s.prevUser = { ...s.prevUser, ...payload };
+      else s.user = { ...payload };
+    });
+  }
+
+  function readCustomerForm() {
+    const sns = String($('#f-cu-sns')?.value || '')
+      .split(/[,，\s]+/)
+      .map((x) => x.trim().toUpperCase())
+      .filter(Boolean);
+    return {
+      name: ($('#f-cu-name')?.value || '').trim(),
+      phone: ($('#f-cu-phone')?.value || '').trim(),
+      phoneLoc: ($('#f-cu-loc')?.value || '').trim(),
+      addr: ($('#f-cu-addr')?.value || '').trim(),
+      note: ($('#f-cu-note')?.value || '').trim(),
+      sns,
+    };
+  }
+
+  function customerFormHtml(c = {}) {
+    return `<div class="form-grid">
+      <div class="form-field"><label>姓名/备注名</label><input class="field-input" id="f-cu-name" value="${escapeHtml(c.name || '')}" placeholder="可选" /></div>
+      <div class="form-field"><label>手机号</label><input class="field-input" id="f-cu-phone" value="${escapeHtml(c.phone || '')}" placeholder="138****0000" /></div>
+      <div class="form-field"><label>归属地</label><input class="field-input" id="f-cu-loc" value="${escapeHtml(c.phoneLoc || '')}" placeholder="如：浙江" /></div>
+      <div class="form-field span-2"><label>地址</label><input class="field-input" id="f-cu-addr" value="${escapeHtml(c.addr || '')}" placeholder="收货/绑定地址" /></div>
+      <div class="form-field span-2"><label>关联 SN（逗号分隔）</label><input class="field-input" id="f-cu-sns" value="${escapeHtml((c.sns || []).join(','))}" placeholder="RL..." /></div>
+      <div class="form-field span-2"><label>备注</label><input class="field-input" id="f-cu-note" value="${escapeHtml(c.note || '')}" placeholder="可手写补充" /></div>
+    </div>`;
+  }
+
+  function customerDetailHtml(c) {
+    const row = enrichCustomer(c);
+    const addrPhones = {};
+    listAdminCustomers().forEach((r) => {
+      const a = (r.addr || '').replace(/\s+/g, '');
+      if (!a) return;
+      addrPhones[a] = addrPhones[a] || new Set();
+      if (r.phone) addrPhones[a].add(r.phone);
+    });
+    const a = (row.addr || '').replace(/\s+/g, '');
+    const dupAddr = !!(a && addrPhones[a] && addrPhones[a].size > 1);
+    return `<div class="detail-grid">
+        <div><span>姓名</span>${escapeHtml(row.name || '—')}</div>
+        <div><span>手机</span>${escapeHtml(row.phone || '—')}</div>
+        <div><span>归属地</span>${escapeHtml(row.phoneLoc || '—')}</div>
+        <div><span>标记</span>${row.dupPhone ? tag('重复手机', 'orange') : ''}${dupAddr ? tag('重复地址', 'orange') : ''}${!(row.dupPhone || dupAddr) ? '—' : ''}</div>
+        <div class="span-2"><span>地址</span>${escapeHtml(row.addr || '—')}</div>
+        <div class="span-2"><span>备注</span>${escapeHtml(row.note || '—')}</div>
+        <div><span>创建</span>${escapeHtml(row.createdAt || '—')}</div>
+        <div><span>更新</span>${escapeHtml(row.updatedAt || '—')}</div>
+      </div>
+      <h4 style="margin-top:12px">商品明细</h4>
+      <div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>商品</th><th>规格</th><th>数量</th></tr></thead>
+        <tbody>${(() => {
+          const map = {};
+          row.snRows.forEach((s) => {
+            const k = `${s.productId}_${s.size}_${s.belt || ''}`;
+            if (!map[k]) map[k] = { productId: s.productId, size: s.size, belt: s.belt || '', qty: 0 };
+            map[k].qty += 1;
+          });
+          const entries = Object.values(map);
+          return entries.map((p) => `<tr>
+            <td>${escapeHtml(productName(p.productId))}</td>
+            <td>${escapeHtml(stockSpecText(p.size, p.belt))}</td>
+            <td class="num">${p.qty}</td>
+          </tr>`).join('') || `<tr><td colspan="3">${emptyHint('暂无关联商品')}</td></tr>`;
+        })()}</tbody>
+      </table></div>
+      <h4 style="margin-top:12px">关联 SN（${(row.sns || []).length}）</h4>
+      <div class="page-card table-wrap"><table class="data">
+        <thead><tr><th>SN</th><th>商品</th><th>规格</th><th>状态</th><th></th></tr></thead>
+        <tbody>${(row.sns || []).map((sn) => {
+          const s = db.sns.find((x) => x.sn === sn);
+          const st = snStatusMeta(s);
+          return `<tr>
+            <td><code>${escapeHtml(sn)}</code></td>
+            <td>${escapeHtml(s ? productName(s.productId) : '—')}</td>
+            <td>${escapeHtml(s ? stockSpecText(s.size, s.belt) : '—')}</td>
+            <td>${s ? tag(st.label, st.tone) : tag('未找到', 'gray')}</td>
+            <td class="ops"><button class="btn btn-sm" data-action="open-view-sn" data-id="${escapeHtml(sn)}">详情</button></td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="5">${emptyHint('暂无关联 SN')}</td></tr>`}</tbody>
+      </table></div>`;
+  }
+
+  function pageCustomers() {
+    const f = ui.filters.customers || {};
+    let rows = listAdminCustomers();
+    if (f.sn) rows = rows.filter((r) => (r.sns || []).some((sn) => sn.toLowerCase().includes(f.sn.toLowerCase())));
+    if (f.phone) rows = rows.filter((r) => (r.phone || '').includes(f.phone) || (r.name || '').includes(f.phone));
     if (f.addr) rows = rows.filter((r) => (r.addr || '').includes(f.addr));
     if (f.mark === '1') rows = rows.filter((r) => r.mark);
-    return `${pageHeader('销售客户', '客户信息 · 购买商品/SN · 重复标记可筛')}
+    return `${pageHeader('销售客户', '点击行看详情 · 支持新建 / 编辑 / 删除',
+      '<button class="btn btn-primary" data-action="open-create-customer">新建客户</button>')}
       ${filterBar(`
         <input class="field-input" placeholder="SN" data-filter="customers:sn" value="${escapeHtml(f.sn||'')}" />
-        <input class="field-input" placeholder="手机号" data-filter="customers:phone" value="${escapeHtml(f.phone||'')}" />
+        <input class="field-input" placeholder="手机/姓名" data-filter="customers:phone" value="${escapeHtml(f.phone||'')}" />
         <input class="field-input" placeholder="地址" data-filter="customers:addr" value="${escapeHtml(f.addr||'')}" />
         <select class="field-input" data-filter="customers:mark"><option value="">标记</option><option value="1" ${f.mark==='1'?'selected':''}>仅重复</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th></tr></thead>
-        <tbody>${rows.map((r)=>`<tr>
+        <thead><tr><th>姓名</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th><th>操作</th></tr></thead>
+        <tbody>${rows.map((r)=>`<tr class="row-clickable" data-row-action="view-customer" data-id="${escapeHtml(r.id)}">
+          <td>${escapeHtml(r.name || '—')}</td>
           <td>${escapeHtml(r.phone||'—')}</td>
           <td>${escapeHtml(r.phoneLoc||'—')}</td>
           <td>${escapeHtml(r.addr||'—')}</td>
-          <td>${escapeHtml([...new Set(r.products)].join('，'))}</td>
-          <td>${r.sns.map((sn)=>`<code style="margin-right:4px">${escapeHtml(sn)}</code>`).join('')}</td>
+          <td>${escapeHtml((r.products || []).join('，') || '—')}</td>
+          <td>${(r.sns||[]).map((sn)=>`<code style="margin-right:4px">${escapeHtml(sn)}</code>`).join('')||'—'}</td>
           <td>${r.dupPhone?tag('重复手机','orange'):''} ${r.dupAddr?tag('重复地址','orange'):''} ${!r.mark?'—':''}</td>
-        </tr>`).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
+          <td class="ops" onclick="event.stopPropagation()">
+            <button class="btn btn-sm" data-action="open-edit-customer" data-id="${escapeHtml(r.id)}">编辑</button>
+            <button class="btn btn-sm btn-danger" data-action="delete-customer" data-id="${escapeHtml(r.id)}">删除</button>
+          </td>
+        </tr>`).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -3843,6 +4000,28 @@
         </table></div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button>
         <button class="btn btn-primary" data-action="cart-submit">提交${channel==='sales'?'销售单':'采购单'}</button>`;
+    } else if (type === 'view-customer') {
+      const c = (db.customers || []).find((x) => x.id === payload.id);
+      if (!c) {
+        title = '客户详情';
+        body = emptyHint('未找到该客户');
+        foot = `<button class="btn" data-action="close-modal">关闭</button>`;
+      } else {
+        title = `客户详情 · ${c.phone || c.name || c.id}`;
+        body = customerDetailHtml(c);
+        foot = `<button class="btn" data-action="close-modal">关闭</button>
+          <button class="btn" data-action="open-edit-customer" data-id="${escapeHtml(c.id)}">编辑</button>
+          <button class="btn btn-danger" data-action="delete-customer" data-id="${escapeHtml(c.id)}">删除</button>`;
+      }
+    } else if (type === 'create-customer' || type === 'edit-customer') {
+      const editing = type === 'edit-customer';
+      const c = editing
+        ? ((db.customers || []).find((x) => x.id === payload.id) || ui.modal.draft || {})
+        : (ui.modal.draft || {});
+      title = editing ? `编辑客户 · ${c?.phone || c?.name || c?.id || ''}` : '新建客户';
+      body = customerFormHtml(c || {});
+      foot = `<button class="btn" data-action="close-modal">取消</button>
+        <button class="btn btn-primary" data-action="${editing ? 'save-customer' : 'create-customer-ok'}" ${editing ? `data-id="${escapeHtml(c?.id || '')}"` : ''}>${editing ? '保存' : '创建'}</button>`;
     } else if (type === 'create-return') {
       const cend = payload.mode === 'cend';
       const draft = ui.modal.draft || {};
@@ -3935,7 +4114,7 @@
       body = `<p>${escapeHtml(payload.message || type)}</p>`;
     }
 
-    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'view-agent-l1' || type === 'edit-l1' || type === 'view-agent-l2' || type === 'edit-l2' || type === 'order-cart' || type === 'view-exception' || type === 'create-product' || type === 'edit-product' || type === 'view-stock' || type === 'view-return';
+    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'view-agent-l1' || type === 'edit-l1' || type === 'view-agent-l2' || type === 'edit-l2' || type === 'order-cart' || type === 'view-exception' || type === 'create-product' || type === 'edit-product' || type === 'view-stock' || type === 'view-return' || type === 'view-customer' || type === 'create-customer' || type === 'edit-customer';
     return `<div class="modal-mask" id="modal-mask"><div class="modal ${wide ? 'modal--wide' : ''}" id="modal-box">
       <div class="modal-hd"><strong>${escapeHtml(title)}</strong><button class="btn btn-sm btn-ghost" data-action="close-modal">×</button></div>
       <div class="modal-bd">${body}</div>
@@ -4458,6 +4637,17 @@
             saveStore();
             toast('已删除');
           }
+          render();
+        } else if (act === 'delete-customer-ok') {
+          const i = (db.customers || []).findIndex((x) => x.id === pid);
+          if (i >= 0) {
+            const c = db.customers[i];
+            db.customers.splice(i, 1);
+            addLog(`删除客户 ${c.phone || c.name || c.id}`);
+            saveStore();
+            toast('已删除客户');
+          }
+          ui.modal = null;
           render();
         } else if (act === 'delete-l2-mini-ok') {
           finishDeleteL2Mini(pid);
@@ -5302,6 +5492,57 @@
       case 'open-view-sale': openModal('view-sale', { id }); break;
       case 'open-view-cend': openModal('view-cend', { id }); break;
       case 'open-view-stock': openModal('view-stock', { id }); break;
+      case 'open-create-customer':
+        openModal('create-customer', { draftSeed: { name: '', phone: '', phoneLoc: '', addr: '', note: '', sns: [] } });
+        break;
+      case 'open-edit-customer': {
+        const c = (db.customers || []).find((x) => x.id === id);
+        if (!c) return toast('客户不存在', 'err');
+        openModal('edit-customer', { id, draft: JSON.parse(JSON.stringify(c)) });
+        break;
+      }
+      case 'create-customer-ok': {
+        const form = readCustomerForm();
+        if (!form.phone && !form.addr && !form.sns.length) return toast('请至少填写手机、地址或关联 SN', 'err');
+        ensureCustomersStore(db);
+        const next = (db.seq.cu = (db.seq.cu || 0) + 1);
+        const row = {
+          id: `CU${String(next).padStart(3, '0')}`,
+          ...form,
+          createdAt: nowStr(),
+          updatedAt: nowStr(),
+        };
+        db.customers.unshift(row);
+        syncCustomerToSns(row);
+        addLog(`新建客户 ${row.phone || row.name || row.id}`);
+        saveStore();
+        ui.modal = null;
+        toast('客户已创建');
+        render();
+        break;
+      }
+      case 'save-customer': {
+        const c = (db.customers || []).find((x) => x.id === id);
+        if (!c) return toast('客户不存在', 'err');
+        const form = readCustomerForm();
+        if (!form.phone && !form.addr && !form.sns.length) return toast('请至少填写手机、地址或关联 SN', 'err');
+        Object.assign(c, form, { updatedAt: nowStr() });
+        syncCustomerToSns(c);
+        addLog(`编辑客户 ${c.phone || c.name || c.id}`);
+        saveStore();
+        ui.modal = null;
+        toast('客户已保存');
+        render();
+        break;
+      }
+      case 'delete-customer': {
+        const c = (db.customers || []).find((x) => x.id === id);
+        if (!c) return toast('客户不存在', 'err');
+        confirmDialog(`确认删除客户「${c.phone || c.name || c.id}」？关联 SN 绑定信息不会自动清除。`, 'delete-customer-ok', { id }, {
+          title: '删除客户', danger: true, okText: '确认删除',
+        });
+        break;
+      }
       case 'goto-mini-stock-sn': {
         ui.tabs.miniStock = 'sn';
         ui.filters.miniStock = {
