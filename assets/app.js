@@ -1904,16 +1904,6 @@
       </button>`;
 
     return `<div class="dash">
-      <div class="dash-toolbar">
-        <span class="dash-toolbar-hint">点击指标可下钻列表</span>
-        <div class="dash-filters">
-          <input type="date" class="field-input dash-input" data-filter="stats:from" value="${from}" />
-          <span class="dash-sep">→</span>
-          <input type="date" class="field-input dash-input" data-filter="stats:to" value="${to}" />
-          <button class="btn btn-sm dash-query" data-action="apply-filter">刷新</button>
-        </div>
-      </div>
-
       <div class="dash-kpis">
         ${kpi('区间销量 SN', saleRange, 'sn')}
         ${kpi('区间采购量', poQty(poMonth), 'purchase')}
