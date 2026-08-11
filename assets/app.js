@@ -1174,7 +1174,7 @@
       { group: '货品', items: [
         { id: 'sn', title: 'SN码库', icon: '#' },
         { id: 'product', title: '商品库', icon: '▣' },
-        { id: 'purchase', title: '采购单管理', icon: '▤' },
+        { id: 'purchase', title: '采购单管理', icon: '▤', badge: pendingPoCount() || null },
         { id: 'sales', title: '销售单管理', icon: '▥' },
         { id: 'stock', title: '库存管理', icon: '▦' },
       ]},
