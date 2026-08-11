@@ -1536,10 +1536,10 @@
     const emptyMsg = tab === 'pending' ? '暂无待审' : tab === 'approved' ? '暂无已通过' : tab === 'rejected' ? '暂无已驳回' : '暂无数据';
     return `${pageHeader('二级审核', '点击行进入详情，审核操作在详情内')}
       ${tabsHtml('agent-l2-audit', [
-        { id: 'all', title: '全部', badge: pendingN + approvedN + rejectedN || null },
         { id: 'pending', title: '待审核', badge: pendingN || null },
         { id: 'approved', title: '已通过', badge: approvedN || null },
         { id: 'rejected', title: '已驳回', badge: rejectedN || null },
+        { id: 'all', title: '全部', badge: pendingN + approvedN + rejectedN || null },
       ])}
       ${filterBar(`
         <input class="field-input" placeholder="搜索一级代理名称" data-filter="agent-l2-audit:l1" value="${escapeHtml(f.l1 || '')}" />
