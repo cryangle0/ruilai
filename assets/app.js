@@ -3067,7 +3067,7 @@
     if (f.phone) rows = rows.filter((r) => (r.phone || '').includes(f.phone) || (r.name || '').includes(f.phone));
     if (f.addr) rows = rows.filter((r) => (r.addr || '').includes(f.addr));
     if (f.mark === '1') rows = rows.filter((r) => r.mark);
-    return `${pageHeader('销售客户', '点击行看详情 · 支持新建 / 编辑 / 删除',
+    return `${pageHeader('销售客户', '点击行看详情（编辑 / 删除在详情内）',
       '<button class="btn btn-primary" data-action="open-create-customer">新建客户</button>')}
       ${filterBar(`
         <input class="field-input" placeholder="SN" data-filter="customers:sn" value="${escapeHtml(f.sn||'')}" />
@@ -3076,7 +3076,7 @@
         <select class="field-input" data-filter="customers:mark"><option value="">标记</option><option value="1" ${f.mark==='1'?'selected':''}>仅重复</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>姓名</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th><th>操作</th></tr></thead>
+        <thead><tr><th>姓名</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th></tr></thead>
         <tbody>${rows.map((r)=>`<tr class="row-clickable" data-row-action="view-customer" data-id="${escapeHtml(r.id)}">
           <td>${escapeHtml(r.name || '—')}</td>
           <td>${escapeHtml(r.phone||'—')}</td>
@@ -3085,11 +3085,7 @@
           <td>${escapeHtml((r.products || []).join('，') || '—')}</td>
           <td>${(r.sns||[]).map((sn)=>`<code style="margin-right:4px">${escapeHtml(sn)}</code>`).join('')||'—'}</td>
           <td>${r.dupPhone?tag('重复手机','orange'):''} ${r.dupAddr?tag('重复地址','orange'):''} ${!r.mark?'—':''}</td>
-          <td class="ops" onclick="event.stopPropagation()">
-            <button class="btn btn-sm" data-action="open-edit-customer" data-id="${escapeHtml(r.id)}">编辑</button>
-            <button class="btn btn-sm btn-danger" data-action="delete-customer" data-id="${escapeHtml(r.id)}">删除</button>
-          </td>
-        </tr>`).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
+        </tr>`).join('') || `<tr><td colspan="7">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -4638,6 +4634,35 @@
             toast('已删除');
           }
           render();
+        } else if (act === 'create-customer-confirm-ok') {
+          const form = conf.payload?.form || {};
+          ensureCustomersStore(db);
+          const next = (db.seq.cu = (db.seq.cu || 0) + 1);
+          const row = {
+            id: `CU${String(next).padStart(3, '0')}`,
+            ...form,
+            createdAt: nowStr(),
+            updatedAt: nowStr(),
+          };
+          db.customers.unshift(row);
+          syncCustomerToSns(row);
+          addLog(`新建客户 ${row.phone || row.name || row.id}`);
+          saveStore();
+          ui.modal = null;
+          toast('客户已创建');
+          render();
+        } else if (act === 'save-customer-confirm-ok') {
+          const c = (db.customers || []).find((x) => x.id === pid);
+          const form = conf.payload?.form || {};
+          if (c) {
+            Object.assign(c, form, { updatedAt: nowStr() });
+            syncCustomerToSns(c);
+            addLog(`编辑客户 ${c.phone || c.name || c.id}`);
+            saveStore();
+            toast('客户已保存');
+          }
+          ui.modal = null;
+          render();
         } else if (act === 'delete-customer-ok') {
           const i = (db.customers || []).findIndex((x) => x.id === pid);
           if (i >= 0) {
@@ -5504,21 +5529,9 @@
       case 'create-customer-ok': {
         const form = readCustomerForm();
         if (!form.phone && !form.addr && !form.sns.length) return toast('请至少填写手机、地址或关联 SN', 'err');
-        ensureCustomersStore(db);
-        const next = (db.seq.cu = (db.seq.cu || 0) + 1);
-        const row = {
-          id: `CU${String(next).padStart(3, '0')}`,
-          ...form,
-          createdAt: nowStr(),
-          updatedAt: nowStr(),
-        };
-        db.customers.unshift(row);
-        syncCustomerToSns(row);
-        addLog(`新建客户 ${row.phone || row.name || row.id}`);
-        saveStore();
-        ui.modal = null;
-        toast('客户已创建');
-        render();
+        confirmDialog(`确认创建客户「${form.phone || form.name || '未命名'}」？`, 'create-customer-confirm-ok', { form }, {
+          title: '创建客户', okText: '确认创建',
+        });
         break;
       }
       case 'save-customer': {
@@ -5526,13 +5539,9 @@
         if (!c) return toast('客户不存在', 'err');
         const form = readCustomerForm();
         if (!form.phone && !form.addr && !form.sns.length) return toast('请至少填写手机、地址或关联 SN', 'err');
-        Object.assign(c, form, { updatedAt: nowStr() });
-        syncCustomerToSns(c);
-        addLog(`编辑客户 ${c.phone || c.name || c.id}`);
-        saveStore();
-        ui.modal = null;
-        toast('客户已保存');
-        render();
+        confirmDialog(`确认保存客户「${form.phone || form.name || c.id}」的修改？`, 'save-customer-confirm-ok', { id, form }, {
+          title: '保存客户', okText: '确认保存',
+        });
         break;
       }
       case 'delete-customer': {
