@@ -2718,7 +2718,8 @@
       : db.returns.filter((r) => r.fromId === currentL1Id() || r.approverId === currentL1Id() || (r.sns||[]).some((sn)=>db.sns.find(s=>s.sn===sn&&s.l1Id===currentL1Id())));
     const rtAll = list.slice();
     const rtN = (st) => rtAll.filter((r) => r.status === st).length;
-    const typeTab = ui.tabs.miniRtType || 'all';
+    const typeTab = (ui.tabs.miniRtType === 'upward') ? 'upward' : 'l2_apply';
+    if (ui.role === 'l1' && ui.tabs.miniRtType !== typeTab) ui.tabs.miniRtType = typeTab;
     const typeN = (t) => {
       if (t === 'l2_apply') return rtAll.filter((r) => r.type === 'l2_to_l1').length;
       if (t === 'upward') return rtAll.filter((r) => r.type === 'l1_to_factory').length;
@@ -2727,8 +2728,8 @@
     const statusTab = ui.tabs.miniRtStatus || 'all';
     // 类型 tab（二级申请 / 向上申请）仅一级可见
     if (ui.role === 'l1') {
-      if (typeTab === 'l2_apply') list = list.filter((r) => r.type === 'l2_to_l1');
-      else if (typeTab === 'upward') list = list.filter((r) => r.type === 'l1_to_factory');
+      if (typeTab === 'upward') list = list.filter((r) => r.type === 'l1_to_factory');
+      else list = list.filter((r) => r.type === 'l2_to_l1');
     }
     if (statusTab !== 'all') list = list.filter((r) => r.status === statusTab);
     list = list.slice().sort((a, b) => {
@@ -2744,15 +2745,22 @@
            <button class="btn btn-block btn-primary" data-action="mini-create-cend-return" style="margin-bottom:10px">创建C端用户退货单</button>`}
       ${pendingL2.length?`<div class="alert alert-info">待审二级退一级 ${pendingL2.length} 单（点进详情审核）</div>`:''}
       ${ui.role === 'l1' ? miniSegHtml('miniRtType', [
-        { id: 'all', title: '全部', badge: typeN('all') || null },
         { id: 'l2_apply', title: '二级申请', badge: typeN('l2_apply') || null },
         { id: 'upward', title: '向上申请', badge: typeN('upward') || null },
       ]) : ''}
       ${miniSegHtml('miniRtStatus', [
-        { id: 'all', title: '全部', badge: rtAll.length || null },
-        { id: 'pending', title: '待审核', badge: rtN('pending') || null },
-        { id: 'approved', title: '已通过', badge: rtN('approved') || null },
-        { id: 'done', title: '已处理', badge: rtN('done') || null },
+        { id: 'all', title: '全部', badge: (ui.role === 'l1'
+          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : r.type === 'l2_to_l1')).length
+          : rtAll.length) || null },
+        { id: 'pending', title: '待审核', badge: (ui.role === 'l1'
+          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : r.type === 'l2_to_l1') && r.status === 'pending')
+          : rtAll.filter((r) => r.status === 'pending')).length || null },
+        { id: 'approved', title: '已通过', badge: (ui.role === 'l1'
+          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : r.type === 'l2_to_l1') && r.status === 'approved')
+          : rtAll.filter((r) => r.status === 'approved')).length || null },
+        { id: 'done', title: '已处理', badge: (ui.role === 'l1'
+          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : r.type === 'l2_to_l1') && r.status === 'done')
+          : rtAll.filter((r) => r.status === 'done')).length || null },
       ])}
       <div class="mini-list">${list.map((r)=>`<button type="button" class="mini-list-item ${r.status==='pending'?'rt-pending':''}" data-action="open-view-return" data-id="${r.id}">
         <strong class="rt-row-hd"><span>${escapeHtml(r.no)}</span>${returnStatusTag(r.status)}</strong>
