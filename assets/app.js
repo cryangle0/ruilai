@@ -186,13 +186,61 @@
         picks: { [comps[0].id]: normalizeBelt(k.belt), [comps[1].id]: k.size },
       }));
   }
-  /** 标准套件组合随上方尺码动态裁剪/刷新说明，避免残留写死旧组合 */
+  /** 已选尺码笛卡尔积 → 标品组合（自定义套件动态展示来源） */
+  function cartesianSizePicks(comps) {
+    const lists = (comps || []).map((c) => (c.sizes || []).filter(Boolean));
+    if (!lists.length || lists.some((l) => !l.length)) return [];
+    return lists.reduce((acc, sizes, idx) => {
+      const id = comps[idx].id;
+      if (!acc.length) return sizes.map((s) => ({ [id]: s }));
+      const next = [];
+      acc.forEach((prev) => {
+        sizes.forEach((s) => next.push({ ...prev, [id]: s }));
+      });
+      return next;
+    }, []);
+  }
+  function buildStdCombosFromSelectedSizes(p, { preserveGrades = true } = {}) {
+    if (!p || p.type !== 'kit') return [];
+    const comps = productComponents(p);
+    if (comps.length < 2) return [];
+    if (comps.some((c) => !(c.sizes || []).length)) return [];
+
+    // 经典腰带套件仍用全局 5 档规则；其它套件按已选尺码全组合动态生成
+    const classic = defaultStdCombosFromSizes(p);
+    if (classic.length) return classic;
+
+    const prevByKey = new Map();
+    if (preserveGrades) {
+      (p.stdCombos || []).forEach((k) => {
+        const n = normalizeStdCombo(p, k);
+        prevByKey.set(n.key, n);
+      });
+    }
+    const picksList = cartesianSizePicks(comps);
+    const MAX = 48;
+    return picksList.slice(0, MAX).map((picks) => {
+      const prev = prevByKey.get(comboPicksKey(comps, picks));
+      return normalizeStdCombo(p, {
+        grade: (preserveGrades && prev?.grade) || '',
+        picks,
+      });
+    });
+  }
+  /** 仅裁掉已失效组合（不自动扩表），用于已保存商品读取 */
   function pruneStdCombos(d) {
     if (!d || d.type !== 'kit') return [];
     const comps = productComponents(d);
     d.stdCombos = (d.stdCombos || [])
       .map((k) => normalizeStdCombo(d, k))
-      .filter((k) => comps.every((c) => (c.sizes || []).includes(k.picks[c.id])));
+      .filter((k) => comps.every((c) => (c.sizes || []).includes((k.picks || {})[c.id])));
+    syncLegacyFromComponents(d);
+    return d.stdCombos;
+  }
+  /** 按上方已选尺码重建标品表（新建/改尺码时动态展示） */
+  function syncStdCombosFromSizes(d) {
+    if (!d || d.type !== 'kit') return [];
+    d.stdCombos = buildStdCombosFromSelectedSizes(d, { preserveGrades: true });
     syncLegacyFromComponents(d);
     return d.stdCombos;
   }
@@ -202,7 +250,7 @@
     if (Array.isArray(p.stdCombos) && p.stdCombos.length) {
       return pruneStdCombos(p);
     }
-    return defaultStdCombosFromSizes(p);
+    return syncStdCombosFromSizes(p);
   }
   function kitStdCombos(p) {
     return ensureProductStdCombos(p);
@@ -4105,8 +4153,13 @@
       let comps = [];
       if (isKit) {
         comps = productComponents(d);
-        if (!Array.isArray(d.stdCombos)) d.stdCombos = ensureProductStdCombos(d);
-        else pruneStdCombos(d);
+        // 弹框内：每个组件都有已选尺码时，按笛卡尔积自动生成标品表
+        if (comps.length >= 2 && comps.every((c) => (c.sizes || []).length)) {
+          syncStdCombosFromSizes(d);
+        } else {
+          d.stdCombos = [];
+          syncLegacyFromComponents(d);
+        }
         comps = productComponents(d);
       } else if (isSingle) {
         const pool = uniqueSizes(d.sizePool || d.sizes || []);
@@ -4149,7 +4202,7 @@
           <td class="muted">${escapeHtml(k.label || '')}</td>
           <td><button type="button" class="btn btn-sm" data-action="product-del-std" data-idx="${i}">删除</button></td>
         </tr>`;
-      }).join('') || `<tr><td colspan="${comps.length + 3}">${emptyHint('暂无标品（取消勾选尺码后，无效组合会自动移除）')}</td></tr>`;
+      }).join('') || `<tr><td colspan="${comps.length + 3}">${emptyHint('请先为每个组件勾选尺码，标品组合将自动生成')}</td></tr>`;
       const stdAdd = `<div class="form-grid" style="margin-top:10px">
         <div class="form-field"><label>档位</label><input class="field-input" id="f-std-grade" placeholder="小/中/大" value="中" /></div>
         ${comps.map((c) => `<div class="form-field"><label>${escapeHtml(c.name)}</label><select class="field-input" id="f-std-pick-${escapeHtml(c.id)}">${(c.sizes || []).map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}</select></div>`).join('')}
@@ -4161,11 +4214,11 @@
         <div class="form-field"><label>状态</label><select class="field-input" id="f-pstatus"><option value="上架" ${(d.status || '上架') === '上架' ? 'selected' : ''}>上架</option><option value="下架" ${d.status === '下架' ? 'selected' : ''}>下架</option></select></div>
         <div class="form-field"><label>说明</label><input class="field-input" id="f-pnote" value="${escapeHtml(d.note || '')}" /></div>
         ${isKit ? `
-          <div class="form-field span-2"><div class="alert alert-info" style="margin:0">可配置多个组件：先命名，再<strong>自行添加</strong>该组件尺码（不会预填腰带 S/M/L）。全选/取消全选只改勾选。标品组合随已勾选尺码动态展示；未列入标品的组合下单走非标（前两组件）。</div></div>
+          <div class="form-field span-2"><div class="alert alert-info" style="margin:0">可配置多个组件：先命名并<strong>勾选尺码</strong>，下方「标准套件组合」会按已选尺码<strong>自动生成全部组合</strong>（如 42+S、42+M…）。全选/取消全选只改勾选；经典腰带+弹力带仍用五档标品规则。</div></div>
           ${kitCompsHtml}
           <div class="form-field span-2"><button type="button" class="btn" data-action="product-add-comp">+ 添加组件</button></div>
-          <div class="form-field span-2"><label>标准套件组合（随上方已选尺码动态展示）
-            <button type="button" class="btn btn-sm" data-action="product-gen-std" style="margin-left:8px">按当前尺码生成默认标品</button>
+          <div class="form-field span-2"><label>标准套件组合（随上方已选尺码自动生成）
+            <button type="button" class="btn btn-sm" data-action="product-gen-std" style="margin-left:8px">刷新标品组合</button>
           </label>
             <div class="page-card table-wrap" style="margin-top:6px"><table class="data">
               <thead><tr>${stdHead}</tr></thead>
@@ -5584,7 +5637,7 @@
         c.pool = uniqueSizes(c.pool || c.sizes || []);
         c.sizes = isAllSelected(c.pool, c.sizes || []) ? [] : [...c.pool];
         d.components = comps;
-        pruneStdCombos(d);
+        syncStdCombosFromSizes(d);
         render(); break;
       }
       case 'product-add-comp': {
@@ -5594,7 +5647,7 @@
         const n = comps.length + 1;
         comps.push({ id: `c${Date.now().toString(36)}`, name: `组件${n}`, pool: [], sizes: [] });
         d.components = comps;
-        pruneStdCombos(d);
+        syncStdCombosFromSizes(d);
         render(); toast('已添加组件'); break;
       }
       case 'product-del-comp': {
@@ -5605,7 +5658,7 @@
         const idx = Number(el.getAttribute('data-idx'));
         comps.splice(idx, 1);
         d.components = comps;
-        pruneStdCombos(d);
+        syncStdCombosFromSizes(d);
         render(); toast('已删除组件'); break;
       }
       case 'product-add-comp-size': {
@@ -5624,7 +5677,7 @@
         c.sizes = uniqueSizes([...(c.sizes || []), v]);
         d.components = comps;
         if (inp) inp.value = '';
-        pruneStdCombos(d);
+        syncStdCombosFromSizes(d);
         render(); break;
       }
       case 'product-add-bsize': {
@@ -5645,9 +5698,11 @@
         syncProductDraftFromDom();
         const d = ui.modal.draft;
         if (!d || d.type !== 'kit') break;
-        d.stdCombos = defaultStdCombosFromSizes(d);
-        if (!d.stdCombos.length) toast('当前尺码与默认标品规则无交集，请手动添加标品', 'warn');
-        else toast(`已按当前尺码生成 ${d.stdCombos.length} 档标品`);
+        const before = (d.stdCombos || []).length;
+        d.stdCombos = buildStdCombosFromSelectedSizes(d, { preserveGrades: true });
+        syncLegacyFromComponents(d);
+        if (!d.stdCombos.length) toast('请先为每个组件勾选至少一个尺码', 'warn');
+        else toast(`已按已选尺码生成 ${d.stdCombos.length} 档标品${before === d.stdCombos.length ? '' : ''}`);
         render(); break;
       }
       case 'product-add-std': {
@@ -6491,7 +6546,7 @@
       if (set.has(size)) set.delete(size); else set.add(size);
       c.sizes = [...set].filter((s) => c.pool.includes(s));
       d.components = comps;
-      pruneStdCombos(d);
+      syncStdCombosFromSizes(d);
       render();
     }));
     if (ui.modal?.type === 'create-product' || ui.modal?.type === 'edit-product') {
