@@ -3756,17 +3756,9 @@
       title = `扫码出货 ${s.no}`;
       const canEdit = ui.role !== 'sub';
       body = `<p>${escapeHtml(l2Name(s.l2Id))} · 计划 <strong>${escapeHtml(planBySizeText(s.planBySize))}</strong> · 已扫 ${(s.scanned||[]).length}/${s.planTotal}</p>
-        <div class="alert alert-info">支持号段起止录入（起始 SN — 结束 SN），也可单个扫码添加</div>
-        <div class="form-field"><label>号段录入（起止两个输入框）</label>
-          <div class="segment-row" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            <input class="field-input" id="scan-seg-from" placeholder="起始 SN" style="flex:1;min-width:120px" />
-            <span class="muted">—</span>
-            <input class="field-input" id="scan-seg-to" placeholder="结束 SN" style="flex:1;min-width:120px" />
-          </div>
-        </div>
-        <button class="btn btn-primary btn-block" data-action="scan-add-seg" data-id="${s.id}" style="margin-top:8px">按号段添加</button>
-        <div class="form-field" style="margin-top:12px"><label>单个扫描 SN</label><input class="field-input" id="scan-sn-input" placeholder="输入单个 SN 回车或点添加" /></div>
-        <button class="btn btn-block" data-action="scan-add-sn" data-id="${s.id}">添加单个</button>
+        <div class="alert alert-info">逐个扫码或输入单个 SN 添加</div>
+        <div class="form-field"><label>扫描 SN</label><input class="field-input" id="scan-sn-input" placeholder="输入单个 SN 回车或点添加" /></div>
+        <button class="btn btn-primary btn-block" data-action="scan-add-sn" data-id="${s.id}">添加</button>
         <div style="margin-top:8px">${(s.scanned||[]).map((sn)=>tag(sn,'green')).join(' ') || emptyHint('尚未扫描')}</div>
         ${canEdit?'':'<p class="mini-page-desc">子账号不可修改计划数量</p>'}`;
       foot = `<button class="btn" data-action="close-modal">关闭</button>
@@ -5177,31 +5169,6 @@
         if (!r.ok) return toast(r.msg, 'err');
         if ($('#scan-sn-input')) $('#scan-sn-input').value = '';
         saveStore(); render(); toast(`已添加 ${r.msg}`); break;
-      }
-      case 'scan-add-seg': {
-        const s = db.sales.find((x)=>x.id===id);
-        if (!s) break;
-        const from = $('#scan-seg-from')?.value?.trim().toUpperCase();
-        const to = $('#scan-seg-to')?.value?.trim().toUpperCase();
-        if (!from) return toast('请填写起始 SN', 'err');
-        const seg = to ? `${from}-${to}` : from;
-        const list = parseSegment(seg);
-        if (!list || !list.length) return toast('号段格式无效（示例 RL…0001 — RL…0010）', 'err');
-        let okN = 0;
-        const errs = [];
-        for (const sn of list) {
-          if ((s.scanned || []).length >= s.planTotal) { errs.push('已达计划总数'); break; }
-          const r = tryAddSnToSale(s, sn);
-          if (r.ok) okN += 1;
-          else errs.push(r.msg);
-        }
-        if ($('#scan-seg-from')) $('#scan-seg-from').value = '';
-        if ($('#scan-seg-to')) $('#scan-seg-to').value = '';
-        saveStore(); render();
-        if (okN) toast(`号段已添加 ${okN} 个`);
-        if (!okN) toast(errs[0] || '未能添加', 'err');
-        else if (errs.length) toast(`部分失败：${errs[0]}`, 'warn');
-        break;
       }
       case 'scan-confirm-so': {
         const s = db.sales.find((x)=>x.id===id);
