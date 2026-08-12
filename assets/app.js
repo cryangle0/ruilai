@@ -4669,10 +4669,34 @@
     </div>`;
   }
 
+  function captureModalScroll() {
+    if (!ui.modal) return null;
+    const box = document.getElementById('modal-box');
+    const bd = box?.querySelector('.modal-bd');
+    return {
+      type: ui.modal.type,
+      box: box ? box.scrollTop : 0,
+      bd: bd ? bd.scrollTop : 0,
+    };
+  }
+  function restoreModalScroll(saved) {
+    if (!saved || !ui.modal || ui.modal.type !== saved.type) return;
+    const apply = () => {
+      const box = document.getElementById('modal-box');
+      const bd = box?.querySelector('.modal-bd');
+      if (box) box.scrollTop = saved.box;
+      if (bd) bd.scrollTop = saved.bd;
+    };
+    apply();
+    requestAnimationFrame(apply);
+  }
+
   function render() {
     ensureApprovedPendingEffect();
+    const modalScroll = captureModalScroll();
     document.getElementById('app').innerHTML = ui.loggedIn ? renderApp() : renderLogin();
     bindEvents();
+    restoreModalScroll(modalScroll);
   }
 
   function doNavigate(id) {
