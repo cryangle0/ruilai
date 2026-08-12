@@ -2743,17 +2743,17 @@
         : `<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:8px">申请退货</button>
            <button class="btn btn-block btn-primary" data-action="mini-create-cend-return" style="margin-bottom:10px">创建C端用户退货单</button>`}
       ${pendingL2.length?`<div class="alert alert-info">待审二级退一级 ${pendingL2.length} 单（点进详情审核）</div>`:''}
+      ${ui.role === 'l1' ? miniSegHtml('miniRtType', [
+        { id: 'all', title: '全部', badge: typeN('all') || null },
+        { id: 'l2_apply', title: '二级申请', badge: typeN('l2_apply') || null },
+        { id: 'upward', title: '向上申请', badge: typeN('upward') || null },
+      ]) : ''}
       ${miniSegHtml('miniRtStatus', [
         { id: 'all', title: '全部', badge: rtAll.length || null },
         { id: 'pending', title: '待审核', badge: rtN('pending') || null },
         { id: 'approved', title: '已通过', badge: rtN('approved') || null },
         { id: 'done', title: '已处理', badge: rtN('done') || null },
       ])}
-      ${ui.role === 'l1' ? miniSegHtml('miniRtType', [
-        { id: 'all', title: '全部', badge: typeN('all') || null },
-        { id: 'l2_apply', title: '二级申请', badge: typeN('l2_apply') || null },
-        { id: 'upward', title: '向上申请', badge: typeN('upward') || null },
-      ]) : ''}
       <div class="mini-list">${list.map((r)=>`<button type="button" class="mini-list-item ${r.status==='pending'?'rt-pending':''}" data-action="open-view-return" data-id="${r.id}">
         <strong class="rt-row-hd"><span>${escapeHtml(r.no)}</span>${returnStatusTag(r.status)}</strong>
         <span>${tag(r.reasonType||'')} ${escapeHtml(r.reason||'')}</span>
