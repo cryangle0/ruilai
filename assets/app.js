@@ -2103,7 +2103,7 @@
     if (f.channel) rows = rows.filter((s) => s.channel === f.channel);
     if (f.l1) rows = rows.filter((s) => s.l1Id === f.l1);
     if (f.status) rows = rows.filter((s) => s.status === f.status);
-    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情', '<button class="btn btn-primary" data-action="open-order-cart" data-channel="sales">创建销售单</button>')}
+    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情')}
       ${filterBar(`
         <select class="field-input" data-filter="sales:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <select class="field-input" data-filter="sales:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
