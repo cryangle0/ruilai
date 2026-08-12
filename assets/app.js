@@ -813,6 +813,24 @@
     return [...map.values()];
   }
 
+  function canAuditReturn(r) {
+    if (!r || r.status !== 'pending') return false;
+    // 二级 / 子账号：不可审核（二级退一级由一级审）
+    if (ui.role === 'l2' || ui.role === 'sub') return false;
+    // 向上申请（一级退原厂）：仅原厂 PC 后台审核
+    if (r.type === 'l1_to_factory') {
+      return ui.mode === 'admin' && ui.role === 'admin';
+    }
+    // 二级退一级：一级代理审核
+    if (r.type === 'l2_to_l1') {
+      if (ui.role === 'l1') return !r.approverId || r.approverId === currentL1Id();
+      return ui.mode === 'admin' && ui.role === 'admin';
+    }
+    // 其他类型：一级小程序或后台可审
+    if (ui.role === 'l1' || (ui.mode === 'admin' && ui.role === 'admin')) return true;
+    return false;
+  }
+
   function returnDetailHtml(r) {
     const products = returnProductRows(r.sns);
     const snRows = (r.sns || []).map((sn) => {
@@ -3703,8 +3721,8 @@
       title = `退货单 ${r.no}`;
       body = returnDetailHtml(r);
       foot = `<button class="btn" data-action="close-modal">关闭</button>
-        ${r.status==='pending'?`<button class="btn btn-primary" data-action="approve-return" data-id="${r.id}">审核通过</button>
-        <button class="btn btn-danger" data-action="reject-return" data-id="${r.id}">驳回</button>`:''}`;
+        ${canAuditReturn(r) ? `<button class="btn btn-primary" data-action="approve-return" data-id="${r.id}">审核通过</button>
+        <button class="btn btn-danger" data-action="reject-return" data-id="${r.id}">驳回</button>` : ''}`;
     } else if (type === 'view-exception') {
       const e = db.exceptions.find((x) => x.id === payload.id);
       title = `异常详情 · ${e.type}`;
@@ -4962,11 +4980,13 @@
       }
       case 'approve-return': {
         const r = db.returns.find((x)=>x.id===id);
+        if (!canAuditReturn(r)) return toast('当前角色无权审核该退货单', 'err');
         confirmDialog(`确认审核通过退货单 ${r?.no || ''}？`, 'approve-return-ok', { id }, { title: '退货审核通过', okText: '确认通过' });
         break;
       }
       case 'reject-return': {
         const r = db.returns.find((x)=>x.id===id);
+        if (!canAuditReturn(r)) return toast('当前角色无权审核该退货单', 'err');
         confirmDialog(`确认驳回退货单 ${r?.no || ''}？`, 'reject-return-ok', { id }, { title: '退货驳回', danger: true });
         break;
       }
