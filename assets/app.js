@@ -4175,12 +4175,12 @@
           </div>` : isSingle ? `
           <div class="form-field span-2"><div class="alert alert-info" style="margin:0">单品：仅维护尺码规格，下单按尺码数量；生成 SN，无双组件/标品组合。</div></div>
           <div class="form-field span-2"><label>规格尺码 ${selectAllBtn('select-all-psize', '全选', isAllSelected(singlePool, singleSizes))}</label>
-            ${chips(singlePool, singleSizes, 'data-toggle-psize')}
+            ${singlePool.length ? chips(singlePool, singleSizes, 'data-toggle-psize') : `<p class="muted" style="margin:8px 0 0">暂无尺码，请自行添加</p>`}
             <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-              <input class="field-input" id="f-add-bsize" placeholder="新增尺码，如 XL" style="flex:1" />
+              <input class="field-input" id="f-add-bsize" placeholder="新增尺码，如 XL / 42号" style="flex:1" />
               <button type="button" class="btn btn-sm btn-primary" data-action="product-add-bsize">+ 添加尺码</button>
             </div>
-          </div>` : `<div class="form-field span-2"><label>规格尺码（逗号分隔）</label><input class="field-input" id="f-psizes" value="${escapeHtml((d.sizes || []).join(','))}" placeholder="S,M,L" /></div>`}
+          </div>` : `<div class="form-field span-2"><label>规格尺码（逗号分隔）</label><input class="field-input" id="f-psizes" value="${escapeHtml((d.sizes || []).join(','))}" placeholder="按实际规格填写" /></div>`}
       </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-product">${type === 'edit-product' ? '保存' : '创建'}</button>`;
 
