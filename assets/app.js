@@ -2725,8 +2725,11 @@
       return rtAll.length;
     };
     const statusTab = ui.tabs.miniRtStatus || 'all';
-    if (typeTab === 'l2_apply') list = list.filter((r) => r.type === 'l2_to_l1');
-    else if (typeTab === 'upward') list = list.filter((r) => r.type === 'l1_to_factory');
+    // 类型 tab（二级申请 / 向上申请）仅一级可见
+    if (ui.role === 'l1') {
+      if (typeTab === 'l2_apply') list = list.filter((r) => r.type === 'l2_to_l1');
+      else if (typeTab === 'upward') list = list.filter((r) => r.type === 'l1_to_factory');
+    }
     if (statusTab !== 'all') list = list.filter((r) => r.status === statusTab);
     list = list.slice().sort((a, b) => {
       const pa = a.status === 'pending' ? 0 : 1;
@@ -2746,11 +2749,11 @@
         { id: 'approved', title: '已通过', badge: rtN('approved') || null },
         { id: 'done', title: '已处理', badge: rtN('done') || null },
       ])}
-      ${miniSegHtml('miniRtType', [
+      ${ui.role === 'l1' ? miniSegHtml('miniRtType', [
         { id: 'all', title: '全部', badge: typeN('all') || null },
         { id: 'l2_apply', title: '二级申请', badge: typeN('l2_apply') || null },
         { id: 'upward', title: '向上申请', badge: typeN('upward') || null },
-      ])}
+      ]) : ''}
       <div class="mini-list">${list.map((r)=>`<button type="button" class="mini-list-item ${r.status==='pending'?'rt-pending':''}" data-action="open-view-return" data-id="${r.id}">
         <strong class="rt-row-hd"><span>${escapeHtml(r.no)}</span>${returnStatusTag(r.status)}</strong>
         <span>${tag(r.reasonType||'')} ${escapeHtml(r.reason||'')}</span>
