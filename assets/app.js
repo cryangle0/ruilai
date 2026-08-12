@@ -1140,29 +1140,29 @@
     return String(text || '').split(/[,，\s]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
   }
 
-  /** 退货单：SN 上方商品名称 / 规格详情 */
+  /** 退货单：SN 上方商品名称 / 规格详情（始终表格） */
   function returnSnDetailHtml(snsText) {
     const sns = parseReturnSns(snsText);
-    if (!sns.length) {
-      return `<div class="page-card" id="return-sn-detail" style="margin-bottom:10px">
-        <p class="muted" style="margin:0">填写 SN 后显示商品名称、规格等详情</p>
-      </div>`;
-    }
-    const rows = sns.map((sn) => {
-      const s = db.sns.find((x) => x.sn === sn);
-      if (!s) {
-        return `<tr><td class="num">${escapeHtml(sn)}</td><td colspan="3"><span class="muted">未找到该 SN</span></td></tr>`;
-      }
-      const st = snStatusMeta(s);
-      return `<tr>
-        <td class="num">${escapeHtml(sn)}</td>
-        <td>${escapeHtml(productName(s.productId))}</td>
-        <td>${escapeHtml(stockSpecText(s.size, s.belt))}</td>
-        <td>${tag(st.label, st.tone)}</td>
-      </tr>`;
-    }).join('');
+    const rows = sns.length
+      ? sns.map((sn) => {
+        const s = db.sns.find((x) => x.sn === sn);
+        if (!s) {
+          return `<tr>
+            <td class="num">${escapeHtml(sn)}</td>
+            <td colspan="3"><span class="muted">未找到该 SN</span></td>
+          </tr>`;
+        }
+        const st = snStatusMeta(s);
+        return `<tr>
+          <td class="num">${escapeHtml(sn)}</td>
+          <td>${escapeHtml(productName(s.productId))}</td>
+          <td>${escapeHtml(stockSpecText(s.size, s.belt))}</td>
+          <td>${tag(st.label, st.tone)}</td>
+        </tr>`;
+      }).join('')
+      : `<tr><td colspan="4" class="muted" style="text-align:center">填写下方 SN 后自动带出商品名称、规格等详情</td></tr>`;
     return `<div class="page-card table-wrap" id="return-sn-detail" style="margin-bottom:10px">
-      <div class="table-caption">商品详情</div>
+      <div class="table-caption">商品详情${sns.length ? `（${sns.length}）` : ''}</div>
       <table class="data">
         <thead><tr><th>SN</th><th>商品名称</th><th>规格</th><th>状态</th></tr></thead>
         <tbody>${rows}</tbody>
