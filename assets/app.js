@@ -339,6 +339,9 @@
     d.status = $('#f-pstatus')?.value || d.status || '上架';
     d.note = $('#f-pnote')?.value ?? d.note;
     if (d.type === 'kit') {
+      d.bundleSingles = [...document.querySelectorAll('[data-bundle-single]:checked')]
+        .map((el) => el.getAttribute('data-bundle-single'))
+        .filter(Boolean);
       const comps = productComponents(d);
       comps.forEach((c, i) => {
         const name = document.querySelector(`[data-comp-name="${i}"]`)?.value;
@@ -536,6 +539,7 @@
         ],
         compAName: '腰带', compBName: '弹力带', sizes: kitSizes, belts: [...BELTS],
         stdCombos: classicStd, defaultBelt: { ...DEFAULT_BELT }, status: '上架', note: '弹力带+腰带必配 · 标品五档',
+        bundleSingles: ['P-SINGLE'],
       },
       {
         id: 'P2', code: 'P-1002', name: '锐涞运动款套件', type: 'kit',
@@ -642,7 +646,12 @@
         size: 'M', l1Id: 'L1A', l2Id: 'L2A', status: bound ? 'bound' : 'l2',
         soldAt: bound ? '2026-07-25 12:00' : null, bindAt: bound ? '2026-07-25 12:00' : null,
         bindIpRegion: bound ? (i === 4 ? '广东' : '浙江') : null,
-        user: bound ? { phone: `138****100${i}`, addr: '杭州市西湖区文一路1号', phoneLoc: i === 4 ? '广东' : '浙江' } : null,
+        user: bound ? {
+          phone: `138****100${i}`, addr: '杭州市西湖区文一路1号', phoneLoc: i === 4 ? '广东' : '浙江',
+          name: i === 2 ? '王芳' : (i === 3 ? '李强' : ''),
+          gender: i === 2 ? '女' : (i === 3 ? '男' : ''),
+          age: i === 2 ? '32' : (i === 3 ? '41' : ''),
+        } : null,
       }));
     }
     for (let i = 1; i <= 6; i++) {
@@ -796,12 +805,14 @@
       accounts: [
         { id: 'ACC1', username: 'admin', name: '平台管理员', roleId: 'R1', status: '启用', password: 'demo' },
         { id: 'ACC1b', username: 'admin2', name: '平台管理员B', roleId: 'R1', status: '启用', password: 'demo' },
-        { id: 'ACC2', username: 'agent_hd', name: '华东锐涞总代', roleId: 'R2', agentId: 'L1A', status: '启用', password: '******' },
-        { id: 'ACC2b', username: 'agent_hn', name: '华南渠道中心', roleId: 'R2', agentId: 'L1B', status: '启用', password: '******' },
-        { id: 'ACC2c', username: 'agent_hb', name: '华北联合代理', roleId: 'R2', agentId: 'L1C', status: '启用', password: '******' },
-        { id: 'ACC3', username: 'agent_hz', name: '杭州城西专营', roleId: 'R4', agentId: 'L2A', status: '启用', password: '******' },
-        { id: 'ACC4', username: 'hd_scan_01', name: '仓管小陈', roleId: 'R3', agentId: 'L1A', status: '启用', password: '******' },
-        { id: 'ACC5', username: 'hd_scan_02', name: '仓管小周', roleId: 'R3', agentId: 'L1A', status: '启用', password: '******' },
+        { id: 'ACC2', username: 'agent_hd', name: '华东锐涞总代', roleId: 'R2', agentId: 'L1A', status: '启用', password: 'demo' },
+        { id: 'ACC2b', username: 'agent_hn', name: '华南渠道中心', roleId: 'R2', agentId: 'L1B', status: '启用', password: 'demo' },
+        { id: 'ACC2c', username: 'agent_hb', name: '华北联合代理', roleId: 'R2', agentId: 'L1C', status: '启用', password: 'demo' },
+        { id: 'ACC3', username: 'agent_hz', name: '杭州城西专营', roleId: 'R4', agentId: 'L2A', status: '启用', password: 'demo' },
+        { id: 'ACC3b', username: 'agent_nb', name: '宁波海曙店', roleId: 'R4', agentId: 'L2B', status: '启用', password: 'demo' },
+        { id: 'ACC3c', username: 'agent_gz', name: '广州天河渠道', roleId: 'R4', agentId: 'L2C', status: '启用', password: 'demo' },
+        { id: 'ACC4', username: 'hd_scan_01', name: '仓管小陈', roleId: 'R3', agentId: 'L1A', status: '启用', password: 'demo' },
+        { id: 'ACC5', username: 'hd_scan_02', name: '仓管小周', roleId: 'R3', agentId: 'L1A', status: '启用', password: 'demo' },
       ],
       logs: [
         { time: '2026-08-07 14:20', account: 'admin', role: '平台管理员', action: '登录后台', ip: '10.0.1.8', ok: true, type: 'login' },
@@ -822,7 +833,7 @@
     };
   }
 
-  const persistKey = 'ruilai_proto_v15';
+  const persistKey = 'ruilai_proto_v17';
   function loadStore() {
     try {
       const raw = localStorage.getItem(persistKey);
@@ -904,6 +915,9 @@
               : (/扫码|尺码不匹配|不在库/.test(e.type) ? 'scan' : 'activate');
           }
           if (e.status === '已关闭') e.status = '已处理';
+        });
+        (parsed.accounts || []).forEach((a) => {
+          if (a.password === '******') a.password = 'demo';
         });
         if (!parsed.logs) parsed.logs = seed().logs;
         normalizeDemoLogTimes(parsed.logs);
@@ -998,13 +1012,22 @@
     return db.products.filter((p) => p.type === 'part' && p.status === '上架');
   }
   function orderableProducts() {
-    return db.products.filter((p) => p.status === '上架' && (p.type === 'kit' || p.type === 'single' || p.type === 'part'));
+    return db.products.filter((p) => p.status === '上架' && (p.type === 'kit' || p.type === 'single'));
+  }
+  function catalogProducts() {
+    return (db.products || []).filter((p) => p.type !== 'part');
+  }
+  function kitBundleSingles(p) {
+    return (p?.bundleSingles || [])
+      .map((id) => db.products.find((x) => x.id === id && x.type === 'single'))
+      .filter(Boolean);
   }
   function lineName(id) { return (db.productLines || []).find((l) => l.id === id)?.name || id; }
   function migrateProductShape(p) {
     if (!p) return p;
     if (p.type === 'kit') {
       productComponents(p);
+      if (!Array.isArray(p.bundleSingles)) p.bundleSingles = [];
       if (!Array.isArray(p.stdCombos) || !p.stdCombos.length) p.stdCombos = ensureProductStdCombos(p);
       else pruneStdCombos(p);
     } else if (p.type === 'single') {
@@ -1034,6 +1057,11 @@
       const [pid, size, belt] = k.split('_');
       return `${productName(pid)}/${size}${belt ? '+' + belt : ''}×${q}`;
     }).join('，');
+    if (!text && Array.isArray(s.lines) && s.lines.length) {
+      text = s.lines.filter((l) => (Number(l.qty) || 0) > 0)
+        .map((l) => `${productName(l.productId)}/${l.size}${l.belt ? '+' + l.belt : ''}×${l.qty}`)
+        .join('，');
+    }
     if (!text && s.planBySize && Object.keys(s.planBySize).length) {
       text = Object.entries(s.planBySize).filter(([, q]) => q).map(([sz, q]) => `${sz}×${q}`).join('，');
     }
@@ -1186,6 +1214,15 @@
   }
 
   function saleProductRows(s) {
+    if (Array.isArray(s.lines) && s.lines.some((l) => (Number(l.qty) || 0) > 0)) {
+      return soScanPlanRows(s).map((r) => ({
+        productId: r.productId,
+        size: r.size,
+        belt: r.belt || DEFAULT_BELT[r.size] || '—',
+        plan: r.need,
+        scanned: r.got,
+      }));
+    }
     const rows = [];
     const plan = s.planBySize || {};
     const sizes = new Set([...Object.keys(plan), ...((s.scanned || []).map((sn) => db.sns.find((x) => x.sn === sn)?.size).filter(Boolean))]);
@@ -1314,6 +1351,9 @@
     return `<div class="detail-grid">
         <div><span>订单号</span>${escapeHtml(order.no)}</div>
         <div><span>状态</span>${tag(snRows[0]?.status === 'bound' ? '已到货' : '已归档', 'green')}</div>
+        <div><span>客户姓名</span>${escapeHtml(u.name || '—')}</div>
+        <div><span>性别</span>${escapeHtml(u.gender || '—')}</div>
+        <div><span>年龄</span>${escapeHtml(u.age || '—')}</div>
         <div><span>客户手机</span>${escapeHtml(u.phone || '—')}</div>
         <div><span>归属地</span>${escapeHtml(u.phoneLoc || '—')}</div>
         <div class="span-2"><span>地址</span>${escapeHtml(u.addr || '—')}</div>
@@ -1361,20 +1401,47 @@
     return row.status === 'l1' && row.l1Id === currentL1Id();
   }
 
-  function soScanPlanRows(s) {
-    const scanned = s.scanned || [];
-    const bySize = {};
-    scanned.forEach((sn) => {
-      const row = db.sns.find((x) => x.sn === sn);
-      const k = row ? row.size : '?';
-      bySize[k] = (bySize[k] || 0) + 1;
-    });
+  function soScanLines(s) {
+    if (Array.isArray(s.lines) && s.lines.some((l) => (Number(l.qty) || 0) > 0)) {
+      return s.lines.filter((l) => (Number(l.qty) || 0) > 0).map((l) => ({
+        productId: l.productId,
+        size: l.size,
+        belt: l.belt || '',
+        qty: Number(l.qty) || 0,
+      }));
+    }
     return Object.keys(s.planBySize || {}).filter((k) => (s.planBySize[k] || 0) > 0).map((size) => ({
+      productId: s.productId,
       size,
-      label: `${productName(s.productId)} / ${size}`,
-      need: s.planBySize[size] || 0,
-      got: bySize[size] || 0,
+      belt: '',
+      qty: Number(s.planBySize[size]) || 0,
     }));
+  }
+
+  function soScanGotForLine(s, line) {
+    return (s.scanned || []).filter((sn) => {
+      const row = db.sns.find((x) => x.sn === sn);
+      if (!row || row.productId !== line.productId || row.size !== line.size) return false;
+      if (line.belt && row.belt && row.belt !== line.belt) return false;
+      return true;
+    }).length;
+  }
+
+  function soScanPlanRows(s) {
+    return soScanLines(s).map((line) => ({
+      productId: line.productId,
+      size: line.size,
+      belt: line.belt,
+      name: productName(line.productId),
+      spec: stockSpecText(line.size, line.belt),
+      need: line.qty,
+      got: soScanGotForLine(s, line),
+    }));
+  }
+
+  function soScanComplete(s) {
+    const rows = soScanPlanRows(s);
+    return rows.length > 0 && rows.every((r) => r.got === r.need);
   }
 
   function soScanPlanHtml(s) {
@@ -1383,12 +1450,13 @@
     return `<div class="page-card table-wrap scan-plan-card">
       <div class="table-caption">商品明细</div>
       <table class="data">
-        <thead><tr><th>商品信息</th><th>应出数量</th><th>已扫数量</th></tr></thead>
+        <thead><tr><th>商品名称</th><th>规格</th><th>销售数量</th><th>已扫数量</th></tr></thead>
         <tbody>${rows.map((r) => `<tr class="${r.got > r.need ? 'scan-over' : (r.got === r.need ? 'scan-full' : '')}">
-          <td>${escapeHtml(r.label)}</td>
+          <td>${escapeHtml(r.name)}</td>
+          <td>${escapeHtml(r.spec)}</td>
           <td class="num">${r.need}</td>
           <td class="num">${r.got}</td>
-        </tr>`).join('') || `<tr><td colspan="3">${emptyHint('无出货计划')}</td></tr>`}</tbody>
+        </tr>`).join('') || `<tr><td colspan="4">${emptyHint('无出货计划')}</td></tr>`}</tbody>
       </table>
     </div>
     <div class="form-field" style="margin-top:10px"><label>扫描 SN</label><input class="field-input" id="scan-sn-input" placeholder="扫码或输入单个 SN" /></div>
@@ -1412,20 +1480,75 @@
       reportScanNotInStock(sn, row);
       return { ok: false, msg: `不在本一级库存：${sn}` };
     }
-    if (row.productId !== s.productId) {
+    const lines = soScanLines(s);
+    const productHit = lines.filter((l) => l.productId === row.productId);
+    if (!productHit.length) {
       return { ok: false, msg: `不是本次应出货的商品：扫到「${productName(row.productId)}」` };
     }
-    const need = s.planBySize[row.size] || 0;
-    if (need <= 0) {
-      const orderSizes = Object.keys(s.planBySize || {}).filter((k) => (s.planBySize[k] || 0) > 0).join('/');
-      return { ok: false, msg: `不是本次应出货的商品：订单要 ${orderSizes || '—'}，扫到 ${row.size}` };
+    const specHit = productHit.filter((l) => l.size === row.size && (!l.belt || !row.belt || l.belt === row.belt));
+    if (!specHit.length) {
+      const specs = productHit.map((l) => stockSpecText(l.size, l.belt)).join('/');
+      return { ok: false, msg: `不是本次应出货的商品：订单要 ${specs || '—'}，扫到 ${stockSpecText(row.size, row.belt)}` };
     }
-    const got = (s.scanned || []).filter((x) => db.sns.find((y) => y.sn === x)?.size === row.size).length;
-    if (got >= need) return { ok: false, msg: `扫码数量超过应出货数量：${row.size} 已扫 ${got}/${need}` };
+    const line = specHit.find((l) => soScanGotForLine(s, l) < l.qty) || specHit[0];
+    const got = soScanGotForLine(s, line);
+    if (got >= line.qty) {
+      return { ok: false, msg: `扫码数量超过应出货数量：${productName(line.productId)} ${stockSpecText(line.size, line.belt)} 已扫 ${got}/${line.qty}` };
+    }
     if ((s.scanned || []).includes(sn)) return { ok: false, msg: `已扫描：${sn}` };
     s.scanned = s.scanned || [];
     s.scanned.push(sn);
     return { ok: true, msg: sn };
+  }
+
+  function syncBundleDraftFromDom() {
+    if (!ui.modal?.draft) return;
+    const d = ui.modal.draft;
+    d.bundleOn = d.bundleOn || {};
+    d.bundleQty = d.bundleQty || {};
+    document.querySelectorAll('[data-bundle-on]').forEach((chk) => {
+      d.bundleOn[chk.getAttribute('data-bundle-on')] = !!chk.checked;
+    });
+    document.querySelectorAll('[data-bundle-qty]').forEach((inp) => {
+      const pid = inp.getAttribute('data-bundle-qty');
+      const sz = inp.getAttribute('data-bundle-size');
+      d.bundleQty[pid] = d.bundleQty[pid] || {};
+      d.bundleQty[pid][sz] = Number(inp.value) || 0;
+    });
+  }
+
+  function collectBundleSingleLines() {
+    const lines = [];
+    document.querySelectorAll('[data-bundle-qty]').forEach((inp) => {
+      const pid = inp.getAttribute('data-bundle-qty');
+      const on = document.querySelector(`[data-bundle-on="${pid}"]`)?.checked;
+      if (!on) return;
+      const q = Number(inp.value) || 0;
+      if (q > 0) lines.push({ productId: pid, size: inp.getAttribute('data-bundle-size') || '', belt: '', qty: q });
+    });
+    return lines;
+  }
+
+  function bundleSinglePickerHtml(kit, d = {}) {
+    const singles = kitBundleSingles(kit);
+    if (!singles.length) return '';
+    const onMap = d.bundleOn || {};
+    const qtyMap = d.bundleQty || {};
+    return `<h4 style="margin-top:14px">可随售单品</h4>
+      <p class="muted">勾选后按规格填写数量，将作为独立 SN 行随本单出货。</p>
+      <div class="page-card table-wrap"><table class="data">
+        <thead><tr><th></th><th>单品</th><th>规格</th><th>数量</th></tr></thead>
+        <tbody>${singles.map((p) => {
+          const sizes = productSizes(p);
+          const on = !!onMap[p.id];
+          return sizes.map((sz, si) => `<tr>
+            ${si === 0 ? `<td rowspan="${sizes.length}"><input type="checkbox" data-bundle-on="${p.id}" ${on ? 'checked' : ''} /></td>
+              <td rowspan="${sizes.length}">${escapeHtml(p.name)}</td>` : ''}
+            <td>${escapeHtml(sz)}</td>
+            <td><input type="number" class="field-input" data-bundle-qty="${p.id}" data-bundle-size="${sz}" value="${(qtyMap[p.id] && qtyMap[p.id][sz]) || 0}" min="0" ${on ? '' : 'disabled'} style="width:80px" /></td>
+          </tr>`).join('');
+        }).join('')}</tbody>
+      </table></div>`;
   }
 
   function getStockSns(agentType, agentId, f = {}) {
@@ -1882,6 +2005,57 @@
     if (!m || m === DEFAULT_WARN_MULT) return '—';
     return String(m);
   }
+  function l2Account(l2Id) {
+    return (db.accounts || []).find((a) => a.roleId === 'R4' && a.agentId === l2Id) || null;
+  }
+  function l2ExCount(l2Id) {
+    const a = db.agentsL2.find((x) => x.id === l2Id);
+    return db.exceptions.filter((e) => {
+      if (e.status !== '未处理') return false;
+      if (e.l2Id === l2Id) return true;
+      const sn = db.sns.find((s) => s.sn === e.target);
+      if (sn && sn.l2Id === l2Id) return true;
+      return a && (String(e.target || '').includes(a.name) || String(e.detail || '').includes(a.name));
+    }).length;
+  }
+  function l2PendingPoCount(l2Id) {
+    return db.sales.filter((s) => s.l2Id === l2Id && s.channel === 'distribute' && s.status === 'scanning').length;
+  }
+  function l2PendingAftersaleCount(l2Id) {
+    return db.returns.filter((r) => {
+      if (r.status !== 'pending') return false;
+      if (r.fromId === l2Id) return true;
+      return (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === l2Id));
+    }).length;
+  }
+  function l2MonthPurchaseQty(l2Id) {
+    return db.sales
+      .filter((s) => s.l2Id === l2Id && s.channel === 'distribute' && s.status === 'done'
+        && inDateRange(s.createdAt, monthStart(), todayDate()))
+      .reduce((n, s) => n + (s.scanned || []).length, 0);
+  }
+  function l2MonthSalesQty(l2Id) {
+    return db.sns.filter((s) => s.l2Id === l2Id && s.status === 'bound'
+      && inDateRange(s.soldAt || s.bindAt, monthStart(), todayDate())).length;
+  }
+  function l2StockCount(l2Id) {
+    return db.sns.filter((s) => s.l2Id === l2Id && s.status === 'l2').length;
+  }
+  function l2CustomMultText(a) {
+    const m = Number(a?.warnMultiplier);
+    if (!m || a?.warnMultiplier == null) return '—';
+    return String(m);
+  }
+  function syncL2PcDraft() {
+    if (!ui.modal?.draft || ui.modal.type !== 'edit-l2') return;
+    if ($('#f-name')) ui.modal.draft.name = $('#f-name').value;
+    if ($('#f-warn')) {
+      const wv = $('#f-warn').value;
+      ui.modal.draft.warnMultiplier = wv === '' ? null : Number(wv);
+    }
+    if ($('#f-warn-mode')) ui.modal.draft.warnMode = $('#f-warn-mode').value || null;
+    if ($('#f-city-q')) ui.modal.draft.cityQ = $('#f-city-q').value;
+  }
   function filterCitiesByQ(cities, q) {
     const s = String(q || '').trim().toLowerCase();
     if (!s) return cities.slice();
@@ -1963,9 +2137,7 @@
     return list ? list.length : 0;
   }
   function allSnTags() {
-    const set = new Set(SN_BIZ_TAGS);
-    (db.sns || []).forEach((s) => snDisplayTags(s).forEach((t) => set.add(t)));
-    return [...SN_BIZ_TAGS, ...[...set].filter((t) => !SN_BIZ_TAGS.includes(t))];
+    return SN_BIZ_TAGS.slice();
   }
   /* ---------- UI helpers ---------- */
   function pageHeader(title, desc, actions = '') {
@@ -2346,20 +2518,35 @@
           <th class="col-check"><input type="checkbox" data-action="toggle-l2-sel-all" ${allOn ? 'checked' : ''} title="全选当前列表" /></th>
           <th>编码</th><th>名称</th><th>类型</th>
           <th class="sortable" data-action="sort-col" data-sort-key="parent" data-sort-scope="agent-l2">所属一级${sortMark('parent')}</th>
-          <th>授权城市</th><th>状态</th><th>操作</th>
+          <th>授权城市</th><th>状态</th><th>本月采购量</th><th>本月销售量</th><th>当前库存总数</th><th>自定义倍数</th>
         </tr></thead>
-        <tbody>${rows.map((a)=>`<tr class="row-clickable" data-row-action="view-agent-l2" data-id="${a.id}">
+        <tbody>${rows.map((a)=>{
+          const exN = l2ExCount(a.id);
+          const poN = l2PendingPoCount(a.id);
+          const rtN = l2PendingAftersaleCount(a.id);
+          const customMult = l2CustomMultText(a);
+          return `<tr class="row-clickable" data-row-action="view-agent-l2" data-id="${a.id}">
           <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" data-action="toggle-l2-sel" data-id="${a.id}" ${sel[a.id] ? 'checked' : ''} /></td>
           <td>${escapeHtml(a.code)}</td>
           <td>${escapeHtml(a.name)}${a.exNoAlarm ? ` ${tag('不报警', 'gray')}` : ''}</td>
           <td>${tag(a.type, a.type==='法人'?'blue':'gray')}</td>
           <td>${escapeHtml(l1Name(a.parentId))}</td><td>${escapeHtml((a.areas||[]).join('、')||'—')}</td>
-          <td>${tag(a.status, a.status==='启用'?'green':'gray')}</td>
-          <td class="ops" onclick="event.stopPropagation()">
-            <button class="btn btn-sm" data-go="l2-sales-detail" data-set-filter="l2-sales:l2Id=${a.id}">销售</button>
-            <button class="btn btn-sm" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}">退货</button>
+          <td>
+            <div class="status-stack">
+              ${tag(a.status, a.status === '启用' ? 'green' : 'gray')}
+              <div class="status-metrics">
+                <span class="${exN ? 'hot' : ''}">异常数 ${exN}</span>
+                <span class="${poN ? 'hot' : ''}">采购待审核 ${poN}</span>
+                <span class="${rtN ? 'hot' : ''}">售后待处理 ${rtN}</span>
+              </div>
+            </div>
           </td>
-        </tr>`).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
+          <td class="num">${l2MonthPurchaseQty(a.id)}</td>
+          <td class="num">${l2MonthSalesQty(a.id)}</td>
+          <td class="num">${l2StockCount(a.id)}</td>
+          <td>${customMult === '—' ? '—' : tag(customMult, 'orange')}</td>
+        </tr>`;
+        }).join('') || `<tr><td colspan="11">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -2423,26 +2610,24 @@
 
   function pageProduct() {
     const f = ui.filters.product || {};
-    const tab = ui.tabs.product || 'all';
-    let rows = db.products.slice();
+    let tab = ui.tabs.product || 'all';
+    if (tab === 'part') { tab = 'all'; ui.tabs.product = 'all'; }
+    let rows = catalogProducts();
     if (tab === 'kit') rows = rows.filter((p) => p.type === 'kit');
     if (tab === 'single') rows = rows.filter((p) => p.type === 'single');
-    if (tab === 'part') rows = rows.filter((p) => p.type === 'part');
     if (f.q) {
       const q = String(f.q).toLowerCase();
       rows = rows.filter((p) => [p.code, p.name, p.compAName, p.compBName, p.note].join(' ').toLowerCase().includes(q));
     }
     if (f.status) rows = rows.filter((p) => p.status === f.status);
-    const kitN = db.products.filter((p) => p.type === 'kit').length;
-    const singleN = db.products.filter((p) => p.type === 'single').length;
-    const partN = db.products.filter((p) => p.type === 'part').length;
-    return `${pageHeader('商品库', '套件 / 单品（有SN）/ 配件；点击行编辑',
-      '<button class="btn btn-primary" data-action="open-create-product" data-ptype="kit">新建套件</button><button class="btn btn-primary" data-action="open-create-product" data-ptype="single">新建单品</button><button class="btn" data-action="open-create-product" data-ptype="part">新建配件</button>')}
+    const kitN = catalogProducts().filter((p) => p.type === 'kit').length;
+    const singleN = catalogProducts().filter((p) => p.type === 'single').length;
+    return `${pageHeader('商品库', '套件 / 单品（有SN）；套件可勾选随售单品',
+      '<button class="btn btn-primary" data-action="open-create-product" data-ptype="kit">新建套件</button><button class="btn btn-primary" data-action="open-create-product" data-ptype="single">新建单品</button>')}
       ${tabsHtml('product', [
-        { id: 'all', title: '全部', badge: db.products.length || null },
+        { id: 'all', title: '全部', badge: catalogProducts().length || null },
         { id: 'kit', title: '套件', badge: kitN || null },
         { id: 'single', title: '单品', badge: singleN || null },
-        { id: 'part', title: '配件', badge: partN || null },
       ])}
       ${filterBar(`
         <input class="field-input" placeholder="搜索编码/名称/组件" data-filter="product:q" value="${escapeHtml(f.q || '')}" />
@@ -2570,11 +2755,13 @@
     let rows = db.sales.slice();
     if (f.channel) rows = rows.filter((s) => s.channel === f.channel);
     if (f.l1) rows = rows.filter((s) => s.l1Id === f.l1);
+    if (f.l2) rows = rows.filter((s) => s.l2Id === f.l2);
     if (f.status) rows = rows.filter((s) => s.status === f.status);
     return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情')}
       ${filterBar(`
         <select class="field-input" data-filter="sales:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <select class="field-input" data-filter="sales:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <select class="field-input" data-filter="sales:l2"><option value="">二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <select class="field-input" data-filter="sales:status"><option value="">状态</option><option value="scanning" ${f.status==='scanning'?'selected':''}>扫码中</option><option value="done" ${f.status==='done'?'selected':''}>已完成</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
@@ -2678,6 +2865,9 @@
       const l2Ids = new Set(db.agentsL2.filter((a) => a.parentId === f.l1).map((a) => a.id));
       rows = rows.filter((r) => r.fromId === f.l1 || r.approverId === f.l1 || l2Ids.has(r.fromId));
     }
+    if (f.l2) {
+      rows = rows.filter((r) => r.fromId === f.l2 || (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === f.l2)));
+    }
     if (tab && tab !== 'all') rows = rows.filter((r) => r.status === tab);
     rows.sort((a, b) => {
       const pa = a.status === 'pending' ? 0 : 1;
@@ -2703,6 +2893,7 @@
       ])}
       ${filterBar(`
         <select class="field-input" data-filter="return:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <select class="field-input" data-filter="return:l2"><option value="">全部二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <select class="field-input" data-filter="return:type"><option value="">类型</option>${RETURN_TYPES.map((t)=>`<option value="${t.id}" ${f.type===t.id?'selected':''}>${t.label}</option>`).join('')}</select>
         <select class="field-input" data-filter="return:reasonType"><option value="">退货理由</option>${RETURN_REASONS.map((r)=>`<option value="${r.type}" ${f.reasonType===r.type?'selected':''}>${r.label}</option>`).join('')}</select>
       `)}
@@ -2733,6 +2924,14 @@
       rows = rows.filter((e) => {
         const sn = db.sns.find((s) => s.sn === e.target);
         return (sn && sn.l1Id === f.l1) || String(e.target).includes(name) || String(e.detail || '').includes(name);
+      });
+    }
+    if (f.l2) {
+      const name = l2Name(f.l2);
+      rows = rows.filter((e) => {
+        if (e.l2Id === f.l2) return true;
+        const sn = db.sns.find((s) => s.sn === e.target);
+        return (sn && sn.l2Id === f.l2) || String(e.target).includes(name) || String(e.detail || '').includes(name);
       });
     }
     const counts = {
@@ -2768,6 +2967,7 @@
         <select class="field-input" data-filter="exception:status"><option value="">状态</option><option value="未处理" ${f.status==='未处理'?'selected':''}>未处理</option><option value="已处理" ${f.status==='已处理'?'selected':''}>已处理</option><option value="仅记录" ${f.status==='仅记录'?'selected':''}>仅记录</option></select>
         <select class="field-input" data-filter="exception:type"><option value="">类型快捷</option><option value="dup" ${f.type==='dup'?'selected':''}>客户信息重复</option><option value="missing" ${f.type==='missing'?'selected':''}>扫码不在库</option></select>
         <select class="field-input" data-filter="exception:l1"><option value="">关联一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <select class="field-input" data-filter="exception:l2"><option value="">关联二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <input type="date" class="field-input" data-filter="exception:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="exception:to" value="${escapeHtml(f.to||'')}" />
       `)}
@@ -3465,7 +3665,9 @@
         n += 1;
         map.set(key, {
           id: `CU${String(n).padStart(3, '0')}`,
-          name: '',
+          name: u.name || '',
+          gender: u.gender || '',
+          age: u.age || '',
           phone,
           addr: u.addr || '',
           phoneLoc: u.phoneLoc || '',
@@ -3476,6 +3678,9 @@
         });
       }
       const c = map.get(key);
+      if (!c.name && u.name) c.name = u.name;
+      if (!c.gender && u.gender) c.gender = u.gender;
+      if (!c.age && u.age) c.age = u.age;
       if (!c.sns.includes(s.sn)) c.sns.push(s.sn);
     });
     return [...map.values()];
@@ -3491,6 +3696,8 @@
       if (!c.id) c.id = `CU${String(i + 1).padStart(3, '0')}`;
       if (!Array.isArray(c.sns)) c.sns = [];
       if (c.name == null) c.name = '';
+      if (c.gender == null) c.gender = '';
+      if (c.age == null) c.age = '';
       if (c.note == null) c.note = '';
       if (!c.createdAt) c.createdAt = nowStr();
       if (!c.updatedAt) c.updatedAt = c.createdAt;
@@ -3511,8 +3718,19 @@
       snRows.push(s);
       products.push(`${productName(s.productId)}/${s.size}${s.belt ? '+' + s.belt : ''}`);
     });
+    const fromSn = {};
+    snRows.forEach((s) => {
+      const u = s.user || s.prevUser;
+      if (!u) return;
+      if (!fromSn.name && u.name) fromSn.name = u.name;
+      if (!fromSn.gender && u.gender) fromSn.gender = u.gender;
+      if (!fromSn.age && u.age) fromSn.age = u.age;
+    });
     return {
       ...c,
+      name: c.name || fromSn.name || '',
+      gender: c.gender || fromSn.gender || '',
+      age: c.age || fromSn.age || '',
       products: [...new Set(products)],
       snRows,
       dupPhone: (c.sns || []).length > 1,
@@ -3538,7 +3756,14 @@
   }
 
   function syncCustomerToSns(c) {
-    const payload = { phone: c.phone || '', addr: c.addr || '', phoneLoc: c.phoneLoc || '' };
+    const payload = {
+      phone: c.phone || '',
+      addr: c.addr || '',
+      phoneLoc: c.phoneLoc || '',
+      name: c.name || '',
+      gender: c.gender || '',
+      age: c.age || '',
+    };
     (c.sns || []).forEach((sn) => {
       const s = db.sns.find((x) => x.sn === sn);
       if (!s) return;
@@ -3555,6 +3780,8 @@
       .filter(Boolean);
     return {
       name: ($('#f-cu-name')?.value || '').trim(),
+      gender: ($('#f-cu-gender')?.value || '').trim(),
+      age: ($('#f-cu-age')?.value || '').trim(),
       phone: ($('#f-cu-phone')?.value || '').trim(),
       phoneLoc: ($('#f-cu-loc')?.value || '').trim(),
       addr: ($('#f-cu-addr')?.value || '').trim(),
@@ -3565,7 +3792,15 @@
 
   function customerFormHtml(c = {}) {
     return `<div class="form-grid">
-      <div class="form-field"><label>姓名/备注名</label><input class="field-input" id="f-cu-name" value="${escapeHtml(c.name || '')}" placeholder="可选" /></div>
+      <div class="form-field"><label>姓名</label><input class="field-input" id="f-cu-name" value="${escapeHtml(c.name || '')}" placeholder="客户姓名" /></div>
+      <div class="form-field"><label>性别</label>
+        <select class="field-input" id="f-cu-gender">
+          <option value="" ${!c.gender?'selected':''}>未填</option>
+          <option value="男" ${c.gender==='男'?'selected':''}>男</option>
+          <option value="女" ${c.gender==='女'?'selected':''}>女</option>
+        </select>
+      </div>
+      <div class="form-field"><label>年龄</label><input class="field-input" id="f-cu-age" value="${escapeHtml(c.age || '')}" placeholder="如 32" /></div>
       <div class="form-field"><label>手机号</label><input class="field-input" id="f-cu-phone" value="${escapeHtml(c.phone || '')}" placeholder="138****0000" /></div>
       <div class="form-field"><label>归属地</label><input class="field-input" id="f-cu-loc" value="${escapeHtml(c.phoneLoc || '')}" placeholder="如：浙江" /></div>
       <div class="form-field span-2"><label>地址</label><input class="field-input" id="f-cu-addr" value="${escapeHtml(c.addr || '')}" placeholder="收货/绑定地址" /></div>
@@ -3587,6 +3822,8 @@
     const dupAddr = !!(a && addrPhones[a] && addrPhones[a].size > 1);
     return `<div class="detail-grid">
         <div><span>姓名</span>${escapeHtml(row.name || '—')}</div>
+        <div><span>性别</span>${escapeHtml(row.gender || '—')}</div>
+        <div><span>年龄</span>${escapeHtml(row.age || '—')}</div>
         <div><span>手机</span>${escapeHtml(row.phone || '—')}</div>
         <div><span>归属地</span>${escapeHtml(row.phoneLoc || '—')}</div>
         <div><span>标记</span>${row.dupPhone ? tag('重复手机', 'orange') : ''}${dupAddr ? tag('重复地址', 'orange') : ''}${!(row.dupPhone || dupAddr) ? '—' : ''}</div>
@@ -3646,16 +3883,18 @@
         <select class="field-input" data-filter="customers:mark"><option value="">标记</option><option value="1" ${f.mark==='1'?'selected':''}>仅重复</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>姓名</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th></tr></thead>
+        <thead><tr><th>姓名</th><th>性别</th><th>年龄</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th></tr></thead>
         <tbody>${rows.map((r)=>`<tr class="row-clickable" data-row-action="view-customer" data-id="${escapeHtml(r.id)}">
           <td>${escapeHtml(r.name || '—')}</td>
+          <td>${escapeHtml(r.gender || '—')}</td>
+          <td>${escapeHtml(r.age || '—')}</td>
           <td>${escapeHtml(r.phone||'—')}</td>
           <td>${escapeHtml(r.phoneLoc||'—')}</td>
           <td>${escapeHtml(r.addr||'—')}</td>
           <td>${escapeHtml((r.products || []).join('，') || '—')}</td>
           <td>${(r.sns||[]).map((sn)=>`<code style="margin-right:4px">${escapeHtml(sn)}</code>`).join('')||'—'}</td>
           <td>${r.dupPhone?tag('重复手机','orange'):''} ${r.dupAddr?tag('重复地址','orange'):''} ${!r.mark?'—':''}</td>
-        </tr>`).join('') || `<tr><td colspan="7">${emptyHint()}</td></tr>`}</tbody>
+        </tr>`).join('') || `<tr><td colspan="9">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -3737,6 +3976,9 @@
       if (!map.has(key)) {
         map.set(key, {
           id: key,
+          name: u.name || '',
+          gender: u.gender || '',
+          age: u.age || '',
           phone,
           addr: u.addr || '',
           phoneLoc: u.phoneLoc || '',
@@ -3745,6 +3987,9 @@
         });
       }
       const row = map.get(key);
+      if (!row.name && u.name) row.name = u.name;
+      if (!row.gender && u.gender) row.gender = u.gender;
+      if (!row.age && u.age) row.age = u.age;
       row.sns.push(s.sn);
       row.products.push(`${productName(s.productId)}/${s.size}${s.belt ? '+' + s.belt : ''}`);
     });
@@ -3775,7 +4020,7 @@
     if (f.q) {
       const q = f.q.toLowerCase();
       rows = rows.filter((r) =>
-        [r.phone, r.addr, r.phoneLoc, ...(r.sns || []), ...(r.products || [])].join(' ').toLowerCase().includes(q));
+        [r.name, r.gender, r.age, r.phone, r.addr, r.phoneLoc, ...(r.sns || []), ...(r.products || [])].join(' ').toLowerCase().includes(q));
     }
     if (f.mark === '1') rows = rows.filter((r) => r.mark);
     return `${miniMineSubHd('客户')}
@@ -3788,9 +4033,10 @@
       <div class="mini-list">${rows.map((r) => {
         const sn0 = r.sns[0] || '';
         return `<button type="button" class="mini-list-item" data-action="open-view-cend" data-id="CO_${escapeHtml(sn0)}">
-          <strong class="rt-row-hd"><span>${escapeHtml(r.phone || '未留手机')}</span>
+          <strong class="rt-row-hd"><span>${escapeHtml(r.name || r.phone || '未留姓名')}</span>
             ${r.dupPhone ? tag('重复手机', 'orange') : ''}${r.dupAddr ? tag('重复地址', 'orange') : ''}
           </strong>
+          <span>${escapeHtml([r.gender, r.age ? `${r.age}岁` : '', r.phone].filter(Boolean).join(' · ') || '—')}</span>
           <span>${escapeHtml(r.addr || '—')} · ${escapeHtml(r.phoneLoc || '归属地未知')}</span>
           <span>${escapeHtml([...new Set(r.products)].join('，') || '—')}</span>
           <span class="muted">${escapeHtml((r.sns || []).join(' '))}</span>
@@ -4122,10 +4368,19 @@
       const editing = type === 'edit-l2';
       title = editing ? '编辑二级代理' : `二级详情 · ${a.name}`;
       const cities = citiesForL1(a.parentId);
+      const cityOpts = cities.length ? cities : ['杭州市'];
+      const acc = l2Account(a.id);
+      const exN = l2ExCount(a.id);
+      const poN = l2PendingPoCount(a.id);
+      const rtN = l2PendingAftersaleCount(a.id);
       body = editing ? `<div class="form-grid">
           <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(a.name)}" /></div>
           <div class="form-field"><label>类型</label><input class="field-input" value="${escapeHtml(a.type)}" readonly /></div>
-          <div class="form-field span-2"><label>围栏城市 ${selectAllBtn('select-all-city', '全选', isAllSelected(cities.length?cities:['杭州市'], a.areas))}</label>${chips(cities.length?cities:['杭州市'], a.areas||[], 'data-toggle-city')}</div>
+          ${citySearchPickerHtml(cityOpts, a.areas || [], a.cityQ || '', 'data-toggle-city', 'select-all-city', {
+            label: '围栏城市',
+            allLabel: '全选',
+            empty: '该一级暂无可售城市',
+          })}
           <div class="form-field"><label>独立预警倍数</label><input type="number" step="0.1" class="field-input" id="f-warn" value="${a.warnMultiplier ?? ''}" placeholder="空=继承一级" /></div>
           <div class="form-field"><label>独立报警粒度</label><select class="field-input" id="f-warn-mode">
             <option value="" ${!a.warnMode?'selected':''}>继承一级</option>
@@ -4136,22 +4391,29 @@
         : `<div class="detail-grid">
           <div><span>编码</span>${escapeHtml(a.code)}</div>
           <div><span>类型</span>${escapeHtml(a.type)}</div>
+          <div><span>账号登录名称</span>${escapeHtml(acc?.username || '—')}</div>
+          <div><span>密码</span>${escapeHtml(acc?.password || '—')}</div>
           <div><span>所属一级</span>${escapeHtml(l1Name(a.parentId))}</div>
           <div><span>城市</span>${escapeHtml((a.areas||[]).join('、')||'—')}</div>
           <div><span>状态</span>${tag(a.status)}</div>
           <div><span>报警</span>${a.exNoAlarm ? tag('异常不报警', 'gray') : (a.warnMultiplier || a.warnMode ? `${a.warnMultiplier || '继承'}× / ${a.warnMode || '继承'}` : '继承一级')}</div>
+          <div><span>本月采购量</span><strong class="num">${l2MonthPurchaseQty(a.id)}</strong></div>
+          <div><span>本月销售量</span><strong class="num">${l2MonthSalesQty(a.id)}</strong></div>
+          <div><span>当前库存总数</span><strong class="num">${l2StockCount(a.id)}</strong></div>
         </div>${a.ent?`<h4>企业</h4><div class="detail-grid"><div class="span-2">${escapeHtml(a.ent.company||'')}</div></div>`:''}
         ${a.exNoAlarm ? '<p class="muted" style="margin-top:8px">该二级已设「异常不报警」：新异常只记录且默认已处理，不推送未处理预警。</p>' : ''}`;
       foot = editing
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-l2">保存</button>`
-        : `<button class="btn" data-action="close-modal">关闭</button>
-           <button class="btn" data-action="edit-l2" data-id="${a.id}">编辑</button>
+        : `<button class="btn" data-action="edit-l2" data-id="${a.id}">编辑</button>
            <button class="btn" data-action="toggle-l2" data-id="${a.id}">${a.status==='启用'?'停用':'启用'}</button>
            ${a.exNoAlarm
              ? `<button class="btn" data-action="l2-ex-alarm-on" data-id="${a.id}">恢复异常报警</button>`
              : `<button class="btn" data-action="l2-ex-no-alarm-one" data-id="${a.id}">异常不报警</button>`}
            <button class="btn btn-primary" data-go="l2-sales-detail" data-set-filter="l2-sales:l2Id=${a.id}">销售</button>
            <button class="btn btn-primary" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}">退货</button>
+           <button class="btn ${exN ? 'btn-danger' : ''}" data-go="exception" data-set-filter="exception:l2=${a.id}">异常${exN ? ` ${exN}` : ''}</button>
+           <button class="btn" data-go="sales" data-set-filter="sales:l2=${a.id};sales:status=scanning">采购待审核${poN ? ` ${poN}` : ''}</button>
+           <button class="btn" data-go="return" data-set-filter="return:l2=${a.id}" data-set-tab="return:pending">售后待处理${rtN ? ` ${rtN}` : ''}</button>
            <button class="btn" data-action="open-rebind-l2" data-id="${a.id}">更改绑定</button>
            <button class="btn" data-action="edit-l2-fence" data-id="${a.id}">围栏设定</button>
            ${a.type==='法人'&&a.parentId?`<button class="btn btn-danger" data-action="unbind-l2" data-id="${a.id}">解绑法人</button>`:''}`;
@@ -4227,15 +4489,37 @@
         title = m.title; body = m.body; foot = m.foot;
       } else {
         title = `采购单 ${p.no}`;
-        const lineTable = (title, rows) => `<h4>${title}</h4>
+        const lineTable = (title, rows) => {
+          const list = rows || [];
+          let qtySum = 0;
+          let segSum = 0;
+          const body = list.map((l) => {
+            const key = lineSegKey(l);
+            const segs = ((p.segments || {})[key] || []).filter(Boolean);
+            const segN = segs.reduce((n, s) => n + segmentCount(s), 0);
+            qtySum += Number(l.qty) || 0;
+            segSum += segN;
+            return `<tr>
+              <td>${escapeHtml(productName(l.productId))}</td>
+              <td>${escapeHtml(l.size)}</td>
+              <td>${escapeHtml(l.belt || DEFAULT_BELT[l.size] || '—')}</td>
+              <td class="num">${l.qty || 0}</td>
+              <td>${escapeHtml(segs.join('；') || '—')}</td>
+              <td class="num">${segN}</td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="6">${emptyHint('无')}</td></tr>`;
+          return `<h4>${title}</h4>
           <div class="page-card table-wrap"><table class="data">
-            <thead><tr><th>商品</th><th>弹力带</th><th>腰带</th><th>数量</th><th>号段</th></tr></thead>
-            <tbody>${(rows||[]).map((l)=>{
-              const key = `${l.productId}_${l.size}_${l.belt || DEFAULT_BELT[l.size]}`;
-              const seg = ((p.segments||{})[key]||[]).filter(Boolean).join('；') || '—';
-              return `<tr><td>${escapeHtml(productName(l.productId))}</td><td>${escapeHtml(l.size)}</td><td>${escapeHtml(l.belt||DEFAULT_BELT[l.size]||'—')}</td><td class="num">${l.qty||0}</td><td>${escapeHtml(seg)}</td></tr>`;
-            }).join('') || `<tr><td colspan="5">${emptyHint('无')}</td></tr>`}</tbody>
+            <thead><tr><th>商品</th><th>弹力带</th><th>腰带</th><th>数量</th><th>号段</th><th>号段数量</th></tr></thead>
+            <tbody>${body}</tbody>
+            <tfoot><tr>
+              <td colspan="3">商品数量总计</td>
+              <td class="num">${qtySum}</td>
+              <td>号段数量总计</td>
+              <td class="num">${segSum}</td>
+            </tr></tfoot>
           </table></div>`;
+        };
         body = `<div class="detail-grid">
           <div><span>一级</span>${escapeHtml(l1Name(p.l1Id))}</div>
           <div><span>状态</span>${tag(PO_STATUS[p.status]||p.status)}</div>
@@ -4394,23 +4678,25 @@
         ${soScanPlanHtml(s)}
         ${canEdit?'':'<p class="mini-page-desc">子账号不可修改计划数量</p>'}`;
       foot = `<button class="btn" data-action="close-modal">关闭</button>
-        <button class="btn btn-primary" data-action="scan-confirm-so" data-id="${s.id}" ${(s.scanned||[]).length>=s.planTotal?'':'disabled'}>确认出货</button>`;
+        <button class="btn btn-primary" data-action="scan-confirm-so" data-id="${s.id}" ${soScanComplete(s)?'':'disabled'}>确认出货</button>`;
     } else if (type === 'create-so') {
       title = '创建分销出货单';
+      if (!ui.modal.draft) ui.modal.draft = {};
+      const d = ui.modal.draft;
       const l1Id = currentL1Id() || db.agentsL1[0]?.id;
       const l2s = db.agentsL2.filter((a) => a.parentId === l1Id && a.auditStatus === 'approved' && !a.pending);
+      const kits = orderableProducts();
+      const productId = d.productId || kits[0]?.id;
+      d.productId = productId;
+      const prod = kits.find((p) => p.id === productId) || kits[0];
+      const sizeOpts = prod?.type === 'single' ? productSizes(prod) : BAND_SIZES;
       body = `<div class="form-grid">
         ${!currentL1Id()?`<div class="form-field"><label>一级代理</label><select class="field-input" id="f-l1">${db.agentsL1.filter((a)=>a.status==='启用').map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}</select></div>`:''}
         <div class="form-field"><label>二级代理</label><select class="field-input" id="f-l2">${l2s.map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}</select></div>
-        <div class="form-field"><label>商品</label><select class="field-input" id="f-pid">${kitProducts().map((p)=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
-        ${BAND_SIZES.map((s)=>`<div class="form-field"><label>${s}</label><input type="number" class="field-input" data-size-qty="${s}" value="0" /></div>`).join('')}
-        <div class="form-field span-2"><label>选配配件（无 SN，仅数量）</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <label>腰带配件 <input type="number" class="field-input" id="f-part-belt" value="0" style="width:80px" /></label>
-            <label>主体硅胶带 <input type="number" class="field-input" id="f-part-sil" value="0" style="width:80px" /></label>
-          </div>
-        </div>
-      </div>`;
+        <div class="form-field"><label>商品</label><select class="field-input" id="f-pid">${kits.map((p)=>`<option value="${p.id}" ${p.id===productId?'selected':''}>${escapeHtml(p.name)}${p.type==='single'?'（单品）':''}</option>`).join('')}</select></div>
+        ${sizeOpts.map((s)=>`<div class="form-field"><label>${escapeHtml(s)}</label><input type="number" class="field-input" data-size-qty="${s}" value="0" /></div>`).join('')}
+      </div>
+      ${bundleSinglePickerHtml(prod, d)}`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-so-ok">创建并扫码</button>`;
     } else if (type === 'import-sn-seg') {
       title = '批量导入 SN 段号';
@@ -4488,12 +4774,7 @@
             <td><button class="btn btn-sm" data-action="po-draft-del-custom" data-idx="${i}">删除</button></td>
           </tr>`).join('') || `<tr><td colspan="4">${emptyHint('点击「新增非标行」')}</td></tr>`}</tbody>
         </table></div>`}
-        ${isPart ? '' : `<div class="form-field" style="margin-top:10px"><label>选配配件（无 SN，也可在商品中选配件单独下单）</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <label>腰带配件 <input type="number" class="field-input" id="f-part-belt" value="0" style="width:80px" /></label>
-            <label>主体硅胶带 <input type="number" class="field-input" id="f-part-qty" value="0" style="width:80px" /></label>
-          </div>
-        </div>`}`;
+        ${isPart ? '' : bundleSinglePickerHtml(poProd, ui.modal.draft)}`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-po-ok">提交</button>`;
     } else if (type === 'edit-product' || type === 'create-product') {
       const cur = draft || db.products.find((x) => x.id === payload.id) || { type: payload.ptype || 'kit', sizes: [], belts: [], status: '上架' };
@@ -4565,6 +4846,12 @@
         <div class="form-field"><label>状态</label><select class="field-input" id="f-pstatus"><option value="上架" ${(d.status || '上架') === '上架' ? 'selected' : ''}>上架</option><option value="下架" ${d.status === '下架' ? 'selected' : ''}>下架</option></select></div>
         <div class="form-field"><label>说明</label><input class="field-input" id="f-pnote" value="${escapeHtml(d.note || '')}" /></div>
         ${isKit ? `
+          <div class="form-field span-2"><label>可随售单品</label>
+            <div class="perm-check-grid">${db.products.filter((p) => p.type === 'single').map((p) => `
+              <label class="perm-check"><input type="checkbox" data-bundle-single="${p.id}" ${(d.bundleSingles || []).includes(p.id) ? 'checked' : ''}/><span>${escapeHtml(p.name)}</span><code>${escapeHtml(p.code || p.id)}</code></label>
+            `).join('') || emptyHint('暂无单品，请先新建单品')}</div>
+            <p class="muted" style="margin-top:6px">勾选后，下销售单时可按规格加购这些单品（各自扫 SN）。</p>
+          </div>
           <div class="form-field span-2"><div class="alert alert-info" style="margin:0">可配置多个组件：先命名并<strong>勾选尺码</strong>，下方「标准套件组合」会按已选尺码<strong>自动生成全部组合</strong>（如 42+S、42+M…）。全选/取消全选只改勾选；经典腰带+弹力带仍用五档标品规则。</div></div>
           ${kitCompsHtml}
           <div class="form-field span-2"><button type="button" class="btn" data-action="product-add-comp">+ 添加组件</button></div>
@@ -4666,20 +4953,7 @@
           <button type="button" class="btn btn-sm" data-action="cart-del-custom" data-idx="${i}">删除</button>
         </div>`).join('') || emptyHint('暂无非标，点「+ 添加」')}</div>
         <div class="qty-total">非标套件总计 <strong class="num" id="custom-qty-total">${customTotal}</strong> 件</div>`}
-        ${isPart ? '' : `<h4 style="margin-top:14px">配件（可单独下单，也可随套件加购）</h4>
-        <div class="page-card table-wrap"><table class="data">
-          <thead><tr><th></th><th>配件</th><th>尺码</th><th>数量</th></tr></thead>
-          <tbody>${partProducts().map((p)=>{
-            const on = !!(d.acc[p.id]?.on);
-            const sizes = (p.sizes && p.sizes.length) ? p.sizes : ['S','M','L'];
-            return sizes.map((sz, si)=>`<tr>
-              ${si===0?`<td rowspan="${sizes.length}"><input type="checkbox" data-acc-on="${p.id}" ${on?'checked':''} /></td>
-                <td rowspan="${sizes.length}">${escapeHtml(p.name)}</td>`:''}
-              <td>${escapeHtml(sz)}</td>
-              <td><input type="number" class="field-input" data-acc-qty="${p.id}" data-acc-size="${sz}" value="${(d.acc[p.id]?.qty&&d.acc[p.id].qty[sz])||0}" min="0" ${on?'':'disabled'} style="width:80px" /></td>
-            </tr>`).join('');
-          }).join('') || `<tr><td colspan="4">${emptyHint('暂无配件')}</td></tr>`}</tbody>
-        </table></div>`}`;
+        ${isPart ? '' : bundleSinglePickerHtml(cartProd, d)}`;
       foot = `<button class="btn" data-action="close-modal">取消</button>
         <button class="btn btn-primary" data-action="cart-submit">提交${channel==='sales'?'销售单':'采购单'}</button>`;
     } else if (type === 'view-customer') {
@@ -4775,12 +5049,13 @@
             <option value="停用" ${d.status==='停用'?'selected':''}>停用</option>
           </select></div>
           <div class="form-field"><label>编码</label><input class="field-input" value="${escapeHtml(d.code || '')}" readonly /></div>` : ''}
-        <div class="form-field span-2"><label>围栏城市 ${selectAllBtn('select-all-city', '全选', isAllSelected(cityOpts, d.areas))}</label>
-          ${chips(cityOpts, d.areas || [], 'data-toggle-city')}
-          ${!cities.length ? '<p class="muted" style="margin-top:6px">一级无可售城市，请先在后台维护一级可销售范围</p>' : ''}
-        </div>
+        ${citySearchPickerHtml(cityOpts, d.areas || [], d.cityQ || '', 'data-toggle-city', 'select-all-city', {
+          label: '围栏城市',
+          allLabel: '全选',
+          empty: '一级无可售城市，请先在后台维护一级可销售范围',
+        })}
         <div class="form-field"><label>登录用户名</label><input class="field-input" id="f-l2-user" value="${escapeHtml(d.username || acc.username || '')}" placeholder="如 hz_agent" /></div>
-        <div class="form-field"><label>${editing ? '登录密码（留空不改）' : '登录密码'}</label><input class="field-input" id="f-l2-pass" type="password" value="${editing ? '' : '******'}" placeholder="${editing ? '不修改请留空' : ''}" /></div>
+        <div class="form-field"><label>登录密码</label><input class="field-input" id="f-l2-pass" value="${escapeHtml(editing ? (acc.password || '') : (d.password || 'demo'))}" placeholder="明文密码" /></div>
       </div>
       ${d.type === '法人' ? `<h4 style="margin-top:12px">企业信息</h4>${entFieldsHtml(d.ent || {})}` : '<p class="muted" style="margin-top:8px">个人类型无需填写企业信息。</p>'}
       <p class="muted" style="margin-top:8px">${editing ? '保存后同步更新二级登录账号。' : '创建后进入平台「二级审核」，通过后方可正常使用。'}</p>`;
@@ -4839,15 +5114,7 @@
     document.querySelectorAll('[data-std-key]').forEach((inp) => {
       d.stdQty[inp.getAttribute('data-std-key')] = Number(inp.value) || 0;
     });
-    d.acc = d.acc || {};
-    partProducts().forEach((p) => {
-      const on = !!document.querySelector(`[data-acc-on="${p.id}"]`)?.checked;
-      const qty = {};
-      document.querySelectorAll(`[data-acc-qty="${p.id}"]`).forEach((inp) => {
-        qty[inp.getAttribute('data-acc-size')] = Number(inp.value) || 0;
-      });
-      d.acc[p.id] = { on, qty };
-    });
+    syncBundleDraftFromDom();
   }
 
   /* ---------- Business actions ---------- */
@@ -5545,7 +5812,7 @@
           }
           render();
         } else if (act === 'reset-demo-ok') {
-          localStorage.removeItem(persistKey); db = seed(); saveStore(); toast('演示数据已重置 (v6)'); render();
+          localStorage.removeItem(persistKey); db = seed(); saveStore(); toast('演示数据已重置 (v17)'); render();
         } else if (act === 'logout-ok') {
           ui.loggedIn = false; persistSession(); ui.modal = null; ui.confirm = null; render();
         } else if (act === 'reassign-frozen-confirm-ok') {
@@ -6019,19 +6286,18 @@
       case 'create-so-ok': {
         const l2Id = $('#f-l2')?.value;
         const productId = $('#f-pid')?.value;
-        const planBySize = {}; let planTotal = 0;
+        const lines = [];
         document.querySelectorAll('[data-size-qty]').forEach((inp) => {
-          const q = Number(inp.value)||0; if (q>0) { planBySize[inp.getAttribute('data-size-qty')] = q; planTotal += q; }
+          const q = Number(inp.value)||0;
+          if (q>0) lines.push({ productId, size: inp.getAttribute('data-size-qty'), belt: '', qty: q });
         });
+        lines.push(...collectBundleSingleLines());
+        const planBySize = {}; let planTotal = 0;
+        lines.forEach((l) => { planBySize[l.size] = (planBySize[l.size] || 0) + l.qty; planTotal += l.qty; });
         if (!planTotal) return toast('请填写数量', 'err');
         if (!l2Id) return toast('请选择二级代理', 'err');
-        const parts = [];
-        const pb = Number($('#f-part-belt')?.value) || 0;
-        const ps = Number($('#f-part-sil')?.value) || 0;
-        if (pb > 0) parts.push({ partId: 'PART-BELT', spec: '配件', qty: pb });
-        if (ps > 0) parts.push({ partId: 'PART-SIL', spec: 'M', qty: ps });
         const l1Id = currentL1Id() || $('#f-l1')?.value || db.agentsL2.find((a)=>a.id===l2Id)?.parentId;
-        confirmDialog(`确认创建销售单并进入扫码出货（计划 ${planTotal} 件）？`, 'create-so-confirm-ok', { l1Id, l2Id, productId, planTotal, planBySize, parts }, { title: '创建销售单', okText: '确认创建' });
+        confirmDialog(`确认创建销售单并进入扫码出货（计划 ${planTotal} 件）？`, 'create-so-confirm-ok', { l1Id, l2Id, productId, planTotal, planBySize, lines }, { title: '创建销售单', okText: '确认创建' });
         break;
       }
       case 'mini-open-scan-so': openModal('scan-so', { id }); break;
@@ -6047,7 +6313,7 @@
       case 'scan-confirm-so': {
         const s = db.sales.find((x)=>x.id===id);
         if (!s) return toast('销售单不存在', 'err');
-        if ((s.scanned||[]).length < s.planTotal) return toast('未扫满', 'err');
+        if (!soScanComplete(s)) return toast('未扫满：每条商品的已扫数量须等于销售数量', 'err');
         confirmDialog(`确认完成出货 ${s.no}（已扫 ${(s.scanned||[]).length}/${s.planTotal}）？`, 'scan-confirm-so-ok', { id }, { title: '确认出货', okText: '确认出货' });
         break;
       }
@@ -6145,6 +6411,7 @@
         if (!ui.modal?.draft) break;
         if ($('#f-city-q')) ui.modal.draft.cityQ = $('#f-city-q').value;
         if (ui.modal.type === 'create-l2-mini' || ui.modal.type === 'edit-l2-mini') syncMiniL2DraftFromDom();
+        if (ui.modal.type === 'edit-l2') syncL2PcDraft();
         if (ui.modal.type === 'rebind-l2' && $('#f-parent')?.value) {
           ui.modal.draft.parentId = $('#f-parent').value;
         }
@@ -6295,6 +6562,7 @@
               { id: 'c1', name: '组件2', pool: [], sizes: [] },
             ],
             stdCombos: [],
+            bundleSingles: [],
             status: '上架',
             code: '',
             name: '',
@@ -6380,7 +6648,7 @@
         saveStore(); closeModal(); toast('已保存'); break;
       }
       case 'open-order-cart':
-        openModal('order-cart', { channel: el.getAttribute('data-channel') || 'purchase', draftSeed: { channel: el.getAttribute('data-channel') || 'purchase', customRows: [], nonstdGrade: '小', stdQty: {}, acc: {} } });
+        openModal('order-cart', { channel: el.getAttribute('data-channel') || 'purchase', draftSeed: { channel: el.getAttribute('data-channel') || 'purchase', customRows: [], nonstdGrade: '小', stdQty: {}, bundleOn: {}, bundleQty: {} } });
         break;
       case 'cart-add-custom': {
         syncOrderCartDraftFromDom();
@@ -6413,13 +6681,7 @@
         const cartProd = orderableProducts().find((p) => p.id === cartPid);
         const isPart = cartProd?.type === 'part';
         const lines = [];
-        const parts = [];
-        if (isPart) {
-          document.querySelectorAll('[data-std-size]').forEach((inp) => {
-            const q = Number(inp.value) || 0;
-            if (q > 0) parts.push({ partId: cartPid, name: cartProd.name, spec: inp.getAttribute('data-std-size') || '', qty: q });
-          });
-        } else {
+        if (!isPart) {
           document.querySelectorAll('[data-std-size]').forEach((inp) => {
             const q = Number(inp.value) || 0;
             if (q > 0) lines.push({ productId: cartPid, size: inp.getAttribute('data-std-size'), belt: inp.getAttribute('data-std-belt'), qty: q });
@@ -6427,29 +6689,27 @@
         }
         const customRows = ui.modal.draft?.customRows || [];
         const customLines = isPart ? [] : customRows.map((r) => ({ productId: cartPid, size: r.size, belt: r.belt, qty: r.qty }));
-        let accErr = '';
-        partProducts().forEach((p) => {
-          const on = document.querySelector(`[data-acc-on="${p.id}"]`)?.checked;
-          if (!on) return;
-          let any = 0;
-          document.querySelectorAll(`[data-acc-qty="${p.id}"]`).forEach((inp) => {
-            const pq = Number(inp.value) || 0;
-            if (pq > 0) {
-              any += pq;
-              parts.push({ partId: p.id, name: p.name, spec: inp.getAttribute('data-acc-size') || '', qty: pq });
-            }
-          });
-          if (!any) accErr = `已勾选配件「${p.name}」但未填尺码数量`;
+        const bundleLines = collectBundleSingleLines();
+        let bundleErr = '';
+        document.querySelectorAll('[data-bundle-on]').forEach((chk) => {
+          if (!chk.checked) return;
+          const pid = chk.getAttribute('data-bundle-on');
+          const any = [...document.querySelectorAll(`[data-bundle-qty="${pid}"]`)].some((inp) => (Number(inp.value) || 0) > 0);
+          if (!any) {
+            const p = db.products.find((x) => x.id === pid);
+            bundleErr = `已勾选随售单品「${p?.name || pid}」但未填规格数量`;
+          }
         });
-        if (accErr) return toast(accErr, 'err');
-        if (!lines.length && !customLines.length && !parts.length) return toast('请至少填写标准数量、非标或配件', 'err');
-        const payload = { channel, cartPid, lines, customLines, parts, l2Id: $('#f-cart-l2')?.value || '' };
+        if (bundleErr) return toast(bundleErr, 'err');
+        lines.push(...bundleLines);
+        if (!lines.length && !customLines.length) return toast('请至少填写标准数量、非标或随售单品', 'err');
+        const payload = { channel, cartPid, lines, customLines, parts: [], l2Id: $('#f-cart-l2')?.value || '' };
         if (channel === 'sales') {
           if (!payload.l2Id) return toast('请选择二级代理', 'err');
           let planTotal = 0;
           lines.forEach((l) => { planTotal += l.qty; });
           customLines.forEach((r) => { planTotal += r.qty; });
-          if (!planTotal) return toast(parts.length ? '配件无 SN，请走采购单独下单，或随套件销售' : '销售单需至少一件商品（含非标）', 'err');
+          if (!planTotal) return toast('销售单需至少一件商品（含非标或随售单品）', 'err');
           confirmDialog(`确认提交销售单（商品 ${planTotal} 件）？`, 'cart-submit-ok', payload, { title: '提交销售单', okText: '确认提交' });
         } else {
           confirmDialog('确认提交采购申请？提交后进入平台审核。', 'cart-submit-ok', payload, { title: '提交采购申请', okText: '确认提交' });
@@ -6463,7 +6723,7 @@
       case 'open-view-cend': openModal('view-cend', { id }); break;
       case 'open-view-stock': openModal('view-stock', { id }); break;
       case 'open-create-customer':
-        openModal('create-customer', { draftSeed: { name: '', phone: '', phoneLoc: '', addr: '', note: '', sns: [] } });
+        openModal('create-customer', { draftSeed: { name: '', gender: '', age: '', phone: '', phoneLoc: '', addr: '', note: '', sns: [] } });
         break;
       case 'open-edit-customer': {
         const c = (db.customers || []).find((x) => x.id === id);
@@ -6584,20 +6844,16 @@
         const isSingle = poProd?.type === 'single';
         const isPart = poProd?.type === 'part';
         const lines = [];
-        const parts = [];
         document.querySelectorAll('[data-size-qty]').forEach((inp) => {
           const q = Number(inp.value)||0;
           if (q<=0) return;
-          if (isPart) {
-            parts.push({ partId: productId, name: poProd.name, spec: inp.getAttribute('data-size-qty') || '', qty: q });
-          } else {
-            lines.push({
-              productId,
-              size: inp.getAttribute('data-size-qty'),
-              belt: inp.getAttribute('data-std-belt') || (isSingle ? '' : (DEFAULT_BELT[inp.getAttribute('data-size-qty')] || '')),
-              qty: q,
-            });
-          }
+          if (isPart) return;
+          lines.push({
+            productId,
+            size: inp.getAttribute('data-size-qty'),
+            belt: inp.getAttribute('data-std-belt') || (isSingle ? '' : (DEFAULT_BELT[inp.getAttribute('data-size-qty')] || '')),
+            qty: q,
+          });
         });
         const customLines = [];
         if (!isSingle && !isPart) {
@@ -6610,13 +6866,10 @@
             customLines.push({ productId, size, belt, qty: q });
           });
         }
-        const pb = Number($('#f-part-belt')?.value) || 0;
-        const pq = Number($('#f-part-qty')?.value)||0;
-        if (pb > 0) parts.push({ partId: 'PART-BELT', spec: '配件', qty: pb });
-        if (pq>0) parts.push({ partId: 'PART-SIL', spec: 'M', qty: pq });
-        if (!lines.length && !customLines.length && !parts.length) return toast(isPart ? '请填写配件规格数量' : (isSingle ? '请填写尺码数量' : '请填写标准数量、非标或配件'), 'err');
+        lines.push(...collectBundleSingleLines());
+        if (!lines.length && !customLines.length) return toast(isSingle ? '请填写尺码数量' : '请填写标准数量、非标或随售单品', 'err');
         confirmDialog('确认提交采购申请？提交后进入平台审核。', 'create-po-confirm-ok', {
-          productId, lines, customLines, parts, l1Id: currentL1Id() || 'L1A',
+          productId, lines, customLines, parts: [], l1Id: currentL1Id() || 'L1A',
         }, { title: '提交采购申请', okText: '确认提交' });
         break;
       }
@@ -6727,6 +6980,7 @@
     d.type = $('#f-l2-type')?.value || d.type || '个人';
     d.username = $('#f-l2-user')?.value?.trim() ?? d.username;
     d.password = $('#f-l2-pass')?.value ?? d.password;
+    if ($('#f-city-q')) d.cityQ = $('#f-city-q').value;
     if ($('#f-l2-status')) d.status = $('#f-l2-status').value;
     if (d.type === '法人') d.ent = readEntFields();
   }
@@ -6857,14 +7111,14 @@
     const parts = payload.parts || [];
     if (channel === 'sales') {
       const l2Id = payload.l2Id;
+      const soLines = [...lines, ...customLines];
       const planBySize = {};
       let planTotal = 0;
-      lines.forEach((l) => { planBySize[l.size] = (planBySize[l.size] || 0) + l.qty; planTotal += l.qty; });
-      customLines.forEach((r) => { planBySize[r.size] = (planBySize[r.size] || 0) + r.qty; planTotal += r.qty; });
+      soLines.forEach((l) => { planBySize[l.size] = (planBySize[l.size] || 0) + l.qty; planTotal += l.qty; });
       const so = {
         id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`,
         channel: 'distribute', l1Id: currentL1Id(), l2Id, productId: cartPid,
-        planTotal, planBySize, parts, scanned: [], status: 'scanning', createdAt: nowStr(),
+        lines: soLines, planTotal, planBySize, scanned: [], status: 'scanning', createdAt: nowStr(),
       };
       db.sales.unshift(so);
       addLog('购物车提交销售单');
@@ -6919,10 +7173,14 @@
   }
 
   function finishCreateSo(payload) {
-    const { l1Id, l2Id, productId, planTotal, planBySize, parts } = payload;
+    const { l1Id, l2Id, productId, planTotal, planBySize } = payload;
+    const lines = Array.isArray(payload.lines) && payload.lines.length
+      ? payload.lines
+      : Object.keys(planBySize || {}).filter((k) => (planBySize[k] || 0) > 0)
+        .map((size) => ({ productId, size, belt: '', qty: planBySize[size] }));
     const so = {
       id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3, '0')}`, channel: 'distribute',
-      l1Id, l2Id, productId, planTotal, planBySize, parts: parts || [], scanned: [], status: 'scanning', createdAt: nowStr(),
+      l1Id, l2Id, productId, lines, planTotal, planBySize, scanned: [], status: 'scanning', createdAt: nowStr(),
     };
     const cfg = resolveWarnConfig(so.l1Id, l2Id);
     const overRatio = Number(cfg.rules.overOrderRatio || 1);
@@ -6952,10 +7210,14 @@
           const [, key, id] = set.split(':');
           if (key && id) ui.tabs[key] = id;
         } else {
-          const [scopeField, val] = set.split('=');
-          const [scope, field] = scopeField.split(':');
-          ui.filters[scope] = ui.filters[scope] || {};
-          ui.filters[scope][field] = val;
+          set.split(';').forEach((pair) => {
+            const [scopeField, val] = pair.split('=');
+            if (!scopeField || val == null) return;
+            const [scope, field] = scopeField.split(':');
+            if (!scope || !field) return;
+            ui.filters[scope] = ui.filters[scope] || {};
+            ui.filters[scope][field] = val;
+          });
         }
       }
       const setTab = el.getAttribute('data-set-tab');
@@ -7056,8 +7318,18 @@
     // chip toggles in modal
     $('#f-city-q')?.addEventListener('input', () => {
       if (!ui.modal?.draft) return;
-      syncL1Draft();
-      ui.modal.draft.directCityQ = $('#f-city-q').value;
+      const t = ui.modal.type;
+      if (t === 'create-l2-mini' || t === 'edit-l2-mini') {
+        syncMiniL2DraftFromDom();
+        ui.modal.draft.cityQ = $('#f-city-q').value;
+      } else if (t === 'edit-l2') {
+        syncL2PcDraft();
+      } else if (t === 'rebind-l2') {
+        ui.modal.draft.cityQ = $('#f-city-q').value;
+      } else {
+        syncL1Draft();
+        ui.modal.draft.directCityQ = $('#f-city-q').value;
+      }
       render();
     });
     document.querySelectorAll('[data-toggle-main]').forEach((el) => el.addEventListener('click', () => {
@@ -7087,6 +7359,8 @@
     }));
     document.querySelectorAll('[data-toggle-city]').forEach((el) => el.addEventListener('click', () => {
       if (!ui.modal?.draft) return;
+      if (ui.modal.type === 'edit-l2') syncL2PcDraft();
+      if (ui.modal.type === 'create-l2-mini' || ui.modal.type === 'edit-l2-mini') syncMiniL2DraftFromDom();
       if ($('#f-city-q')) ui.modal.draft.cityQ = $('#f-city-q').value;
       const r = el.getAttribute('data-toggle-city');
       const set = new Set(ui.modal.draft.areas || []);
@@ -7180,6 +7454,8 @@
         ui.modal.draft.productId = $('#f-cart-pid').value;
         ui.modal.draft.stdQty = {};
         ui.modal.draft.customRows = [];
+        ui.modal.draft.bundleOn = {};
+        ui.modal.draft.bundleQty = {};
         render();
       });
       $('#f-cart-c-grade')?.addEventListener('change', () => {
@@ -7187,10 +7463,10 @@
         ui.modal.draft.nonstdGrade = $('#f-cart-c-grade').value;
         render();
       });
-      document.querySelectorAll('[data-acc-on]').forEach((chk) => {
+      document.querySelectorAll('[data-bundle-on]').forEach((chk) => {
         chk.addEventListener('change', () => { syncOrderCartDraftFromDom(); render(); });
       });
-      document.querySelectorAll('[data-std-key], [data-acc-qty]').forEach((inp) => {
+      document.querySelectorAll('[data-std-key], [data-bundle-qty]').forEach((inp) => {
         const sync = () => {
           syncOrderCartDraftFromDom();
           const total = Object.values(ui.modal.draft.stdQty || {}).reduce((n, q) => n + (Number(q) || 0), 0);
@@ -7204,9 +7480,28 @@
     if (ui.modal?.type === 'create-po') {
       $('#f-pid')?.addEventListener('change', () => {
         if (!ui.modal.draft) ui.modal.draft = { customLines: [] };
+        syncBundleDraftFromDom();
         ui.modal.draft.productId = $('#f-pid').value;
         ui.modal.draft.customLines = [];
+        ui.modal.draft.bundleOn = {};
+        ui.modal.draft.bundleQty = {};
         render();
+      });
+      document.querySelectorAll('[data-bundle-on]').forEach((chk) => {
+        chk.addEventListener('change', () => { syncBundleDraftFromDom(); render(); });
+      });
+    }
+    if (ui.modal?.type === 'create-so') {
+      $('#f-pid')?.addEventListener('change', () => {
+        if (!ui.modal.draft) ui.modal.draft = {};
+        syncBundleDraftFromDom();
+        ui.modal.draft.productId = $('#f-pid').value;
+        ui.modal.draft.bundleOn = {};
+        ui.modal.draft.bundleQty = {};
+        render();
+      });
+      document.querySelectorAll('[data-bundle-on]').forEach((chk) => {
+        chk.addEventListener('change', () => { syncBundleDraftFromDom(); render(); });
       });
     }
 
