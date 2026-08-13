@@ -810,6 +810,28 @@ table.data .col-check input[type="checkbox"] {
   font-weight: 600;
 }
 .city-search { margin: 8px 0 6px; }
+.qty-list { display: flex; flex-direction: column; }
+.qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.qty-row label { flex: 1; margin: 0; font-size: 13px; color: var(--text-2); }
+.qty-row .field-input { width: 110px; flex: 0 0 110px; }
+.qty-total { text-align: right; padding: 10px 0 4px; font-size: 13px; color: var(--text-2); }
+.nonstd-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.nonstd-row .form-field { flex: 1; min-width: 0; margin: 0; }
+.nonstd-row .btn { flex: 0 0 auto; margin-bottom: 1px; }
+.audit-po-table td { vertical-align: middle; }
+.audit-prod { font-weight: 600; line-height: 1.4; }
 .status-stack { display: flex; flex-direction: column; gap: 4px; min-width: 148px; }
 .status-metrics {
   display: flex;
