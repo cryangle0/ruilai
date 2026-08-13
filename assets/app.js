@@ -638,27 +638,44 @@
       if (i === 7) {
         sns.push(mkSn(sn, { size: 'M', l1Id: 'L1A', l2Id: 'L2A', status: 'l2', reIn: true, tags: ['已退货', '修理过'],
           soldAt: '2026-07-25 12:00', bindAt: '2026-07-25 12:00', bindIpRegion: '浙江',
-          prevUser: { phone: '138****1007', addr: '杭州市余杭区', phoneLoc: '浙江' }, returnAt: '2026-08-01 11:20' }));
+          prevUser: { name: '孙悦', gender: '女', age: '33', phone: '13800001007', addr: '杭州市余杭区', phoneLoc: '浙江' }, returnAt: '2026-08-01 11:20' }));
         continue;
       }
       const bound = i <= 6;
+      const hzUsers = {
+        1: { name: '陈敏', gender: '女', age: '28' },
+        2: { name: '王芳', gender: '女', age: '32' },
+        3: { name: '李强', gender: '男', age: '41' },
+        4: { name: '赵磊', gender: '男', age: '36' },
+        5: { name: '周婷', gender: '女', age: '29' },
+        6: { name: '吴杰', gender: '男', age: '45' },
+      };
       sns.push(mkSn(sn, {
         size: 'M', l1Id: 'L1A', l2Id: 'L2A', status: bound ? 'bound' : 'l2',
         soldAt: bound ? '2026-07-25 12:00' : null, bindAt: bound ? '2026-07-25 12:00' : null,
         bindIpRegion: bound ? (i === 4 ? '广东' : '浙江') : null,
         user: bound ? {
-          phone: `138****100${i}`, addr: '杭州市西湖区文一路1号', phoneLoc: i === 4 ? '广东' : '浙江',
-          name: i === 2 ? '王芳' : (i === 3 ? '李强' : ''),
-          gender: i === 2 ? '女' : (i === 3 ? '男' : ''),
-          age: i === 2 ? '32' : (i === 3 ? '41' : ''),
+          ...hzUsers[i],
+          phone: `1380000100${i}`,
+          addr: '杭州市西湖区文一路1号',
+          phoneLoc: i === 4 ? '广东' : '浙江',
         } : null,
       }));
     }
     for (let i = 1; i <= 6; i++) {
+      const nbUsers = {
+        1: { name: '郑浩', gender: '男', age: '38' },
+        2: { name: '钱丽', gender: '女', age: '27' },
+      };
       sns.push(mkSn(`RL20260721${String(i).padStart(4, '0')}`, {
         size: 'L', l1Id: 'L1A', l2Id: 'L2B', status: i <= 2 ? 'bound' : 'l2',
         soldAt: i <= 2 ? '2026-07-28 11:00' : null, bindAt: i <= 2 ? '2026-07-28 11:00' : null, bindIpRegion: i <= 2 ? '浙江' : null,
-        user: i <= 2 ? { phone: `135****400${i}`, addr: '宁波市海曙区中山东路88号', phoneLoc: '江苏' } : null,
+        user: i <= 2 ? {
+          ...nbUsers[i],
+          phone: `1350000400${i}`,
+          addr: '宁波市海曙区中山东路88号',
+          phoneLoc: '江苏',
+        } : null,
       }));
     }
     for (let i = 1; i <= 25; i++) {
@@ -751,7 +768,7 @@
           status: 'done', createdAt: '2026-08-02 16:00' },
         { id: 'SO5', no: `SO${todayCompact()}100`, channel: 'direct', l1Id: 'L1A', l2Id: null, productId: 'P1',
           planTotal: 2, planBySize: { M: 2 }, scanned: ['RL202607200001', 'RL202607200002'], status: 'done', createdAt: '2026-07-25 12:00',
-          customer: { phone: '138****1001', addr: '杭州市西湖区文一路1号', phoneLoc: '浙江' } },
+          customer: { name: '陈敏', gender: '女', age: '28', phone: '13800001001', addr: '杭州市西湖区文一路1号', phoneLoc: '浙江' } },
       ],
       returns: [
         { id: 'RT1', no: `RTU${todayCompact()}01`, type: 'user', typeLabel: '终端用户退货', fromId: 'L2A', fromName: '杭州城西专营',
@@ -780,7 +797,7 @@
         { id: 'EX4', time: '2026-07-22 10:40', type: '销售库存异常', target: '宁波海曙店 · 锐涞经典款L', detail: '本次新增 4 > 预警线', notify: '一级+原厂', status: '已处理', dim: 'stock' },
         { id: 'EX5', time: '2026-08-05 09:20', type: '超量下单预警', target: '杭州城西专营', detail: '2级库存充足仍大量申请下单，需一级填写说明', notify: '一级+原厂', status: '未处理', dim: 'stock', explain: '' },
         { id: 'EX6', time: '2026-08-06 14:00', type: '扫码尺码不匹配', target: 'RL202608010001', detail: '出货计划 M，实扫 SN 为 L', notify: '原厂', status: '未处理', dim: 'scan' },
-        { id: 'EX7', time: '2026-08-07 10:10', type: '客户信息重复', target: 'RL202607200003', detail: '手机号 138****1003 已激活 1 次 · 可查看历史绑定', notify: '一级+原厂', status: '未处理', dim: 'activate', dupPhone: '138****1003' },
+        { id: 'EX7', time: '2026-08-07 10:10', type: '客户信息重复', target: 'RL202607200003', detail: '手机号 13800001003 已激活 1 次 · 可查看历史绑定', notify: '一级+原厂', status: '未处理', dim: 'activate', dupPhone: '13800001003' },
         { id: 'EX8', time: '2026-08-07 15:20', type: '扫码不在库', target: 'RL202607200003', detail: '扫出的 SN 不在本一级仓库（当前 已销售）', notify: '原厂', status: '未处理', dim: 'scan' },
       ],
       notifications: [
@@ -833,7 +850,18 @@
     };
   }
 
-  const persistKey = 'ruilai_proto_v17';
+  const persistKey = 'ruilai_proto_v18';
+  function revealMaskedPhone(val) {
+    if (val == null) return val;
+    return String(val).replace(/(\d{3})\*+(\d{4})/g, (_, head, tail) => {
+      const zeros = Math.max(0, 11 - head.length - tail.length);
+      return `${head}${'0'.repeat(zeros)}${tail}`;
+    });
+  }
+  function revealUserPhones(u) {
+    if (!u) return;
+    if (u.phone) u.phone = revealMaskedPhone(u.phone);
+  }
   function loadStore() {
     try {
       const raw = localStorage.getItem(persistKey);
@@ -857,6 +885,8 @@
             s.tags = [...new Set([...(s.tags || []).filter((t) => t !== '冷冻'), '已冻结'])];
           }
           if (!s.events) s.events = [];
+          revealUserPhones(s.user);
+          revealUserPhones(s.prevUser);
         });
         if (!Array.isArray(parsed.dailyStats)) parsed.dailyStats = [];
         (parsed.products || []).forEach((p) => {
@@ -903,7 +933,16 @@
             if (!p.approvedAt) p.approvedAt = nowStr();
           }
         });
-        (parsed.sales || []).forEach((s) => { if (!s.channel) s.channel = s.l2Id ? 'distribute' : 'direct'; });
+        (parsed.sales || []).forEach((s) => {
+          if (!s.channel) s.channel = s.l2Id ? 'distribute' : 'direct';
+          if (s.customer) {
+            revealUserPhones(s.customer);
+            if (s.customer.phone) s.customer.phone = revealMaskedPhone(s.customer.phone);
+          }
+        });
+        (parsed.customers || []).forEach((c) => {
+          if (c.phone) c.phone = revealMaskedPhone(c.phone);
+        });
         (parsed.returns || []).forEach((r) => { if (!r.reasonType) r.reasonType = '其他'; });
         (parsed.exceptions || []).forEach((e) => {
           if (e.dim === 'nonSn') e.dim = 'scan';
@@ -915,6 +954,8 @@
               : (/扫码|尺码不匹配|不在库/.test(e.type) ? 'scan' : 'activate');
           }
           if (e.status === '已关闭') e.status = '已处理';
+          if (e.detail) e.detail = revealMaskedPhone(e.detail);
+          if (e.dupPhone) e.dupPhone = revealMaskedPhone(e.dupPhone);
         });
         (parsed.accounts || []).forEach((a) => {
           if (a.password === '******') a.password = 'demo';
@@ -3801,7 +3842,7 @@
         </select>
       </div>
       <div class="form-field"><label>年龄</label><input class="field-input" id="f-cu-age" value="${escapeHtml(c.age || '')}" placeholder="如 32" /></div>
-      <div class="form-field"><label>手机号</label><input class="field-input" id="f-cu-phone" value="${escapeHtml(c.phone || '')}" placeholder="138****0000" /></div>
+      <div class="form-field"><label>手机号</label><input class="field-input" id="f-cu-phone" value="${escapeHtml(c.phone || '')}" placeholder="13800001000" /></div>
       <div class="form-field"><label>归属地</label><input class="field-input" id="f-cu-loc" value="${escapeHtml(c.phoneLoc || '')}" placeholder="如：浙江" /></div>
       <div class="form-field span-2"><label>地址</label><input class="field-input" id="f-cu-addr" value="${escapeHtml(c.addr || '')}" placeholder="收货/绑定地址" /></div>
       <div class="form-field span-2"><label>关联 SN（逗号分隔）</label><input class="field-input" id="f-cu-sns" value="${escapeHtml((c.sns || []).join(','))}" placeholder="RL..." /></div>
@@ -4456,6 +4497,19 @@
           <div><span>二级</span>${escapeHtml(l2Name(row.l2Id))}</div>
           <div><span>标签</span>${snDisplayTags(row).map((t)=>tag(t,'orange')).join(' ')||'—'}</div>
         </div>
+        ${(() => {
+          const cu = row.user || row.prevUser;
+          if (!cu) return '';
+          return `<h4 style="margin-top:12px">${row.prevUser && !row.user ? '历史客户' : '客户信息'}</h4>
+          <div class="detail-grid">
+            <div><span>姓名</span>${escapeHtml(cu.name || '—')}</div>
+            <div><span>性别</span>${escapeHtml(cu.gender || '—')}</div>
+            <div><span>年龄</span>${escapeHtml(cu.age || '—')}</div>
+            <div><span>手机</span>${escapeHtml(cu.phone || '—')}</div>
+            <div><span>归属地</span>${escapeHtml(cu.phoneLoc || '—')}</div>
+            <div class="span-2"><span>地址</span>${escapeHtml(cu.addr || '—')}</div>
+          </div>`;
+        })()}
         ${editing ? `<h4 style="margin-top:12px">修改字段</h4>
         <div class="form-grid">
           <div class="form-field"><label>SN</label><input class="field-input" id="f-sn" value="${escapeHtml(row.sn)}" /></div>
@@ -5812,7 +5866,7 @@
           }
           render();
         } else if (act === 'reset-demo-ok') {
-          localStorage.removeItem(persistKey); db = seed(); saveStore(); toast('演示数据已重置 (v17)'); render();
+          localStorage.removeItem(persistKey); db = seed(); saveStore(); toast('演示数据已重置 (v18)'); render();
         } else if (act === 'logout-ok') {
           ui.loggedIn = false; persistSession(); ui.modal = null; ui.confirm = null; render();
         } else if (act === 'reassign-frozen-confirm-ok') {
