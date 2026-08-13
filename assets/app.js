@@ -423,12 +423,13 @@
   const RETURN_TYPES = [
     { id: 'l1_to_factory', label: '一级退原厂' },
     { id: 'l2_to_l1', label: '二级退一级' },
-    { id: 'user', label: '用户退货再入库' },
+    { id: 'user', label: '终端用户退货' },
     { id: 'self', label: '自行售后处理' },
   ];
   const SN_STATUS_LABEL = {
-    warehouse: '原厂在库', l1: '一级在库', l2: '二级在库', bound: '已销售', frozen: '冷冻库', factory: '已退原厂',
+    warehouse: '原厂在库', l1: '一级在库', l2: '二级在库', bound: '已销售',
   };
+  const SN_BIZ_TAGS = ['已退货', '再入库', '再销售', '已冻结'];
   const PO_STATUS = {
     pending: '待审核', cosigning: '会签中', approved: '已生效', rejected: '已驳回',
   };
@@ -657,9 +658,9 @@
         productId: 'P2', size: 'LL', l1Id: 'L1B', l2Id: toL2 ? 'L2C' : null, status: toL2 ? 'l2' : 'l1',
       }));
     }
-    // frozen pool demo
-    sns.push(mkSn('RL202606150001', { size: 'M', l1Id: null, status: 'frozen', frozen: true, tags: ['已退货', '冷冻'], factoryAt: null, returnAt: '2026-07-10 10:00' }));
-    sns.push(mkSn('RL202606150002', { size: 'S', l1Id: null, status: 'frozen', frozen: true, tags: ['已退货', '冷冻'], returnAt: '2026-07-12 14:00' }));
+    // 一级退原厂：状态回到原厂在库，标签已冻结
+    sns.push(mkSn('RL202606150001', { size: 'M', l1Id: null, status: 'warehouse', frozen: true, tags: ['已冻结'], factoryAt: null, returnAt: '2026-07-10 10:00' }));
+    sns.push(mkSn('RL202606150002', { size: 'S', l1Id: null, status: 'warehouse', frozen: true, tags: ['已冻结'], returnAt: '2026-07-12 14:00' }));
 
     const soScannedA = ['RL202607200009', 'RL202607200010', 'RL202607200011', 'RL202607200012'];
     const soScannedB = ['RL202607210003', 'RL202607210004', 'RL202607210005', 'RL202607210006'];
@@ -744,7 +745,7 @@
           customer: { phone: '138****1001', addr: '杭州市西湖区文一路1号', phoneLoc: '浙江' } },
       ],
       returns: [
-        { id: 'RT1', no: `RTU${todayCompact()}01`, type: 'user', typeLabel: '用户退货再入库', fromId: 'L2A', fromName: '杭州城西专营',
+        { id: 'RT1', no: `RTU${todayCompact()}01`, type: 'user', typeLabel: '终端用户退货', fromId: 'L2A', fromName: '杭州城西专营',
           sns: ['RL202607200007'], status: 'approved', createdAt: '2026-08-01 11:20', reason: '尺码不合适', reasonType: '尺码' },
         { id: 'RT2', no: `RT${todayCompact()}02`, type: 'l2_to_l1', typeLabel: '二级退一级', fromId: 'L2A', fromName: '杭州城西专营', approverId: 'L1A',
           sns: ['RL202607200011'], status: 'pending', createdAt: '2026-08-04 09:00', reason: '质量问题：面料起球', reasonType: '质量' },
@@ -755,7 +756,7 @@
         { id: 'RT5', no: `RT${todayCompact()}05`, type: 'l2_to_l1', typeLabel: '二级退一级', fromId: 'L2B', fromName: '宁波海曙店', approverId: 'L1A',
           sns: ['RL202607210006'], status: 'approved', createdAt: '2026-07-30 16:40', reason: '客诉退货，转退一级', reasonType: '投诉' },
         { id: 'RT6', no: `RT${todayCompact()}06`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
-          sns: ['RL202606150001', 'RL202606150002'], status: 'approved', createdAt: '2026-07-10 10:00', reason: '质量退货入冷冻库', reasonType: '质量' },
+          sns: ['RL202606150001', 'RL202606150002'], status: 'approved', createdAt: '2026-07-10 10:00', reason: '质量退货回原厂（已冻结）', reasonType: '质量' },
         { id: 'RT7', no: `RT${todayCompact()}07`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
           sns: ['RL202608010042', 'RL202608010043'], status: 'pending', createdAt: '2026-08-08 10:20', reason: '包装破损，申请退原厂', reasonType: '批次' },
         { id: 'RT8', no: `RT${todayCompact()}08`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
@@ -771,6 +772,7 @@
         { id: 'EX5', time: '2026-08-05 09:20', type: '超量下单预警', target: '杭州城西专营', detail: '2级库存充足仍大量申请下单，需一级填写说明', notify: '一级+原厂', status: '未处理', dim: 'stock', explain: '' },
         { id: 'EX6', time: '2026-08-06 14:00', type: '扫码尺码不匹配', target: 'RL202608010001', detail: '出货计划 M，实扫 SN 为 L', notify: '原厂', status: '未处理', dim: 'scan' },
         { id: 'EX7', time: '2026-08-07 10:10', type: '客户信息重复', target: 'RL202607200003', detail: '手机号 138****1003 已激活 1 次 · 可查看历史绑定', notify: '一级+原厂', status: '未处理', dim: 'activate', dupPhone: '138****1003' },
+        { id: 'EX8', time: '2026-08-07 15:20', type: '扫码不在库', target: 'RL202607200003', detail: '扫出的 SN 不在本一级仓库（当前 已销售）', notify: '原厂', status: '未处理', dim: 'scan' },
       ],
       notifications: [
         { id: 'N1', time: nowStr(), title: '预警：归属地异常', body: 'RL202607200004 · 手机归属不匹配', to: '一级+原厂', read: false },
@@ -815,11 +817,12 @@
         { id: 'SUB3', l1Id: 'L1B', username: 'hn_scan_01', name: '华南仓管阿强', status: '启用' },
       ],
       customers,
+      dailyStats: [],
       seq: { po: 32, so: 101, rt: 10, snBatch: 1, notify: 5, cu: customers.length },
     };
   }
 
-  const persistKey = 'ruilai_proto_v14';
+  const persistKey = 'ruilai_proto_v15';
   function loadStore() {
     try {
       const raw = localStorage.getItem(persistKey);
@@ -836,9 +839,15 @@
           if (!s.belt) s.belt = DEFAULT_BELT[s.size] || '腰带M';
           else s.belt = normalizeBelt(s.belt);
           if (!s.tags) s.tags = [];
-          if (s.frozen === undefined) s.frozen = s.status === 'frozen';
+          if (s.frozen === undefined) s.frozen = s.status === 'frozen' || s.status === 'factory';
+          if (s.status === 'frozen' || s.status === 'factory') {
+            s.status = 'warehouse';
+            s.frozen = true;
+            s.tags = [...new Set([...(s.tags || []).filter((t) => t !== '冷冻'), '已冻结'])];
+          }
           if (!s.events) s.events = [];
         });
+        if (!Array.isArray(parsed.dailyStats)) parsed.dailyStats = [];
         (parsed.products || []).forEach((p) => {
           migrateProductShape(p);
         });
@@ -892,7 +901,7 @@
           if (/超量|库存|压货|周转|下单预警/.test(e.type || '')) e.dim = 'stock';
           else if (!e.dim) {
             e.dim = /激活|归属地|客户信息|跨区/.test(e.type) ? 'activate'
-              : (/扫码|尺码不匹配/.test(e.type) ? 'scan' : 'activate');
+              : (/扫码|尺码不匹配|不在库/.test(e.type) ? 'scan' : 'activate');
           }
           if (e.status === '已关闭') e.status = '已处理';
         });
@@ -1137,7 +1146,7 @@
     if (e.dim === 'nonSn') return 'scan';
     if (e.dim === 'sn') return 'activate';
     if (/激活|归属地|客户信息|跨区/.test(e.type || '')) return 'activate';
-    if (/扫码|尺码不匹配/.test(e.type || '')) return 'scan';
+    if (/扫码|尺码不匹配|不在库/.test(e.type || '')) return 'scan';
     return 'activate';
   }
 
@@ -1336,21 +1345,83 @@
       </table></div>`;
   }
 
+  function reportScanNotInStock(sn, row) {
+    const exists = (db.exceptions || []).some((e) => e.type === '扫码不在库' && e.target === sn && e.status === '未处理');
+    if (exists) return;
+    const who = ui.role === 'l2' ? '二级' : '一级';
+    const detail = row
+      ? `扫出的 SN 不在本${who}仓库（当前 ${snStatusMeta(row).label}）`
+      : `扫出的 SN 不在码库 / 本${who}仓库`;
+    pushException('扫码不在库', sn, detail, 'scan');
+  }
+
+  function snInOwnWarehouse(row) {
+    if (!row || row.frozen || (row.tags || []).includes('已冻结')) return false;
+    if (ui.role === 'l2') return row.status === 'l2' && row.l2Id === currentL2Id();
+    return row.status === 'l1' && row.l1Id === currentL1Id();
+  }
+
+  function soScanPlanRows(s) {
+    const scanned = s.scanned || [];
+    const bySize = {};
+    scanned.forEach((sn) => {
+      const row = db.sns.find((x) => x.sn === sn);
+      const k = row ? row.size : '?';
+      bySize[k] = (bySize[k] || 0) + 1;
+    });
+    return Object.keys(s.planBySize || {}).filter((k) => (s.planBySize[k] || 0) > 0).map((size) => ({
+      size,
+      label: `${productName(s.productId)} / ${size}`,
+      need: s.planBySize[size] || 0,
+      got: bySize[size] || 0,
+    }));
+  }
+
+  function soScanPlanHtml(s) {
+    const rows = soScanPlanRows(s);
+    const scanned = s.scanned || [];
+    return `<div class="page-card table-wrap scan-plan-card">
+      <div class="table-caption">商品明细</div>
+      <table class="data">
+        <thead><tr><th>商品信息</th><th>应出数量</th><th>已扫数量</th></tr></thead>
+        <tbody>${rows.map((r) => `<tr class="${r.got > r.need ? 'scan-over' : (r.got === r.need ? 'scan-full' : '')}">
+          <td>${escapeHtml(r.label)}</td>
+          <td class="num">${r.need}</td>
+          <td class="num">${r.got}</td>
+        </tr>`).join('') || `<tr><td colspan="3">${emptyHint('无出货计划')}</td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="form-field" style="margin-top:10px"><label>扫描 SN</label><input class="field-input" id="scan-sn-input" placeholder="扫码或输入单个 SN" /></div>
+    <button class="btn btn-primary btn-block" data-action="scan-add-sn" data-id="${s.id}">添加</button>
+    <div class="page-card scan-sn-list" style="margin-top:10px">
+      <div class="table-caption">已扫 SN（${scanned.length}）</div>
+      <div class="scan-sn-chips">${scanned.map((sn) => tag(sn, 'green')).join(' ') || emptyHint('尚未扫描')}</div>
+    </div>`;
+  }
+
   function tryAddSnToSale(s, sn) {
     sn = String(sn || '').trim().toUpperCase();
     if (!sn) return { ok: false, msg: '请输入 SN' };
     const row = db.sns.find((x) => x.sn === sn);
-    if (!row) return { ok: false, msg: `SN 不存在：${sn}` };
-    if (row.frozen || row.status === 'frozen') return { ok: false, msg: `冷冻 SN 无效：${sn}` };
-    if (row.l1Id !== s.l1Id || row.status !== 'l1') return { ok: false, msg: `不在本一级库存：${sn}` };
-    if (row.productId !== s.productId) return { ok: false, msg: `商品不匹配：${sn}` };
+    if (!row) {
+      reportScanNotInStock(sn, null);
+      return { ok: false, msg: `SN 不存在：${sn}` };
+    }
+    if (row.frozen || (row.tags || []).includes('已冻结')) return { ok: false, msg: `已冻结 SN 不可出货：${sn}` };
+    if (row.l1Id !== s.l1Id || row.status !== 'l1') {
+      reportScanNotInStock(sn, row);
+      return { ok: false, msg: `不在本一级库存：${sn}` };
+    }
+    if (row.productId !== s.productId) {
+      return { ok: false, msg: `不是本次应出货的商品：扫到「${productName(row.productId)}」` };
+    }
     const need = s.planBySize[row.size] || 0;
     if (need <= 0) {
       const orderSizes = Object.keys(s.planBySize || {}).filter((k) => (s.planBySize[k] || 0) > 0).join('/');
-      return { ok: false, msg: `尺寸不匹配：订单要 ${orderSizes || '—'}，扫到 ${row.size}` };
+      return { ok: false, msg: `不是本次应出货的商品：订单要 ${orderSizes || '—'}，扫到 ${row.size}` };
     }
     const got = (s.scanned || []).filter((x) => db.sns.find((y) => y.sn === x)?.size === row.size).length;
-    if (got >= need) return { ok: false, msg: `尺寸 ${row.size} 已扫满（${got}/${need}）` };
+    if (got >= need) return { ok: false, msg: `扫码数量超过应出货数量：${row.size} 已扫 ${got}/${need}` };
     if ((s.scanned || []).includes(sn)) return { ok: false, msg: `已扫描：${sn}` };
     s.scanned = s.scanned || [];
     s.scanned.push(sn);
@@ -1424,22 +1495,28 @@
         if (!s) {
           return `<tr>
             <td class="num">${escapeHtml(sn)}</td>
-            <td colspan="3"><span class="muted">未找到该 SN</span></td>
+            <td colspan="4"><span class="muted">未找到该 SN</span></td>
           </tr>`;
         }
         const st = snStatusMeta(s);
+        const tags = snBusinessTags(s);
         return `<tr>
           <td class="num">${escapeHtml(sn)}</td>
           <td>${escapeHtml(productName(s.productId))}</td>
           <td>${escapeHtml(stockSpecText(s.size, s.belt))}</td>
           <td>${tag(st.label, st.tone)}</td>
+          <td>${tags.map((t) => tag(t, 'orange')).join(' ') || '—'}</td>
         </tr>`;
       }).join('')
-      : `<tr><td colspan="4" class="muted" style="text-align:center">填写下方 SN 后自动带出商品名称、规格等详情</td></tr>`;
+      : `<tr><td colspan="5" class="muted" style="text-align:center">填写下方 SN 后自动带出商品名称、规格等详情</td></tr>`;
+    const returnedN = sns.filter((sn) => {
+      const s = db.sns.find((x) => x.sn === sn);
+      return s && snBusinessTags(s).includes('已退货');
+    }).length;
     return `<div class="page-card table-wrap" id="return-sn-detail" style="margin-bottom:10px">
-      <div class="table-caption">商品详情${sns.length ? `（${sns.length}）` : ''}</div>
+      <div class="table-caption">商品详情${sns.length ? `（${sns.length}）` : ''}${sns.length ? ` · 其中 ${returnedN} 个带「已退货」标签` : ''}</div>
       <table class="data">
-        <thead><tr><th>SN</th><th>商品名称</th><th>规格</th><th>状态</th></tr></thead>
+        <thead><tr><th>SN</th><th>商品名称</th><th>规格</th><th>状态</th><th>标签</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -1561,25 +1638,48 @@
     row.events.push({ time: nowStr(), title, desc: desc || '', type });
   }
 
+  function snCanonicalStatus(row) {
+    if (!row) return '';
+    if (row.status === 'frozen' || row.status === 'factory') return 'warehouse';
+    return SN_STATUS_LABEL[row.status] ? row.status : (row.status || '');
+  }
+
+  function addSnTag(row, name) {
+    if (!row || !name) return;
+    row.tags = [...new Set([...(row.tags || []), name])];
+  }
+
   function snStatusMeta(row) {
     if (!row) return { label: '未知', tone: 'gray' };
-    if (row.frozen || row.status === 'frozen') return { label: '冷冻库', tone: 'orange' };
     const map = {
       warehouse: { label: '原厂在库', tone: 'gray' },
       l1: { label: '一级在库', tone: 'green' },
-      l2: { label: row.reIn ? '再入库' : '二级在库', tone: 'blue' },
+      l2: { label: '二级在库', tone: 'blue' },
       bound: { label: '已销售', tone: 'orange' },
-      factory: { label: '已退原厂', tone: 'gray' },
     };
-    return map[row.status] || { label: row.status, tone: 'gray' };
+    const st = snCanonicalStatus(row);
+    return map[st] || { label: st || '未知', tone: 'gray' };
+  }
+
+  function snBusinessTags(row) {
+    if (!row) return [];
+    const raw = row.tags || [];
+    const tags = [];
+    if (raw.includes('已退货') || row.reIn) tags.push('已退货');
+    if (raw.includes('再入库')) tags.push('再入库');
+    if (raw.includes('再销售') || row.resale) tags.push('再销售');
+    if (raw.includes('已冻结') || row.frozen || row.status === 'frozen' || row.status === 'factory') tags.push('已冻结');
+    return SN_BIZ_TAGS.filter((t) => tags.includes(t));
+  }
+
+  function snDisplayTags(row) {
+    const biz = snBusinessTags(row);
+    const extra = (row.tags || []).filter((t) => !SN_BIZ_TAGS.includes(t) && !['冷冻', '可再销售'].includes(t));
+    return [...biz, ...extra];
   }
 
   function snHistoryTags(row) {
-    const tags = [...(row.tags || [])];
-    if (row.reIn && !tags.includes('已退货')) tags.push('已退货');
-    if (row.resale && !tags.includes('可再销售')) tags.push('可再销售');
-    if ((row.events || []).some((e) => /修改|维修/.test(e.title)) && !tags.includes('修改过')) tags.push('修改过');
-    return tags;
+    return snDisplayTags(row);
   }
 
   /** SN 销售渠道：优先取关联销售单，否则按二级归属推断；未进入分销/直售则为空 */
@@ -1629,8 +1729,9 @@
     db.returns.filter((r) => (r.sns || []).includes(row.sn)).forEach((r) => {
       if (!ev.some((e) => e.desc && e.desc.includes(r.no))) ev.push({ time: r.createdAt, title: r.typeLabel || '退货', desc: `${r.no} · ${r.reason || ''}`, type: 'return' });
     });
-    if (row.status === 'frozen' || row.frozen) ev.push({ time: row.returnAt || nowStr(), title: '进入冷冻库', desc: '待管理员重新分配', type: 'frozen' });
-    if (row.status === 'factory') ev.push({ time: row.factoryAt || nowStr(), title: '退回原厂', desc: '库存退出渠道', type: 'factory' });
+    if (row.frozen || (row.tags || []).includes('已冻结')) {
+      ev.push({ time: row.returnAt || row.factoryAt || nowStr(), title: '一级退回原厂', desc: '状态改为原厂在库，标签已冻结', type: 'factory' });
+    }
     db.exceptions.filter((e) => e.target === row.sn || String(e.target || '').includes(row.sn)).forEach((e) => {
       if (!ev.some((x) => x.time === e.time && x.title.includes(e.type))) ev.push({ time: e.time, title: `异常：${e.type}`, desc: e.detail, type: 'exception' });
     });
@@ -1862,9 +1963,9 @@
     return list ? list.length : 0;
   }
   function allSnTags() {
-    const set = new Set();
-    (db.sns || []).forEach((s) => snHistoryTags(s).forEach((t) => set.add(t)));
-    return [...set];
+    const set = new Set(SN_BIZ_TAGS);
+    (db.sns || []).forEach((s) => snDisplayTags(s).forEach((t) => set.add(t)));
+    return [...SN_BIZ_TAGS, ...[...set].filter((t) => !SN_BIZ_TAGS.includes(t))];
   }
   /* ---------- UI helpers ---------- */
   function pageHeader(title, desc, actions = '') {
@@ -2386,7 +2487,7 @@
     if (f.size) rows = rows.filter((s) => s.size === f.size);
     if (f.belt) rows = rows.filter((s) => s.belt === f.belt);
     if (f.channel) rows = rows.filter((s) => snChannelOf(s) === f.channel);
-    if (f.status) rows = rows.filter((s) => (f.status === 'frozen' ? (s.frozen || s.status === 'frozen') : s.status === f.status));
+    if (f.status) rows = rows.filter((s) => snCanonicalStatus(s) === f.status);
     if (f.tag) rows = rows.filter((s) => snHistoryTags(s).includes(f.tag));
     if (f.factoryFrom || f.factoryTo) rows = rows.filter((s) => inDateRange(s.factoryAt || '', f.factoryFrom, f.factoryTo));
     if (f.soldFrom || f.soldTo) rows = rows.filter((s) => inDateRange(s.soldAt || s.bindAt || '', f.soldFrom, f.soldTo));
@@ -2411,7 +2512,7 @@
         <label class="muted">退货</label><input type="date" class="field-input" data-filter="sn:returnFrom" value="${escapeHtml(f.returnFrom||'')}" /><input type="date" class="field-input" data-filter="sn:returnTo" value="${escapeHtml(f.returnTo||'')}" />
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>SN</th><th>商品</th><th>尺寸</th><th>腰带</th><th>渠道</th><th>一级</th><th>二级</th><th>状态</th><th>历史标签</th></tr></thead>
+        <thead><tr><th>SN</th><th>商品</th><th>尺寸</th><th>腰带</th><th>渠道</th><th>一级</th><th>二级</th><th>状态</th><th>标签</th></tr></thead>
         <tbody>${rows.map((s)=>{
           const st = snStatusMeta(s);
           const ch = snChannelMeta(s);
@@ -2626,6 +2727,7 @@
     if (f.status) rows = rows.filter((e) => e.status === f.status);
     if (f.from || f.to) rows = rows.filter((e) => inDateRange(e.time, f.from, f.to));
     if (f.type === 'dup') rows = rows.filter((e) => /客户信息重复/.test(e.type));
+    if (f.type === 'missing') rows = rows.filter((e) => /扫码不在库/.test(e.type));
     if (f.l1) {
       const name = l1Name(f.l1);
       rows = rows.filter((e) => {
@@ -2664,7 +2766,7 @@
       </div>
       ${filterBar(`
         <select class="field-input" data-filter="exception:status"><option value="">状态</option><option value="未处理" ${f.status==='未处理'?'selected':''}>未处理</option><option value="已处理" ${f.status==='已处理'?'selected':''}>已处理</option><option value="仅记录" ${f.status==='仅记录'?'selected':''}>仅记录</option></select>
-        <select class="field-input" data-filter="exception:type"><option value="">类型快捷</option><option value="dup" ${f.type==='dup'?'selected':''}>客户信息重复</option></select>
+        <select class="field-input" data-filter="exception:type"><option value="">类型快捷</option><option value="dup" ${f.type==='dup'?'selected':''}>客户信息重复</option><option value="missing" ${f.type==='missing'?'selected':''}>扫码不在库</option></select>
         <select class="field-input" data-filter="exception:l1"><option value="">关联一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <input type="date" class="field-input" data-filter="exception:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="exception:to" value="${escapeHtml(f.to||'')}" />
@@ -2688,6 +2790,39 @@
       </table></div>`;
   }
 
+  function computeStatsSnapshot(date) {
+    const monthFrom = String(date).slice(0, 7) + '-01';
+    const soDone = db.sales.filter((s) => s.status === 'done');
+    const saleQty = (list, fr, t) => list.filter((s) => inDateRange(s.createdAt, fr, t)).reduce((n, s) => n + (s.scanned || []).length, 0);
+    return {
+      date,
+      salesMonth: saleQty(soDone, monthFrom, date),
+      salesAll: saleQty(soDone, '2020-01-01', date),
+      actMonth: db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, monthFrom, date)).length,
+      actAll: db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, '2020-01-01', date)).length,
+      stock: db.sns.filter((s) => {
+        const st = snCanonicalStatus(s);
+        return st === 'l1' || st === 'l2';
+      }).length,
+    };
+  }
+
+  function ensureDailyStats() {
+    db.dailyStats = db.dailyStats || [];
+    const today = todayDate();
+    eachDateStr(monthStart(), today).forEach((d) => {
+      const snap = computeStatsSnapshot(d);
+      const i = db.dailyStats.findIndex((x) => x.date === d);
+      if (i >= 0) {
+        if (d === today) db.dailyStats[i] = snap;
+      } else {
+        db.dailyStats.push(snap);
+      }
+    });
+    db.dailyStats.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    try { saveStore(); } catch (_) {}
+  }
+
   function pageStats() {
     const from = (ui.filters.stats || {}).from || monthStart();
     const to = (ui.filters.stats || {}).to || todayDate();
@@ -2701,8 +2836,17 @@
     const distRange = saleQty(soDist, from, to);
     const dirRange = saleQty(soDir, from, to);
     const saleRange = distRange + dirRange;
+    const monthFrom = monthStart();
+    const monthTo = todayDate();
+    const saleMonth = saleQty(soDone, monthFrom, monthTo);
+    const saleAll = soDone.reduce((n, s) => n + (s.scanned || []).length, 0);
     const actMonth = db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, from, to)).length;
+    const actMonthFixed = db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, monthFrom, monthTo)).length;
     const actAll = db.sns.filter((s) => s.status === 'bound').length;
+    const agentStock = db.sns.filter((s) => {
+      const st = snCanonicalStatus(s);
+      return st === 'l1' || st === 'l2';
+    }).length;
     const rtMonth = db.returns.filter((r) => inDateRange(r.createdAt, from, to)).reduce((n, r) => n + (r.sns || []).length, 0);
     const rtPending = pendingReturnCount();
     const exOpen = openExCount();
@@ -2712,13 +2856,19 @@
     const trendPo = days.map((d) => poQty(poAll.filter((p) => inDateRange(p.createdAt, d, d))));
     const trendAct = days.map((d) => db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, d, d)).length);
     const dayLabels = days.map((d) => d.slice(5));
+    ensureDailyStats();
+    const dailyRows = (db.dailyStats || []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
     const snStatus = [
-      { label: '原厂', value: db.sns.filter((s) => s.status === 'warehouse').length, color: '#64748b' },
-      { label: '一级', value: db.sns.filter((s) => s.status === 'l1').length, color: '#38bdf8' },
-      { label: '二级', value: db.sns.filter((s) => s.status === 'l2' || s.reIn).length, color: '#2dd4a8' },
-      { label: '已售', value: actAll, color: '#00a46e' },
-      { label: '冷冻/退厂', value: db.sns.filter((s) => s.status === 'frozen' || s.status === 'factory').length, color: '#f59e0b' },
+      { label: '原厂在库', value: db.sns.filter((s) => snCanonicalStatus(s) === 'warehouse').length, color: '#64748b' },
+      { label: '一级在库', value: db.sns.filter((s) => snCanonicalStatus(s) === 'l1').length, color: '#38bdf8' },
+      { label: '二级在库', value: db.sns.filter((s) => snCanonicalStatus(s) === 'l2').length, color: '#2dd4a8' },
+      { label: '已销售', value: actAll, color: '#00a46e' },
     ];
+    const snTagPie = SN_BIZ_TAGS.map((t, i) => ({
+      label: t,
+      value: db.sns.filter((s) => snBusinessTags(s).includes(t)).length,
+      color: ['#f59e0b', '#38bdf8', '#2dd4a8', '#94a3b8'][i],
+    }));
     const channelPie = [
       { label: '分销', value: distRange || saleQty(soDist), color: '#2dd4a8' },
       { label: '直销', value: dirRange || saleQty(soDir), color: '#38bdf8' },
@@ -2750,14 +2900,14 @@
       </button>`;
 
     return `<div class="dash">
-      <div class="dash-kpis">
-        ${kpi('区间销量 SN', saleRange, 'sn')}
-        ${kpi('区间采购量', poQty(poMonth), 'purchase')}
-        ${kpi('区间激活', actMonth, 'sn', 'sn:status=bound')}
-        ${kpi('待审采购', poPending, 'purchase', '', poPending ? 'warn' : '')}
-        ${kpi('待审退货', rtPending, 'return', 'return:status=pending', rtPending ? 'warn' : '')}
-        ${kpi('未处理异常', exOpen, 'exception', 'exception:status=未处理', exOpen ? 'danger' : '')}
+      <div class="dash-kpis dash-kpis-5">
+        ${kpi('当月销售量', saleMonth, 'sn')}
+        ${kpi('历史销售总量', saleAll, 'sn')}
+        ${kpi('当月激活量', actMonthFixed, 'sn', 'sn:status=bound')}
+        ${kpi('历史总激活量', actAll, 'sn', 'sn:status=bound')}
+        ${kpi('所有代理在库数量', agentStock, 'stock')}
       </div>
+      <p class="muted" style="margin:-4px 0 12px">以上五项每天统计一次；趋势图仍可按区间查看。</p>
 
       <div class="dash-grid">
         <section class="dash-panel dash-panel--wide">
@@ -2777,8 +2927,28 @@
           ${svgHBars(l1Rank, '#2dd4a8')}
         </section>
         <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>SN 生命周期分布</h3><span>全库现状</span></header>
+          <header class="dash-panel-hd"><h3>SN 状态分布</h3><span>四种状态</span></header>
           ${svgDonut(snStatus)}
+        </section>
+        <section class="dash-panel">
+          <header class="dash-panel-hd"><h3>SN 标签分布</h3><span>已退货 / 再入库 / 再销售 / 已冻结</span></header>
+          ${svgDonut(snTagPie)}
+        </section>
+        <section class="dash-panel dash-panel--wide">
+          <header class="dash-panel-hd"><h3>按日汇总</h3><span>每天统计一次</span></header>
+          <div class="page-card table-wrap" style="box-shadow:none;border:0;padding:0">
+            <table class="data">
+              <thead><tr><th>日期</th><th>当月销售量</th><th>历史销售总量</th><th>当月激活量</th><th>历史总激活量</th><th>所有代理在库</th></tr></thead>
+              <tbody>${dailyRows.map((d) => `<tr>
+                <td>${escapeHtml(d.date)}</td>
+                <td class="num">${d.salesMonth ?? 0}</td>
+                <td class="num">${d.salesAll ?? 0}</td>
+                <td class="num">${d.actMonth ?? 0}</td>
+                <td class="num">${d.actAll ?? 0}</td>
+                <td class="num">${d.stock ?? 0}</td>
+              </tr>`).join('') || `<tr><td colspan="6">${emptyHint('暂无日统计')}</td></tr>`}</tbody>
+            </table>
+          </div>
         </section>
         <section class="dash-panel">
           <header class="dash-panel-hd"><h3>尺码结构</h3><span>区间计划尺码</span></header>
@@ -3033,7 +3203,17 @@
       <div class="form-field"><label>演示IP地区</label>
         <select class="field-input" id="demo-ip">${ALL_REGIONS.map((r)=>`<option value="${r}" ${db.demoIpRegion===r?'selected':''}>${r}</option>`).join('')}</select>
       </div>
-      <p class="mini-page-desc">校验：IP 须在直销围栏内；手机归属地须与 IP 地区一致。</p>
+      <div class="form-field"><label>姓名（选填）</label><input class="field-input" id="direct-name" placeholder="客户姓名" value="${escapeHtml(ui.form.directName || '')}" /></div>
+      <div class="form-field"><label>性别（选填）</label>
+        <select class="field-input" id="direct-gender">
+          <option value="">未填写</option>
+          <option value="男" ${ui.form.directGender==='男'?'selected':''}>男</option>
+          <option value="女" ${ui.form.directGender==='女'?'selected':''}>女</option>
+        </select>
+      </div>
+      <div class="form-field"><label>年龄（选填）</label><input class="field-input" id="direct-age" type="number" min="0" max="120" placeholder="岁" value="${escapeHtml(ui.form.directAge || '')}" /></div>
+      <div class="form-field"><label>客户情况说明（选填）</label><textarea class="field-input" id="direct-note" rows="2" placeholder="可手写补充">${escapeHtml(ui.form.directNote || '')}</textarea></div>
+      <p class="mini-page-desc">校验：IP 须在直销围栏内；手机归属地须与 IP 地区一致。姓名/性别/年龄/情况说明为非必填。</p>
       <button class="btn btn-block" data-action="mini-direct-back" style="margin-bottom:8px">返回扫码</button>
       <button class="btn btn-primary btn-block" data-action="mini-direct-bind">校验并激活</button>`;
   }
@@ -3095,17 +3275,18 @@
       : db.returns.filter((r) => r.fromId === currentL1Id() || r.approverId === currentL1Id() || (r.sns||[]).some((sn)=>db.sns.find(s=>s.sn===sn&&s.l1Id===currentL1Id())));
     const rtAll = list.slice();
     const rtN = (st) => rtAll.filter((r) => r.status === st).length;
-    const typeTab = (ui.tabs.miniRtType === 'upward') ? 'upward' : 'l2_apply';
+    const typeTab = ['upward', 'cend', 'l2_apply'].includes(ui.tabs.miniRtType) ? ui.tabs.miniRtType : 'l2_apply';
     if (ui.role === 'l1' && ui.tabs.miniRtType !== typeTab) ui.tabs.miniRtType = typeTab;
     const typeN = (t) => {
       if (t === 'l2_apply') return rtAll.filter((r) => r.type === 'l2_to_l1').length;
+      if (t === 'cend') return rtAll.filter((r) => r.type === 'user').length;
       if (t === 'upward') return rtAll.filter((r) => r.type === 'l1_to_factory').length;
       return rtAll.length;
     };
     const statusTab = ui.tabs.miniRtStatus || 'all';
-    // 类型 tab（二级申请 / 向上申请）仅一级可见
     if (ui.role === 'l1') {
       if (typeTab === 'upward') list = list.filter((r) => r.type === 'l1_to_factory');
+      else if (typeTab === 'cend') list = list.filter((r) => r.type === 'user');
       else list = list.filter((r) => r.type === 'l2_to_l1');
     }
     if (statusTab !== 'all') list = list.filter((r) => r.status === statusTab);
@@ -3116,27 +3297,28 @@
       return parseTime(b.createdAt) - parseTime(a.createdAt);
     });
     return `${ui.role==='l2'
-        ? `<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:8px">向上申请退货</button>
-           <button class="btn btn-block btn-primary" data-action="mini-create-cend-return" style="margin-bottom:10px">创建C端用户退货单</button>`
-        : `<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:8px">申请退货</button>
-           <button class="btn btn-block btn-primary" data-action="mini-create-cend-return" style="margin-bottom:10px">创建C端用户退货单</button>`}
+        ? `<button class="btn btn-block btn-primary" data-action="mini-create-cend-return" style="margin-bottom:10px">填写终端退货单</button>`
+        : `<button class="btn btn-block" data-action="mini-create-return" style="margin-bottom:8px">填写二级退一级</button>
+           <button class="btn btn-block btn-primary" data-action="mini-create-cend-return" style="margin-bottom:8px">填写终端退货单</button>
+           <button class="btn btn-block" data-action="mini-create-factory-return" style="margin-bottom:10px">申请退原厂</button>`}
       ${pendingL2.length?`<div class="alert alert-info">待审二级退一级 ${pendingL2.length} 单（点进详情审核）</div>`:''}
       ${ui.role === 'l1' ? miniSegHtml('miniRtType', [
-        { id: 'l2_apply', title: '二级申请', badge: typeN('l2_apply') || null },
-        { id: 'upward', title: '向上申请', badge: typeN('upward') || null },
+        { id: 'l2_apply', title: '二级退一级', badge: typeN('l2_apply') || null },
+        { id: 'cend', title: '终端退货', badge: typeN('cend') || null },
+        { id: 'upward', title: '退原厂', badge: typeN('upward') || null },
       ]) : ''}
       ${miniSegHtml('miniRtStatus', [
         { id: 'all', title: '全部', badge: (ui.role === 'l1'
-          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : r.type === 'l2_to_l1')).length
+          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : typeTab === 'cend' ? r.type === 'user' : r.type === 'l2_to_l1')).length
           : rtAll.length) || null },
         { id: 'pending', title: '待审核', badge: (ui.role === 'l1'
-          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : r.type === 'l2_to_l1') && r.status === 'pending')
+          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : typeTab === 'cend' ? r.type === 'user' : r.type === 'l2_to_l1') && r.status === 'pending')
           : rtAll.filter((r) => r.status === 'pending')).length || null },
         { id: 'approved', title: '已通过', badge: (ui.role === 'l1'
-          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : r.type === 'l2_to_l1') && r.status === 'approved')
+          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : typeTab === 'cend' ? r.type === 'user' : r.type === 'l2_to_l1') && r.status === 'approved')
           : rtAll.filter((r) => r.status === 'approved')).length || null },
         { id: 'done', title: '已处理', badge: (ui.role === 'l1'
-          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : r.type === 'l2_to_l1') && r.status === 'done')
+          ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : typeTab === 'cend' ? r.type === 'user' : r.type === 'l2_to_l1') && r.status === 'done')
           : rtAll.filter((r) => r.status === 'done')).length || null },
       ])}
       <div class="mini-list">${list.map((r)=>`<button type="button" class="mini-list-item ${r.status==='pending'?'rt-pending':''}" data-action="open-view-return" data-id="${r.id}">
@@ -4004,13 +4186,13 @@
       title = `${editing ? '编辑 SN' : 'SN 详情'} · ${row.sn}`;
       body = `<div class="detail-grid">
           <div><span>SN</span>${escapeHtml(row.sn)}</div>
-          <div><span>状态</span>${tag(st.label, st.tone)}</div>
+          <div><span>状态</span>${tag(st.label, st.tone)}<div class="muted" style="margin-top:4px;font-size:12px">仅四种：一级在库 / 二级在库 / 已销售 / 原厂在库</div></div>
           <div><span>商品</span>${escapeHtml(productName(row.productId))}</div>
           <div><span>弹力带</span>${escapeHtml(row.size)}</div>
           <div><span>腰带</span>${escapeHtml(row.belt || '—')}</div>
           <div><span>一级</span>${escapeHtml(l1Name(row.l1Id))}</div>
           <div><span>二级</span>${escapeHtml(l2Name(row.l2Id))}</div>
-          <div><span>标签</span>${(row.tags||[]).map((t)=>tag(t,'orange')).join(' ')||'—'}</div>
+          <div><span>标签</span>${snDisplayTags(row).map((t)=>tag(t,'orange')).join(' ')||'—'}</div>
         </div>
         ${editing ? `<h4 style="margin-top:12px">修改字段</h4>
         <div class="form-grid">
@@ -4027,9 +4209,9 @@
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-sn" data-id="${row.sn}">保存修改</button>`
         : `<button class="btn" data-action="close-modal">关闭</button>
            <button class="btn btn-primary" data-action="open-edit-sn" data-id="${row.sn}">修改</button>
-           ${(row.frozen||row.status==='frozen')?`<button class="btn" data-action="reassign-frozen" data-id="${row.sn}">冷冻库重分配</button>`:''}`;
+           ${(row.frozen||(row.tags||[]).includes('已冻结'))?`<button class="btn" data-action="reassign-frozen" data-id="${row.sn}">原厂在库重分配</button>`:''}`;
     } else if (type === 'reassign-frozen') {
-      title = '冷冻库重新分配';
+      title = '已冻结 SN 重新分配';
       body = `<p>SN：${escapeHtml(payload.id)}</p>
         <div class="form-field"><label>分配给一级</label>
           <select class="field-input" id="f-l1">${db.agentsL1.filter((a)=>a.status==='启用').map((a)=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -4209,10 +4391,7 @@
       title = `扫码出货 ${s.no}`;
       const canEdit = ui.role !== 'sub';
       body = `<p>${escapeHtml(l2Name(s.l2Id))} · 计划 <strong>${escapeHtml(planBySizeText(s.planBySize))}</strong> · 已扫 ${(s.scanned||[]).length}/${s.planTotal}</p>
-        <div class="alert alert-info">逐个扫码或输入单个 SN 添加</div>
-        <div class="form-field"><label>扫描 SN</label><input class="field-input" id="scan-sn-input" placeholder="输入单个 SN 回车或点添加" /></div>
-        <button class="btn btn-primary btn-block" data-action="scan-add-sn" data-id="${s.id}">添加</button>
-        <div style="margin-top:8px">${(s.scanned||[]).map((sn)=>tag(sn,'green')).join(' ') || emptyHint('尚未扫描')}</div>
+        ${soScanPlanHtml(s)}
         ${canEdit?'':'<p class="mini-page-desc">子账号不可修改计划数量</p>'}`;
       foot = `<button class="btn" data-action="close-modal">关闭</button>
         <button class="btn btn-primary" data-action="scan-confirm-so" data-id="${s.id}" ${(s.scanned||[]).length>=s.planTotal?'':'disabled'}>确认出货</button>`;
@@ -4526,21 +4705,28 @@
       foot = `<button class="btn" data-action="close-modal">取消</button>
         <button class="btn btn-primary" data-action="${editing ? 'save-customer' : 'create-customer-ok'}" ${editing ? `data-id="${escapeHtml(c?.id || '')}"` : ''}>${editing ? '保存' : '创建'}</button>`;
     } else if (type === 'create-return') {
-      const cend = payload.mode === 'cend';
+      const mode = payload.mode || (ui.role === 'l2' ? 'cend' : 'l2_to_l1');
+      const cend = mode === 'cend';
+      const factory = mode === 'factory';
       const draft = ui.modal.draft || {};
       const snsText = draft.snsText || '';
       const reasonType = draft.reasonType || (cend ? '投诉' : '');
-      title = cend ? '创建C端用户退货单' : '申请退货';
-      body = `<div class="form-field"><label>理由类型</label><select class="field-input" id="f-rtype">${RETURN_REASONS.map((r)=>`<option value="${r.type}" ${reasonType===r.type?'selected':''}>${r.label}</option>`).join('')}</select></div>
-        <div class="form-field"><label>说明</label><input class="field-input" id="f-reason" placeholder="可手写补充" value="${escapeHtml(draft.reason || '')}" /></div>
+      const typeLabel = cend ? '终端用户退货' : factory ? '一级退原厂' : '二级退一级';
+      const typeVal = cend ? 'user' : factory ? 'l1_to_factory' : 'l2_to_l1';
+      title = cend ? '填写终端退货单' : factory ? '申请退原厂' : '填写二级退一级';
+      body = `<div class="form-field"><label>退货理由</label><select class="field-input" id="f-rtype">${RETURN_REASONS.map((r)=>`<option value="${r.type}" ${reasonType===r.type?'selected':''}>${r.label}</option>`).join('')}</select></div>
+        <div class="form-field"><label>手填说明</label><input class="field-input" id="f-reason" placeholder="可手写补充" value="${escapeHtml(draft.reason || '')}" /></div>
         ${returnSnDetailHtml(snsText)}
-        <div class="form-field"><label>SN（逗号分隔）</label><input class="field-input" id="f-sns" placeholder="RL..." value="${escapeHtml(snsText)}" /></div>
-        <div class="form-field"><label>类型</label>${cend
-          ? `<input class="field-input" value="用户退货再入库" readonly /><input type="hidden" id="f-ttype" value="user" />`
-          : `<select class="field-input" id="f-ttype">
-          ${ui.role==='l2'?`<option value="l2_to_l1">二级退一级</option><option value="user">用户退货再入库</option>`:`<option value="l1_to_factory">一级退原厂</option><option value="user">用户退货再入库</option>`}
-        </select>`}</div>`;
-      foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-return-ok">提交</button>`;
+        <div class="form-field"><label>扫描 SN（逗号分隔）</label><input class="field-input" id="f-sns" placeholder="RL..." value="${escapeHtml(snsText)}" /></div>
+        <div class="form-field"><label>类型</label>
+          <input class="field-input" value="${typeLabel}" readonly /><input type="hidden" id="f-ttype" value="${typeVal}" />
+        </div>
+        <p class="mini-page-desc">${cend
+          ? '校验销售方必须是当前代理；确认后转入本级库存，并打「已退货」标签。'
+          : factory
+            ? '确认后提交平台审核；通过后状态改为原厂在库，标签「已冻结」。'
+            : '由一级填写，无需二级发起。确认后直接转入一级库存，并打「已退货」标签。'}</p>`;
+      foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-return-ok">确认</button>`;
     } else if (type === 'create-account') {
       title = '新建平台账号';
       const adminRoles = db.roles.filter((r) => r.id === 'R1' || (r.perms || []).includes('all'));
@@ -4730,35 +4916,85 @@
     if (finalize) addLog(`采购单自动生效 ${p.no}`);
   }
 
-  function approveReturn(id) {
-    const r = db.returns.find((x) => x.id === id);
-    if (!r || r.status !== 'pending') return;
+  function validateReturnSns(sns, type) {
+    const issues = [];
+    let returnedTagN = 0;
+    (sns || []).forEach((sn) => {
+      const row = db.sns.find((x) => x.sn === sn);
+      if (!row) { issues.push(`${sn} 不存在`); return; }
+      if (snBusinessTags(row).includes('已退货')) returnedTagN += 1;
+      if (type === 'l2_to_l1') {
+        if (row.status !== 'l2') issues.push(`${sn} 不在二级库存（${snStatusMeta(row).label}）`);
+        else if (row.l1Id !== currentL1Id()) issues.push(`${sn} 不属于本一级下属`);
+      } else if (type === 'user') {
+        if (row.status !== 'bound') issues.push(`${sn} 未销售，不能做终端退货`);
+        else if (ui.role === 'l2') {
+          if (row.l2Id !== currentL2Id()) issues.push(`${sn} 销售方不是当前二级代理`);
+        } else if (ui.role === 'l1') {
+          if (row.l2Id) issues.push(`${sn} 销售方是二级「${l2Name(row.l2Id)}」，请由该二级处理`);
+          else if (row.l1Id !== currentL1Id()) issues.push(`${sn} 销售方不是当前一级`);
+        }
+      } else if (type === 'l1_to_factory') {
+        if (snCanonicalStatus(row) !== 'l1' || row.l1Id !== currentL1Id()) {
+          issues.push(`${sn} 不在本一级库存`);
+        }
+      }
+    });
+    return { issues, returnedTagN };
+  }
+
+  function applyReturnInbound(r) {
     (r.sns || []).forEach((sn) => {
       const row = db.sns.find((x) => x.sn === sn);
       if (!row) return;
       if (r.type === 'user') {
-        row.status = 'l2'; row.reIn = true; row.prevUser = row.user; row.user = null;
-        row.tags = [...new Set([...(row.tags || []), '已退货'])];
+        const toL2 = r.fromRole === 'l2' || String(r.fromId || '').startsWith('L2');
+        row.prevUser = row.user;
+        row.user = null;
+        row.reIn = true;
         row.returnAt = nowStr();
-        pushSnEvent(row, '用户退货再入库', r.no, 'return');
+        addSnTag(row, '已退货');
+        if (toL2) {
+          row.status = 'l2';
+          row.l2Id = r.fromId;
+          db.stockLogs.unshift({ id: uid('H'), agentType: 'l2', agentId: r.fromId, productId: row.productId, size: row.size, delta: 1, reason: '终端退货入库', time: nowStr(), ref: r.no });
+        } else {
+          row.status = 'l1';
+          row.l2Id = null;
+          db.stockLogs.unshift({ id: uid('H'), agentType: 'l1', agentId: r.fromId || row.l1Id, productId: row.productId, size: row.size, delta: 1, reason: '终端退货入库', time: nowStr(), ref: r.no });
+        }
+        pushSnEvent(row, '终端用户退货', r.no, 'return');
       } else if (r.type === 'l2_to_l1') {
-        row.status = 'l1'; row.l2Id = null; row.reIn = false;
-        row.tags = [...new Set([...(row.tags || []), '已退货'])];
+        row.status = 'l1';
+        row.l2Id = null;
+        row.reIn = false;
+        addSnTag(row, '已退货');
         row.returnAt = nowStr();
         pushSnEvent(row, '二级退一级', r.no, 'return');
         db.stockLogs.unshift({ id: uid('H'), agentType: 'l1', agentId: row.l1Id, productId: row.productId, size: row.size, delta: 1, reason: '二级退货入库', time: nowStr(), ref: r.no });
       } else if (r.type === 'l1_to_factory') {
-        row.status = 'frozen'; row.frozen = true; row.l1Id = null; row.l2Id = null;
-        row.tags = [...new Set([...(row.tags || []), '已退货', '冷冻'])];
-        row.returnAt = nowStr(); row.factoryAt = nowStr();
-        pushSnEvent(row, '退原厂入冷冻库', r.no, 'factory');
-        db.stockLogs.unshift({ id: uid('H'), agentType: 'l1', agentId: r.fromId, productId: row.productId, size: row.size, delta: -1, reason: '退货回原厂(冷冻)', time: nowStr(), ref: r.no });
+        row.status = 'warehouse';
+        row.frozen = true;
+        row.l1Id = null;
+        row.l2Id = null;
+        addSnTag(row, '已冻结');
+        row.tags = (row.tags || []).filter((t) => t !== '冷冻');
+        row.returnAt = nowStr();
+        row.factoryAt = nowStr();
+        pushSnEvent(row, '一级退回原厂', r.no, 'factory');
+        db.stockLogs.unshift({ id: uid('H'), agentType: 'l1', agentId: r.fromId, productId: row.productId, size: row.size, delta: -1, reason: '退货回原厂', time: nowStr(), ref: r.no });
       }
     });
     r.status = 'approved';
+  }
+
+  function approveReturn(id) {
+    const r = db.returns.find((x) => x.id === id);
+    if (!r || r.status !== 'pending') return;
+    applyReturnInbound(r);
     addLog(`退货审批通过 ${r.no}`);
     saveStore();
-    toast('已通过；退原厂 SN 已打冷冻标签');
+    toast(r.type === 'l1_to_factory' ? '已通过；SN 已回原厂在库并打已冻结标签' : '已通过并转入库存');
     render();
   }
 
@@ -4766,9 +5002,9 @@
   function analyzeDirectBind(sn, phone, addr, ipRegion) {
     const row = db.sns.find((x) => x.sn === sn);
     if (!row) return { err: 'SN 不存在' };
-    if (row.frozen || row.status === 'frozen') return { err: '冷冻库 SN 不可扫码' };
-    if (!['l1', 'l2'].includes(row.status) && !(row.status === 'bound' && row.reIn && row.resale)) {
-      return { err: `当前状态不可直销：${snStatusMeta(row).label}` };
+    if (row.frozen || (row.tags || []).includes('已冻结')) return { err: '已冻结 SN 不可扫码' };
+    if (!snInOwnWarehouse(row) && !(row.status === 'bound' && row.reIn && row.resale)) {
+      return { err: `不在本${ui.role === 'l2' ? '二级' : '一级'}仓库：${snStatusMeta(row).label}` };
     }
     const l1 = db.agentsL1.find((a) => a.id === (currentL1Id() || row.l1Id));
     if (!l1) return { err: '未找到一级代理' };
@@ -4800,25 +5036,36 @@
     return { row, l1, phoneLoc, issues };
   }
 
-  function doDirectBind(sn, phone, addr, ipRegion) {
+  function doDirectBind(sn, phone, addr, ipRegion, extra = {}) {
     const a = analyzeDirectBind(sn, phone, addr, ipRegion);
     if (a.err) return toast(a.err, 'err');
     const { row, l1, phoneLoc, issues } = a;
     (issues || []).forEach((it) => pushException(it.type, sn, it.detail, it.dim, it.opts || {}));
 
+    const hadReturned = snBusinessTags(row).includes('已退货');
     row.status = 'bound';
     row.channel = row.l2Id ? 'distribute' : 'direct';
     row.soldAt = nowStr();
     row.bindAt = nowStr();
     row.bindIpRegion = ipRegion;
-    row.user = { phone, addr, phoneLoc };
+    row.user = {
+      phone, addr, phoneLoc,
+      name: extra.name || '',
+      gender: extra.gender || '',
+      age: extra.age || '',
+      note: extra.note || '',
+    };
     row.reIn = false;
+    if (hadReturned) {
+      row.resale = true;
+      addSnTag(row, '再销售');
+    }
     pushSnEvent(row, 'C端直销绑定', `${phone} · IP ${ipRegion}`, 'bind');
     db.sales.unshift({
       id: uid('SO'), no: `SO${todayCompact()}${String(++db.seq.so).padStart(3,'0')}`,
       channel: 'direct', l1Id: l1.id, l2Id: row.l2Id || null, productId: row.productId,
       planTotal: 1, planBySize: { [row.size]: 1 }, scanned: [sn], status: 'done', createdAt: nowStr(),
-      customer: { phone, addr, phoneLoc },
+      customer: { phone, addr, phoneLoc, name: extra.name || '', gender: extra.gender || '', age: extra.age || '', note: extra.note || '' },
     });
     db.stockLogs.unshift({ id: uid('H'), agentType: row.l2Id ? 'l2' : 'l1', agentId: row.l2Id || l1.id, productId: row.productId, size: row.size, delta: -1, reason: '直销出库', time: nowStr(), ref: sn });
     addLog(`直销激活 ${sn}${issues.length ? `（异常 ${issues.length}）` : ''}`);
@@ -5321,7 +5568,9 @@
           finishCreateSo(conf.payload || {});
         } else if (act === 'mini-direct-bind-ok') {
           const p = conf.payload || {};
-          doDirectBind(p.sn, p.phone, p.addr, p.region);
+          doDirectBind(p.sn, p.phone, p.addr, p.region, {
+            name: p.name || '', gender: p.gender || '', age: p.age || '', note: p.note || '',
+          });
           render();
         } else if (act === 'l2-ex-no-alarm-ok') {
           finishL2ExNoAlarm(conf.payload?.ids || []);
@@ -5553,7 +5802,7 @@
       case 'reassign-frozen-ok': {
         const l1Id = $('#f-l1')?.value;
         if (!l1Id) return toast('请选择一级代理', 'err');
-        confirmDialog(`确认将冷冻 SN「${id}」分配给「${l1Name(l1Id)}」并解冻？`, 'reassign-frozen-confirm-ok', { id, l1Id }, { title: '冷冻库重分配', okText: '确认分配' });
+        confirmDialog(`确认将已冻结 SN「${id}」分配给「${l1Name(l1Id)}」并解除冻结？`, 'reassign-frozen-confirm-ok', { id, l1Id }, { title: '原厂在库重分配', okText: '确认分配' });
         break;
       }
       case 'approve-return': {
@@ -5812,7 +6061,17 @@
         if (!phone) return toast('请填写手机号', 'err');
         const check = analyzeDirectBind(sn, phone, addr, region);
         if (check.err) return toast(check.err, 'err');
-        const payload = { sn, phone, addr, region };
+        const extra = {
+          name: $('#direct-name')?.value?.trim() || '',
+          gender: $('#direct-gender')?.value || '',
+          age: $('#direct-age')?.value?.trim() || '',
+          note: $('#direct-note')?.value?.trim() || '',
+        };
+        ui.form.directName = extra.name;
+        ui.form.directGender = extra.gender;
+        ui.form.directAge = extra.age;
+        ui.form.directNote = extra.note;
+        const payload = { sn, phone, addr, region, ...extra };
         if (check.issues.length) {
           const reasonText = check.issues.map((it, i) => `${i + 1}. 【${it.type}】${it.detail}`).join('\n');
           confirmDialog(
@@ -5834,10 +6093,14 @@
       case 'mini-direct-step1': {
         const sn = $('#direct-sn')?.value?.trim().toUpperCase();
         const row = db.sns.find((x) => x.sn === sn);
-        if (!row) return toast('SN 不存在', 'err');
-        if (row.frozen || row.status === 'frozen') return toast('冷冻库 SN 不可扫码', 'err');
-        if (!['l1', 'l2'].includes(row.status) && !(row.status === 'bound' && row.reIn && row.resale)) {
-          return toast(`当前状态不可直销：${snStatusMeta(row).label}`, 'err');
+        if (!row) {
+          reportScanNotInStock(sn, null);
+          return toast('SN 不存在', 'err');
+        }
+        if (row.frozen || (row.tags || []).includes('已冻结')) return toast('已冻结 SN 不可扫码', 'err');
+        if (!snInOwnWarehouse(row)) {
+          reportScanNotInStock(sn, row);
+          return toast(`不在本${ui.role === 'l2' ? '二级' : '一级'}仓库：${snStatusMeta(row).label}`, 'err');
         }
         ui.form.directSn = sn;
         ui.directStep = 2;
@@ -6357,21 +6620,34 @@
         }, { title: '提交采购申请', okText: '确认提交' });
         break;
       }
-      case 'mini-create-return': openModal('create-return', {}); break;
+      case 'mini-create-return': openModal('create-return', { mode: 'l2_to_l1' }); break;
+      case 'mini-create-factory-return': openModal('create-return', { mode: 'factory' }); break;
       case 'mini-create-cend-return':
         openModal('create-return', { mode: 'cend', draftSeed: { snsText: '', reasonType: '投诉', reason: '' } });
         break;
       case 'create-return-ok': {
         const sns = parseReturnSns($('#f-sns')?.value || '');
-        const type = ui.modal?.payload?.mode === 'cend' ? 'user' : ($('#f-ttype')?.value || '');
+        const mode = ui.modal?.payload?.mode;
+        const type = mode === 'cend' ? 'user' : mode === 'factory' ? 'l1_to_factory' : ($('#f-ttype')?.value || 'l2_to_l1');
         if (!sns.length) return toast('请填写 SN', 'err');
-        const labels = { l2_to_l1: '二级退一级', l1_to_factory: '一级退原厂', user: '用户退货再入库' };
-        confirmDialog(`确认提交退货申请（${sns.length} 个 SN）？`, 'create-return-confirm-ok', {
-          sns, type, typeLabel: labels[type] || type,
-          fromId: ui.role==='l2'?currentL2Id():currentL1Id(),
-          fromName: ROLES[ui.role].name, approverId: ui.role==='l2'?currentL1Id():null,
-          reason: $('#f-reason')?.value||'', reasonType: $('#f-rtype')?.value,
-        }, { title: ui.modal?.payload?.mode === 'cend' ? '提交C端用户退货单' : '提交退货申请', okText: '确认提交' });
+        const v = validateReturnSns(sns, type);
+        if (v.issues.length) return toast(v.issues[0], 'err');
+        const labels = { l2_to_l1: '二级退一级', l1_to_factory: '一级退原厂', user: '终端用户退货' };
+        const immediate = type === 'l2_to_l1' || type === 'user';
+        confirmDialog(
+          `已比对：${sns.length} 个 SN 中 ${v.returnedTagN} 个带「已退货」标签。\n确认后${immediate ? '立即转入库存' : '提交平台审核'}？`,
+          'create-return-confirm-ok',
+          {
+            sns, type, typeLabel: labels[type] || type,
+            fromId: ui.role==='l2'?currentL2Id():currentL1Id(),
+            fromRole: ui.role,
+            fromName: ROLES[ui.role].name,
+            approverId: type === 'l1_to_factory' ? null : (ui.role==='l2'?currentL1Id():currentL1Id()),
+            reason: $('#f-reason')?.value||'', reasonType: $('#f-rtype')?.value,
+            immediate, returnedTagN: v.returnedTagN,
+          },
+          { title: immediate ? '确认转入库存' : '提交退货申请', okText: '确认' },
+        );
         break;
       }
       default: break;
@@ -6414,6 +6690,7 @@
       const row = db.sns.find((x) => x.sn === sn);
       row.status = 'l2'; row.l2Id = s.l2Id;
       row.channel = s.channel || 'distribute';
+      if (snBusinessTags(row).includes('已退货')) addSnTag(row, '再入库');
       pushSnEvent(row, '销售转入二级', s.no, 'sales');
     });
     s.status = 'done';
@@ -6506,10 +6783,10 @@
     const row = db.sns.find((s) => s.sn === sn);
     if (!row || !l1Id) { render(); return; }
     row.l1Id = l1Id; row.status = 'l1'; row.frozen = false;
-    row.tags = (row.tags || []).filter((t) => t !== '冷冻');
-    pushSnEvent(row, '冷冻库重分配', l1Name(l1Id), 'reassign');
-    addLog(`冷冻SN重分配 ${sn} → ${l1Name(l1Id)}`);
-    saveStore(); ui.modal = null; toast('已解冻并分配'); render();
+    row.tags = (row.tags || []).filter((t) => t !== '冷冻' && t !== '已冻结');
+    pushSnEvent(row, '原厂在库重分配', l1Name(l1Id), 'reassign');
+    addLog(`已冻结SN重分配 ${sn} → ${l1Name(l1Id)}`);
+    saveStore(); ui.modal = null; toast('已分配回一级库存'); render();
   }
 
   function finishSaveSn(payload) {
@@ -6621,14 +6898,24 @@
   }
 
   function finishCreateReturn(payload) {
-    db.returns.unshift({
+    const rec = {
       id: uid('RT'), no: `RT${todayCompact()}${String(++db.seq.rt).padStart(2, '0')}`,
       type: payload.type, typeLabel: payload.typeLabel,
-      fromId: payload.fromId, fromName: payload.fromName, approverId: payload.approverId,
-      sns: payload.sns || [], status: 'pending', createdAt: nowStr(),
+      fromId: payload.fromId, fromRole: payload.fromRole || ui.role, fromName: payload.fromName, approverId: payload.approverId,
+      sns: payload.sns || [], status: payload.immediate ? 'approved' : 'pending', createdAt: nowStr(),
       reason: payload.reason || '', reasonType: payload.reasonType,
-    });
-    saveStore(); ui.modal = null; toast('退货已提交'); render();
+      returnedTagN: payload.returnedTagN || 0,
+    };
+    db.returns.unshift(rec);
+    if (payload.immediate) {
+      applyReturnInbound(rec);
+      addLog(`售后确认 ${rec.no} · ${rec.typeLabel}`);
+      toast(`已确认：${rec.returnedTagN} 个带已退货标签，已转入库存`);
+    } else {
+      addLog(`提交退货 ${rec.no}`);
+      toast('退货已提交，等待平台审核');
+    }
+    saveStore(); ui.modal = null; render();
   }
 
   function finishCreateSo(payload) {

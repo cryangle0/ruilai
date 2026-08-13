@@ -1602,6 +1602,9 @@ th.sortable:hover { color: var(--primary); }
   gap: 8px;
   margin-bottom: 12px;
 }
+.dash-kpis-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
 .dash-kpi {
   appearance: none;
   border: 1px solid var(--border);
@@ -1807,13 +1810,18 @@ th.sortable:hover { color: var(--primary); }
 .dash-snap-item strong { font-size: 20px; color: var(--text-strong); }
 .dash .empty-hint { color: var(--text-3); }
 
+.scan-plan-card table td.num { font-variant-numeric: tabular-nums; }
+.scan-sn-list .scan-sn-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.scan-full td { color: var(--primary); font-weight: 600; }
+.scan-over td { color: var(--danger); }
+
 @media (max-width: 1200px) {
-  .dash-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dash-kpis, .dash-kpis-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .dash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dash-panel--wide { grid-column: span 2; }
 }
 @media (max-width: 800px) {
-  .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-kpis, .dash-kpis-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dash-grid { grid-template-columns: 1fr; }
   .dash-panel--wide { grid-column: span 1; }
   .dash-donut { grid-template-columns: 1fr; justify-items: center; }
