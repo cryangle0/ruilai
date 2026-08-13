@@ -809,6 +809,17 @@ table.data .col-check input[type="checkbox"] {
   color: var(--primary-deep);
   font-weight: 600;
 }
+.city-search { margin: 8px 0 6px; }
+.status-stack { display: flex; flex-direction: column; gap: 4px; min-width: 148px; }
+.status-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.45;
+}
+.status-metrics .hot { color: #e11d48; font-weight: 600; }
 
 .tabs {
   display: flex;

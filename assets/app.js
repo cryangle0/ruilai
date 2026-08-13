@@ -792,6 +792,8 @@
         { id: 'ACC1', username: 'admin', name: '平台管理员', roleId: 'R1', status: '启用', password: 'demo' },
         { id: 'ACC1b', username: 'admin2', name: '平台管理员B', roleId: 'R1', status: '启用', password: 'demo' },
         { id: 'ACC2', username: 'agent_hd', name: '华东锐涞总代', roleId: 'R2', agentId: 'L1A', status: '启用', password: '******' },
+        { id: 'ACC2b', username: 'agent_hn', name: '华南渠道中心', roleId: 'R2', agentId: 'L1B', status: '启用', password: '******' },
+        { id: 'ACC2c', username: 'agent_hb', name: '华北联合代理', roleId: 'R2', agentId: 'L1C', status: '启用', password: '******' },
         { id: 'ACC3', username: 'agent_hz', name: '杭州城西专营', roleId: 'R4', agentId: 'L2A', status: '启用', password: '******' },
         { id: 'ACC4', username: 'hd_scan_01', name: '仓管小陈', roleId: 'R3', agentId: 'L1A', status: '启用', password: '******' },
         { id: 'ACC5', username: 'hd_scan_02', name: '仓管小周', roleId: 'R3', agentId: 'L1A', status: '启用', password: '******' },
@@ -814,7 +816,7 @@
     };
   }
 
-  const persistKey = 'ruilai_proto_v13';
+  const persistKey = 'ruilai_proto_v14';
   function loadStore() {
     try {
       const raw = localStorage.getItem(persistKey);
@@ -1731,6 +1733,10 @@
     for (let i = 0; i < qty; i++) list.push(prefix + String(start + i).padStart(4, '0'));
     return list;
   }
+  const DEFAULT_WARN_MULT = 1.5;
+  function l1Account(l1Id) {
+    return (db.accounts || []).find((a) => a.roleId === 'R2' && a.agentId === l1Id) || null;
+  }
   function l1ExCount(l1Id) {
     return db.exceptions.filter((e) => {
       if (e.status !== '未处理') return false;
@@ -1739,6 +1745,56 @@
       const l1 = db.agentsL1.find((a) => a.id === l1Id);
       return l1 && String(e.target || '').includes(l1.name);
     }).length;
+  }
+  function l1PendingPoCount(l1Id) {
+    return db.purchases.filter((p) => p.l1Id === l1Id && ['pending', 'cosigning'].includes(p.status)).length;
+  }
+  function l1PendingAftersaleCount(l1Id) {
+    const l2Ids = new Set(db.agentsL2.filter((a) => a.parentId === l1Id).map((a) => a.id));
+    return db.returns.filter((r) => {
+      if (r.status !== 'pending') return false;
+      return r.fromId === l1Id || r.approverId === l1Id || l2Ids.has(r.fromId);
+    }).length;
+  }
+  function l1MonthPurchaseQty(l1Id) {
+    return db.purchases
+      .filter((p) => p.l1Id === l1Id && ['approved', 'approvedPending'].includes(p.status)
+        && inDateRange(p.approvedAt || p.createdAt, monthStart(), todayDate()))
+      .reduce((n, p) => n + purchaseNeedQty(p), 0);
+  }
+  function l1MonthSalesQty(l1Id) {
+    return db.sales
+      .filter((s) => s.l1Id === l1Id && s.status === 'done' && inDateRange(s.createdAt, monthStart(), todayDate()))
+      .reduce((n, s) => n + (s.scanned || []).length, 0);
+  }
+  function l1StockCount(l1Id) {
+    return db.sns.filter((s) => s.l1Id === l1Id && s.status === 'l1').length;
+  }
+  function l1CustomMultText(a) {
+    const m = Number(a?.warnMultiplier);
+    if (!m || m === DEFAULT_WARN_MULT) return '—';
+    return String(m);
+  }
+  function filterCitiesByQ(cities, q) {
+    const s = String(q || '').trim().toLowerCase();
+    if (!s) return cities.slice();
+    return cities.filter((c) => String(c).toLowerCase().includes(s));
+  }
+  function visibleDirectCities(opts, selected, q) {
+    const filtered = filterCitiesByQ(opts, q);
+    if (!q) return filtered;
+    const extra = (selected || []).filter((c) => opts.includes(c) && !filtered.includes(c));
+    return [...extra, ...filtered];
+  }
+  function syncL1Draft() {
+    if (!ui.modal?.draft) return;
+    if ($('#f-name')) ui.modal.draft.name = $('#f-name').value;
+    if ($('#f-contact')) ui.modal.draft.contact = $('#f-contact').value;
+    if ($('#f-user')) ui.modal.draft.username = $('#f-user').value;
+    if ($('#f-pass')) ui.modal.draft.password = $('#f-pass').value;
+    if ($('#f-city-q')) ui.modal.draft.directCityQ = $('#f-city-q').value;
+    if ($('#f-warn') && $('#f-warn').value !== '') ui.modal.draft.warnMultiplier = Number($('#f-warn').value);
+    if ($('#f-warn-mode')) ui.modal.draft.warnMode = $('#f-warn-mode').value;
   }
 
   function countdownText(approvedAt) {
@@ -1976,6 +2032,9 @@
     if (f.status) rows = rows.filter((a) => a.status === f.status);
     const tr = rows.map((a) => {
       const exN = l1ExCount(a.id);
+      const poN = l1PendingPoCount(a.id);
+      const rtN = l1PendingAftersaleCount(a.id);
+      const customMult = l1CustomMultText(a);
       return `<tr class="row-clickable" data-row-action="view-agent-l1" data-id="${a.id}">
         <td>${escapeHtml(a.code)}</td>
         <td>${escapeHtml(a.name)}</td>
@@ -1983,23 +2042,31 @@
         <td>${escapeHtml((a.mainAreas || []).join('、') || '—')}</td>
         <td>${escapeHtml((a.saleAreas || a.areas || []).join('、'))}</td>
         <td>${escapeHtml((a.directAreas || []).slice(0, 3).join('、') || '—')}${(a.directAreas || []).length > 3 ? '…' : ''}</td>
-        <td>${tag(a.status, a.status === '启用' ? 'green' : 'gray')}</td>
-        <td class="ops" onclick="event.stopPropagation()">
-          <button class="btn btn-sm" data-go="l1-sales-detail" data-set-filter="l1-sales:l1Id=${a.id}">销售</button>
-          <button class="btn btn-sm" data-go="l1-return-detail" data-set-filter="l1-return:l1Id=${a.id}">退货</button>
-          <button class="btn btn-sm ${exN ? 'btn-danger' : ''}" data-go="exception" data-set-filter="exception:l1=${a.id}">异常${exN ? `<span class="menu-badge">${exN}</span>` : ''}</button>
+        <td>
+          <div class="status-stack">
+            ${tag(a.status, a.status === '启用' ? 'green' : 'gray')}
+            <div class="status-metrics">
+              <span class="${exN ? 'hot' : ''}">异常数 ${exN}</span>
+              <span class="${poN ? 'hot' : ''}">采购待审核 ${poN}</span>
+              <span class="${rtN ? 'hot' : ''}">售后待处理 ${rtN}</span>
+            </div>
+          </div>
         </td>
+        <td class="num">${l1MonthPurchaseQty(a.id)}</td>
+        <td class="num">${l1MonthSalesQty(a.id)}</td>
+        <td class="num">${l1StockCount(a.id)}</td>
+        <td>${customMult === '—' ? '—' : tag(customMult, 'orange')}</td>
       </tr>`;
     }).join('');
-    return `${pageHeader('一级代理商', '点击行查看详情（编辑/停用在详情内）', '<button class="btn btn-primary" data-action="open-create-l1">新建一级</button>')}
+    return `${pageHeader('一级代理商', '点击行查看详情（编辑/停用/销售/退货在详情内）', '<button class="btn btn-primary" data-action="open-create-l1">新建一级</button>')}
       ${filterBar(`
         <input class="field-input" placeholder="搜索名称/编码" data-filter="agent-l1:name" value="${escapeHtml(f.name || '')}" />
         <input class="field-input" placeholder="搜索区域" data-filter="agent-l1:region" value="${escapeHtml(f.region || '')}" />
         <select class="field-input" data-filter="agent-l1:status"><option value="">状态</option><option value="启用" ${f.status==='启用'?'selected':''}>启用</option><option value="停用" ${f.status==='停用'?'selected':''}>停用</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>编码</th><th>名称</th><th>联系人</th><th>主授权区域</th><th>可销售范围</th><th>直销范围</th><th>状态</th><th>操作</th></tr></thead>
-        <tbody>${tr || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
+        <thead><tr><th>编码</th><th>名称</th><th>联系人</th><th>主授权区域</th><th>可销售范围</th><th>直销范围</th><th>状态</th><th>本月采购量</th><th>本月销售量</th><th>当前库存总数</th><th>自定义倍数</th></tr></thead>
+        <tbody>${tr || `<tr><td colspan="11">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -2305,7 +2372,7 @@
       rows = rows.filter((s) => inDateRange(s.soldAt || s.factoryAt || s.returnAt || s.bindAt || '', f.from, f.to));
     }
     rows = rows.slice(0, 200);
-    return `${pageHeader('SN码库', '多维筛选 · 点击行查看生命周期/编辑', '<button class="btn" data-action="open-import-sn-seg">Excel导入段号</button>')}
+    return `${pageHeader('SN码库', '多维筛选 · 点击行查看生命周期/编辑', '<button class="btn btn-primary" data-action="open-gen-sn">系统生成SN</button><button class="btn" data-action="open-import-sn-seg">Excel导入段号</button>')}
       ${filterBar(`
         <input class="field-input" placeholder="SN" data-filter="sn:sn" value="${escapeHtml(f.sn||'')}" />
         <input class="field-input" placeholder="商品名称" data-filter="sn:productName" value="${escapeHtml(f.productName||'')}" />
@@ -2841,8 +2908,13 @@
         </tr>`).join('')}</tbody>
       </table></div>`;
     }
-    return `${pageHeader('角色与权限', '查看账号 / 编辑角色权限。二级代理账号与一级子账号请由一级在小程序「我的」创建')}
-      <div class="alert alert-info">后台不再提供「创建二级代理账号 / 创建一级子账号」；启停仍可在此管理。</div>
+    const actions = tab === 'accounts'
+      ? '<button class="btn btn-primary" data-action="open-create-account">新建平台账号</button>'
+      : tab === 'subs'
+        ? ''
+        : '<button class="btn btn-primary" data-action="open-create-role">新建角色</button>';
+    return `${pageHeader('角色与权限', '可新建平台角色 / 平台账号。二级代理与一级子账号请由一级在小程序「我的」创建', actions)}
+      <div class="alert alert-info">后台仅创建平台管理员账号；二级代理 / 一级子账号仍由一级小程序创建，此处可启停。</div>
       ${tabsHtml('role', [
         { id: 'roles', title: '角色', badge: db.roles.length || null },
         { id: 'accounts', title: '账号', badge: db.accounts.length || null },
@@ -3630,6 +3702,21 @@
     }).join('')}</div>`;
   }
 
+  function directCityPickerHtml(directOpts, selected, q) {
+    const opts = directOpts || [];
+    const sel = selected || [];
+    const query = q || '';
+    const shown = visibleDirectCities(opts, sel, query);
+    const toggleOpts = query ? filterCitiesByQ(opts, query) : opts;
+    const allOn = isAllSelected(toggleOpts, sel);
+    const btnLabel = query ? '全选搜索结果' : '全选当前可售城市';
+    return `<div class="form-field span-2"><label>直销范围（城市） ${selectAllBtn('select-all-direct', btnLabel, allOn)}</label>
+      <input class="field-input city-search" id="f-city-q" placeholder="输入城市名搜索后勾选" value="${escapeHtml(query)}" />
+      ${shown.length ? chips(shown, sel, 'data-toggle-direct') : `<p class="muted" style="margin-top:6px">${opts.length ? '无匹配城市' : '请先选择可销售范围，再搜索/全选直销城市'}</p>`}
+      ${sel.length ? `<p class="muted" style="margin-top:6px">已选 ${sel.length} 城${query ? '（搜索只过滤展示，已选不丢失）' : ''}</p>` : ''}
+    </div>`;
+  }
+
   /** 选项是否已全部勾选（用于全选按钮高亮） */
   function isAllSelected(options, selected) {
     const opts = options || [];
@@ -3716,9 +3803,11 @@
         body = `<div class="form-grid">
           <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(a.name)}" /></div>
           <div class="form-field"><label>联系人</label><input class="field-input" id="f-contact" value="${escapeHtml(a.contact)}" /></div>
+          <div class="form-field"><label>登录用户名</label><input class="field-input" id="f-user" value="${escapeHtml(a.username || '')}" /></div>
+          <div class="form-field"><label>登录密码</label><input class="field-input" id="f-pass" value="${escapeHtml(a.password || '')}" /></div>
           <div class="form-field span-2"><label>主授权区域（多选） ${selectAllBtn('select-all-main', '全选全国', isAllSelected(mainOpts, a.mainAreas))}</label>${chips(ALL_REGIONS, a.mainAreas||[], 'data-toggle-main', occ)}</div>
           <div class="form-field span-2"><label>可销售范围 ${selectAllBtn('select-all-sale', '全选', isAllSelected(ALL_REGIONS, saleSel))}</label>${chips(ALL_REGIONS, saleSel, 'data-toggle-sale')}</div>
-          <div class="form-field span-2"><label>直销范围（城市） ${selectAllBtn('select-all-direct', '全选当前可售城市', isAllSelected(directOpts, a.directAreas))}</label>${chips(directOpts, a.directAreas||[], 'data-toggle-direct')}</div>
+          ${directCityPickerHtml(directOpts, a.directAreas || [], a.directCityQ || '')}
           <div class="form-field"><label>预警倍数</label><input type="number" step="0.1" class="field-input" id="f-warn" value="${a.warnMultiplier||1.5}" /></div>
           <div class="form-field"><label>报警粒度</label><select class="field-input" id="f-warn-mode">
             <option value="strict" ${(a.warnMode||'strict')==='strict'?'selected':''}>严格（强制处理）</option>
@@ -3726,9 +3815,12 @@
           </select></div>
         </div><h4>企业信息</h4>${entFieldsHtml(a.ent)}`;
       } else {
+        const acc = l1Account(a.id);
         body = `<div class="detail-grid">
           <div><span>编码</span>${escapeHtml(a.code)}</div>
           <div><span>联系人</span>${escapeHtml(a.contact)}</div>
+          <div><span>账号登录名称</span>${escapeHtml(acc?.username || '—')}</div>
+          <div><span>密码</span>${escapeHtml(acc?.password || '—')}</div>
           <div><span>主授权</span>${escapeHtml((a.mainAreas||[]).join('、'))}</div>
           <div><span>可销售</span>${escapeHtml((a.saleAreas||a.areas||[]).join('、'))}</div>
           <div><span>直销城市</span>${escapeHtml((a.directAreas||[]).join('、'))}</div>
@@ -3758,9 +3850,11 @@
       body = `<div class="form-grid">
         <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(d.name||'')}" /></div>
         <div class="form-field"><label>联系人</label><input class="field-input" id="f-contact" value="${escapeHtml(d.contact||'')}" /></div>
+        <div class="form-field"><label>登录用户名</label><input class="field-input" id="f-user" value="${escapeHtml(d.username||'')}" placeholder="如 agent_xx" /></div>
+        <div class="form-field"><label>登录密码</label><input class="field-input" id="f-pass" value="${escapeHtml(d.password||'')}" placeholder="明文保存，用于演示登录" /></div>
         <div class="form-field span-2"><label>主授权区域（多选） ${selectAllBtn('select-all-main', '全选全国', isAllSelected(ALL_REGIONS.filter((r)=>!occupiedMainAreas().has(r)), d.mainAreas))}</label>${chips(ALL_REGIONS, d.mainAreas||[], 'data-toggle-main', occupiedMainAreas())}</div>
         <div class="form-field span-2"><label>可销售范围 ${selectAllBtn('select-all-sale', '全选', isAllSelected(ALL_REGIONS, d.saleAreas))}</label>${chips(ALL_REGIONS, d.saleAreas||[], 'data-toggle-sale')}</div>
-        <div class="form-field span-2"><label>直销范围（城市） ${selectAllBtn('select-all-direct', '全选当前可售城市', isAllSelected((d.saleAreas||[]).flatMap((r)=>CITY_MAP[r]||[]), d.directAreas))}</label>${chips((d.saleAreas||[]).flatMap((r)=>CITY_MAP[r]||[]), d.directAreas||[], 'data-toggle-direct')}${!(d.saleAreas||[]).length?'<p class="muted" style="margin-top:6px">请先选择可销售范围，再全选直销城市</p>':''}</div>
+        ${directCityPickerHtml((d.saleAreas||[]).flatMap((r)=>CITY_MAP[r]||[]), d.directAreas||[], d.directCityQ||'')}
       </div>${entFieldsHtml(d.ent||{})}`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-l1-ok">创建</button>`;
     } else if (type === 'view-agent-l2' || type === 'edit-l2') {
@@ -4358,13 +4452,15 @@
         </select>`}</div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-return-ok">提交</button>`;
     } else if (type === 'create-account') {
-      title = '新建账号';
+      title = '新建平台账号';
+      const adminRoles = db.roles.filter((r) => r.id === 'R1' || (r.perms || []).includes('all'));
       body = `<div class="form-grid">
-        <div class="form-field"><label>用户名</label><input class="field-input" id="f-user" /></div>
+        <div class="form-field"><label>用户名</label><input class="field-input" id="f-user" placeholder="如 admin3" /></div>
         <div class="form-field"><label>姓名</label><input class="field-input" id="f-name" /></div>
-        <div class="form-field"><label>角色</label><select class="field-input" id="f-role">${db.roles.map((r)=>`<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('')}</select></div>
-        <div class="form-field"><label>密码</label><input class="field-input" id="f-pass" value="******" /></div>
-      </div>`;
+        <div class="form-field"><label>角色</label><select class="field-input" id="f-role">${(adminRoles.length?adminRoles:db.roles.filter((r)=>r.id==='R1')).map((r)=>`<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('')}</select></div>
+        <div class="form-field"><label>密码</label><input class="field-input" id="f-pass" value="demo" /></div>
+      </div>
+      <p class="muted">仅创建平台管理员账号；一级主账号随「新建一级」生成，二级/子账号由一级小程序创建。</p>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-account-ok">创建</button>`;
     } else if (type === 'create-sub') {
       title = '创建一级子账号（仅扫码）';
@@ -4428,12 +4524,29 @@
           }).join('')}
         </div>`;
       foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-role-perms" data-id="${escapeHtml(role.id)}">保存</button>`;
+    } else if (type === 'create-role') {
+      const d = draft || {};
+      const selected = new Set(d.perms || []);
+      const hasAll = selected.has('all');
+      title = '新建角色';
+      body = `<p class="muted" style="margin-bottom:10px">新建后台角色并勾选权限；一级/二级业务账号不在此创建。</p>
+        <div class="form-grid">
+          <div class="form-field"><label>角色名称</label><input class="field-input" id="f-role-name" value="${escapeHtml(d.name || '')}" placeholder="如 运营专员" /></div>
+          <div class="form-field"><label>角色说明</label><input class="field-input" id="f-role-desc" value="${escapeHtml(d.desc || '')}" placeholder="可留空，保存时按权限生成" /></div>
+        </div>
+        <div class="perm-check-grid">
+          ${ALL_PERMS.map((p) => {
+            const on = hasAll || selected.has(p);
+            return `<label class="perm-check"><input type="checkbox" data-perm="${p}" ${on ? 'checked' : ''}/><span>${escapeHtml(permLabel(p))}</span><code>${escapeHtml(p)}</code></label>`;
+          }).join('')}
+        </div>`;
+      foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="create-role-ok">创建</button>`;
     } else {
       title = '提示';
       body = `<p>${escapeHtml(payload.message || type)}</p>`;
     }
 
-    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'view-agent-l1' || type === 'edit-l1' || type === 'view-agent-l2' || type === 'edit-l2' || type === 'order-cart' || type === 'view-exception' || type === 'create-product' || type === 'edit-product' || type === 'view-stock' || type === 'view-return' || type === 'view-customer' || type === 'create-customer' || type === 'edit-customer';
+    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'view-agent-l1' || type === 'edit-l1' || type === 'create-l1' || type === 'view-agent-l2' || type === 'edit-l2' || type === 'order-cart' || type === 'view-exception' || type === 'create-product' || type === 'edit-product' || type === 'view-stock' || type === 'view-return' || type === 'view-customer' || type === 'create-customer' || type === 'edit-customer' || type === 'create-role';
     return `<div class="modal-mask" id="modal-mask"><div class="modal ${wide ? 'modal--wide' : ''}" id="modal-box">
       <div class="modal-hd"><strong>${escapeHtml(title)}</strong><button class="btn btn-sm btn-ghost" data-action="close-modal">×</button></div>
       <div class="modal-bd">${body}</div>
@@ -4758,13 +4871,30 @@
     apply();
     requestAnimationFrame(apply);
   }
+  function captureModalField() {
+    const el = document.activeElement;
+    const box = document.getElementById('modal-box');
+    if (!el || !el.id || !box || !box.contains(el)) return null;
+    return { id: el.id, start: el.selectionStart, end: el.selectionEnd };
+  }
+  function restoreModalField(saved) {
+    if (!saved?.id) return;
+    const el = document.getElementById(saved.id);
+    if (!el) return;
+    el.focus();
+    if (typeof saved.start === 'number' && typeof el.setSelectionRange === 'function') {
+      try { el.setSelectionRange(saved.start, saved.end ?? saved.start); } catch (_) {}
+    }
+  }
 
   function render() {
     ensureApprovedPendingEffect();
     const modalScroll = captureModalScroll();
+    const modalField = captureModalField();
     document.getElementById('app').innerHTML = ui.loggedIn ? renderApp() : renderLogin();
     bindEvents();
     restoreModalScroll(modalScroll);
+    restoreModalField(modalField);
   }
 
   function doNavigate(id) {
@@ -4873,31 +5003,63 @@
       }
       case 'apply-filter': render(); break;
       case 'open-create-l1':
-        openModal('create-l1', { draftSeed: { name: '', contact: '', mainAreas: [], saleAreas: [], directAreas: [], ent: {} } }); break;
+        openModal('create-l1', { draftSeed: { name: '', contact: '', username: '', password: '', mainAreas: [], saleAreas: [], directAreas: [], directCityQ: '', ent: {} } }); break;
       case 'edit-l1': {
         const a = db.agentsL1.find((x)=>x.id===id);
-        openModal('edit-l1', { id, draft: JSON.parse(JSON.stringify(a)) }); break;
+        const acc = l1Account(id);
+        const draft = JSON.parse(JSON.stringify(a));
+        draft.username = acc?.username || '';
+        draft.password = acc?.password || '';
+        draft.directCityQ = '';
+        openModal('edit-l1', { id, draft }); break;
       }
       case 'save-l1': {
+        syncL1Draft();
         const d = ui.modal.draft;
         d.name = $('#f-name')?.value || d.name;
         d.contact = $('#f-contact')?.value || d.contact;
-        d.warnMultiplier = Number($('#f-warn')?.value || d.warnMultiplier || 1.5);
+        d.warnMultiplier = Number($('#f-warn')?.value || d.warnMultiplier || DEFAULT_WARN_MULT);
         d.warnMode = $('#f-warn-mode')?.value || d.warnMode || 'strict';
         d.ent = readEntFields();
         d.areas = d.saleAreas || d.areas;
+        const username = ($('#f-user')?.value || d.username || '').trim();
+        const password = $('#f-pass')?.value || d.password || '';
+        if (username && db.accounts.some((x) => x.username === username && !(x.roleId === 'R2' && x.agentId === d.id))) {
+          return toast('用户名已存在', 'err');
+        }
         const i = db.agentsL1.findIndex((x)=>x.id===d.id);
-        if (i>=0) db.agentsL1[i] = d;
+        if (i>=0) {
+          const { username: _u, password: _p, directCityQ: _q, ...row } = d;
+          db.agentsL1[i] = row;
+        }
+        if (username) {
+          let acc = l1Account(d.id);
+          if (acc) {
+            acc.username = username;
+            if (password) acc.password = password;
+            acc.name = d.name;
+          } else {
+            db.accounts.push({ id: uid('ACC'), username, name: d.name, roleId: 'R2', agentId: d.id, status: '启用', password: password || '******' });
+          }
+        }
         addLog(`编辑一级 ${d.name}（报警 ${d.warnMode}/${d.warnMultiplier}）`); saveStore(); closeModal(); toast('已保存'); break;
       }
       case 'create-l1-ok': {
+        syncL1Draft();
         const d = ui.modal.draft;
         d.name = $('#f-name')?.value; d.contact = $('#f-contact')?.value; d.ent = readEntFields();
+        const username = ($('#f-user')?.value || d.username || '').trim();
+        const password = $('#f-pass')?.value || d.password || '';
         if (!d.name || !(d.mainAreas||[]).length) return toast('请填写名称与主授权区域', 'err');
+        if (!username || !password) return toast('请填写登录用户名与密码', 'err');
+        if (db.accounts.some((x) => x.username === username)) return toast('用户名已存在', 'err');
         d.id = uid('L1'); d.code = `AG-L1-${String(db.agentsL1.length+1).padStart(3,'0')}`;
         d.status = '启用'; d.areas = d.saleAreas || [...d.mainAreas]; d.saleAreas = d.areas;
-        d.directAreas = d.directAreas || []; d.warnMultiplier = 1.5; d.warnMode = 'strict';
-        db.agentsL1.push(d); addLog(`创建一级 ${d.name}`); saveStore(); closeModal(); toast('已创建'); break;
+        d.directAreas = d.directAreas || []; d.warnMultiplier = DEFAULT_WARN_MULT; d.warnMode = 'strict';
+        const { username: _u, password: _p, directCityQ: _q, ...row } = d;
+        db.agentsL1.push(row);
+        db.accounts.push({ id: uid('ACC'), username, name: d.name, roleId: 'R2', agentId: d.id, status: '启用', password });
+        addLog(`创建一级 ${d.name} / ${username}`); saveStore(); closeModal(); toast('已创建一级及登录账号'); break;
       }
       case 'disable-l1':
         confirmDialog(
@@ -5324,7 +5486,9 @@
         db.exceptionMultiplier = v; saveStore(); toast(`预警倍数已设为 ${v}`); break;
       }
       case 'open-create-account':
-        return toast('后台已关闭新建账号；二级代理 / 子账号请由一级在小程序「我的」创建', 'err');
+        openModal('create-account', {}); break;
+      case 'open-create-role':
+        openModal('create-role', { draftSeed: { name: '', desc: '', perms: [] } }); break;
       case 'open-edit-role': openModal('edit-role', { id }); break;
       case 'open-create-l2-mini': {
         if (ui.role !== 'l1') return toast('仅一级可创建二级代理', 'err');
@@ -5448,11 +5612,25 @@
       case 'create-account-ok': {
         const username = $('#f-user')?.value?.trim();
         const name = $('#f-name')?.value?.trim();
-        const roleId = $('#f-role')?.value;
-        const password = $('#f-pass')?.value || '******';
+        const roleId = $('#f-role')?.value || 'R1';
+        const password = $('#f-pass')?.value || 'demo';
+        const role = db.roles.find((r) => r.id === roleId);
         if (!username) return toast('请填写用户名', 'err');
-        db.accounts.push({ id: uid('ACC'), username, name, roleId, status: '启用', password });
-        addLog(`创建账号 ${username}`); saveStore(); closeModal(); toast('已创建'); break;
+        if (db.accounts.some((a) => a.username === username)) return toast('用户名已存在', 'err');
+        if (!role || (role.id !== 'R1' && !(role.perms || []).includes('all'))) return toast('后台仅可创建平台管理员账号', 'err');
+        db.accounts.push({ id: uid('ACC'), username, name: name || username, roleId, status: '启用', password });
+        addLog(`创建平台账号 ${username}`); saveStore(); closeModal(); toast('已创建平台账号'); break;
+      }
+      case 'create-role-ok': {
+        const name = $('#f-role-name')?.value?.trim();
+        const permsRaw = [...document.querySelectorAll('[data-perm]:checked')].map((el) => el.getAttribute('data-perm'));
+        if (!name) return toast('请填写角色名称', 'err');
+        if (db.roles.some((r) => r.name === name)) return toast('角色名称已存在', 'err');
+        if (!permsRaw.length) return toast('请至少勾选一项权限', 'err');
+        const perms = (permsRaw.includes('all') || DETAIL_PERMS.every((p) => permsRaw.includes(p))) ? ['all'] : permsRaw.filter((p) => p !== 'all');
+        const desc = $('#f-role-desc')?.value?.trim() || roleDescFromPerms(perms);
+        db.roles.push({ id: uid('R'), name, desc, perms });
+        addLog(`创建角色 ${name}`); saveStore(); closeModal(); toast('已创建角色'); break;
       }
       case 'toggle-account': {
         const a = db.accounts.find((x)=>x.id===id);
@@ -5584,6 +5762,7 @@
         openModal('view-sn', { id }); break;
       case 'select-all-main': {
         if (!ui.modal?.draft) break;
+        syncL1Draft();
         const occ = occupiedMainAreas(ui.modal.draft.id);
         const available = ALL_REGIONS.filter((r) => !occ.has(r));
         ui.modal.draft.mainAreas = isAllSelected(available, ui.modal.draft.mainAreas) ? [] : [...available];
@@ -5591,15 +5770,22 @@
       }
       case 'select-all-sale': {
         if (!ui.modal?.draft) break;
+        syncL1Draft();
         ui.modal.draft.saleAreas = isAllSelected(ALL_REGIONS, ui.modal.draft.saleAreas) ? [] : [...ALL_REGIONS];
         render(); break;
       }
       case 'select-all-direct': {
         if (!ui.modal?.draft) break;
+        syncL1Draft();
         const areas = ui.modal.draft.saleAreas || ui.modal.draft.areas || [];
         const cities = areas.flatMap((r) => CITY_MAP[r] || []);
-        if (!cities.length) return toast('请先选择可销售范围', 'warn');
-        ui.modal.draft.directAreas = isAllSelected(cities, ui.modal.draft.directAreas) ? [] : [...cities];
+        const q = ui.modal.draft.directCityQ || '';
+        const target = filterCitiesByQ(cities, q);
+        if (!target.length) return toast(q ? '无匹配城市' : '请先选择可销售范围', 'warn');
+        const set = new Set(ui.modal.draft.directAreas || []);
+        if (isAllSelected(target, [...set])) target.forEach((c) => set.delete(c));
+        else target.forEach((c) => set.add(c));
+        ui.modal.draft.directAreas = [...set];
         render(); break;
       }
       case 'select-all-city': {
@@ -6469,11 +6655,12 @@
     }
 
     // chip toggles in modal
-    const syncL1Draft = () => {
+    $('#f-city-q')?.addEventListener('input', () => {
       if (!ui.modal?.draft) return;
-      if ($('#f-name')) ui.modal.draft.name = $('#f-name').value;
-      if ($('#f-contact')) ui.modal.draft.contact = $('#f-contact').value;
-    };
+      syncL1Draft();
+      ui.modal.draft.directCityQ = $('#f-city-q').value;
+      render();
+    });
     document.querySelectorAll('[data-toggle-main]').forEach((el) => el.addEventListener('click', () => {
       if (el.disabled) return;
       syncL1Draft();
