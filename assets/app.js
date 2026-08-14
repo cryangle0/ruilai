@@ -1032,7 +1032,7 @@
     'agent-l1-detail': '一级代理详情',
     'l1-sales-detail': '一级销售详情', 'l1-return-detail': '一级退货详情',
     'l2-sales-detail': '二级销售详情', 'l2-return-detail': '二级退货详情',
-    'mini-scan': '扫码', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
+    'mini-scan': '首页', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
     'mini-service': '售后', 'mini-aftersale': '售后', 'mini-exception': '异常', 'mini-mine': '我的',
     'mini-mine-l2': '二级代理', 'mini-mine-sub': '子账号', 'mini-mine-customers': '客户',
   };
@@ -2434,6 +2434,7 @@
   }
 
   const MINI_TAB_ICONS = {
+    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5"/><path d="M7 10.5V19h10v-8.5"/><path d="M10 19v-5h4v5"/></svg>',
     scan: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><rect x="7" y="7" width="10" height="10" rx="2"/></svg>',
     biz: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M4 11h16"/></svg>',
     stock: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5 12 4l9 4.5-9 4.5L3 8.5z"/><path d="M3 12.5 12 17l9-4.5"/><path d="M3 16.5 12 21l9-4.5"/></svg>',
@@ -2451,16 +2452,16 @@
     }
     if (ui.role === 'l2') {
       return [
-        { id: 'mini-scan', title: '扫码', icon: 'scan' },
+        { id: 'mini-scan', title: '首页', icon: 'home' },
         { id: 'mini-sales', title: '销售', icon: 'sales' },
         { id: 'mini-stock', title: '库存', icon: 'stock' },
         { id: 'mini-service', title: '售后', icon: 'service' },
         { id: 'mini-mine', title: '我的', icon: 'mine' },
       ];
     }
-    // 一级：5 个规范底栏；采购/销售、退货/异常收入页内分段，能力不变
+    // 一级：5 个规范底栏；首页看数据，扫码放首页内；采购/销售、退货/异常收入页内分段
     return [
-      { id: 'mini-scan', title: '扫码', icon: 'scan' },
+      { id: 'mini-scan', title: '首页', icon: 'home' },
       { id: 'mini-biz', title: '业务', icon: 'biz' },
       { id: 'mini-stock', title: '库存', icon: 'stock' },
       { id: 'mini-service', title: '售后', icon: 'service' },
@@ -3057,14 +3058,18 @@
 
   function pageSales() {
     const f = ui.filters.sales || {};
+    if (f.channel === 'direct') f.channel = 'distribute';
     let rows = db.sales.slice();
-    if (f.channel) rows = rows.filter((s) => s.channel === f.channel);
+    rows = rows.filter((s) => s.channel === 'distribute');
     if (f.l1) rows = rows.filter((s) => s.l1Id === f.l1);
     if (f.l2) rows = rows.filter((s) => s.l2Id === f.l2);
     if (f.status) rows = rows.filter((s) => s.status === f.status);
-    return `${pageHeader('销售单管理', '分销 / 直售 · 点击行查看详情', backToL1DetailAction())}
+    return `${pageHeader('销售单管理', '分销出货给二级；直销跳转销售客户', backToL1DetailAction())}
+      <div class="page-card"><div class="tabs">
+        <button type="button" class="tab active" data-tab="sales:distribute">分销</button>
+        <button type="button" class="tab" data-go="customers" data-back="sales">直销</button>
+      </div></div>
       ${filterBar(`
-        <select class="field-input" data-filter="sales:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <select class="field-input" data-filter="sales:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <select class="field-input" data-filter="sales:l2"><option value="">二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
       `)}
@@ -3318,159 +3323,154 @@
     try { saveStore(); } catch (_) {}
   }
 
-  function pageStats() {
-    const from = (ui.filters.stats || {}).from || monthStart();
-    const to = (ui.filters.stats || {}).to || todayDate();
-    const poAll = db.purchases.filter((p) => p.status === 'approved');
-    const poMonth = poAll.filter((p) => inDateRange(p.createdAt, from, to));
+  function bizStats(scope = {}) {
+    const l1Id = scope.l1Id || '';
+    const l2Id = scope.l2Id || '';
+    const from = scope.from || monthStart();
+    const to = scope.to || todayDate();
+    const qtySo = (list) => list.reduce((n, s) => n + (s.scanned || []).length, 0);
+    const poOk = (p) => p.status === 'approved' || p.status === 'approvedPending';
     const poQty = (list) => list.reduce((n, p) => n + purchaseNeedQty(p), 0);
-    const soDone = db.sales.filter((s) => s.status === 'done');
-    const soDist = soDone.filter((s) => s.channel === 'distribute');
-    const soDir = soDone.filter((s) => s.channel === 'direct');
-    const saleQty = (list, fr, t) => list.filter((s) => inDateRange(s.createdAt, fr, t)).reduce((n, s) => n + (s.scanned || []).length, 0);
-    const distRange = saleQty(soDist, from, to);
-    const dirRange = saleQty(soDir, from, to);
-    const saleRange = distRange + dirRange;
-    const monthFrom = monthStart();
-    const monthTo = todayDate();
-    const saleMonth = saleQty(soDone, monthFrom, monthTo);
-    const saleAll = soDone.reduce((n, s) => n + (s.scanned || []).length, 0);
-    const actMonth = db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, from, to)).length;
-    const actMonthFixed = db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, monthFrom, monthTo)).length;
-    const actAll = db.sns.filter((s) => s.status === 'bound').length;
-    const agentStock = db.sns.filter((s) => {
+    const poTime = (p) => p.approvedAt || p.createdAt;
+
+    let purchaseAll = 0;
+    let purchaseRange = 0;
+    let purchaseAtDay = (d) => 0;
+    if (l2Id) {
+      const inbound = db.sales.filter((s) => s.l2Id === l2Id && s.channel === 'distribute' && s.status === 'done');
+      purchaseAll = qtySo(inbound);
+      purchaseRange = qtySo(inbound.filter((s) => inDateRange(s.createdAt, from, to)));
+      purchaseAtDay = (d) => qtySo(inbound.filter((s) => inDateRange(s.createdAt, d, d)));
+    } else {
+      const pos = db.purchases.filter((p) => poOk(p) && (!l1Id || p.l1Id === l1Id));
+      purchaseAll = poQty(pos);
+      purchaseRange = poQty(pos.filter((p) => inDateRange(poTime(p), from, to)));
+      purchaseAtDay = (d) => poQty(pos.filter((p) => inDateRange(poTime(p), d, d)));
+    }
+
+    let salesAll = 0;
+    let salesRange = 0;
+    let salesAtDay = (d) => 0;
+    if (l2Id) {
+      const bound = db.sns.filter((s) => s.l2Id === l2Id && s.status === 'bound');
+      const t = (s) => s.soldAt || s.bindAt;
+      salesAll = bound.length;
+      salesRange = bound.filter((s) => inDateRange(t(s), from, to)).length;
+      salesAtDay = (d) => bound.filter((s) => inDateRange(t(s), d, d)).length;
+    } else {
+      const so = db.sales.filter((s) => s.status === 'done' && (!l1Id || s.l1Id === l1Id));
+      salesAll = qtySo(so);
+      salesRange = qtySo(so.filter((s) => inDateRange(s.createdAt, from, to)));
+      salesAtDay = (d) => qtySo(so.filter((s) => inDateRange(s.createdAt, d, d)));
+    }
+
+    const inStock = (s) => {
+      if (s.frozen) return false;
       const st = snCanonicalStatus(s);
       return st === 'l1' || st === 'l2';
-    }).length;
-    const rtMonth = db.returns.filter((r) => inDateRange(r.createdAt, from, to)).reduce((n, r) => n + (r.sns || []).length, 0);
-    const rtPending = pendingReturnCount();
-    const exOpen = openExCount();
-    const poPending = pendingPoCount();
+    };
+    let stock = 0;
+    if (l2Id) stock = db.sns.filter((s) => inStock(s) && s.l2Id === l2Id).length;
+    else if (l1Id) stock = db.sns.filter((s) => inStock(s) && s.l1Id === l1Id).length;
+    else stock = db.sns.filter(inStock).length;
+
     const days = eachDateStr(from, to);
-    const trendSales = days.map((d) => saleQty(soDone, d, d));
-    const trendPo = days.map((d) => poQty(poAll.filter((p) => inDateRange(p.createdAt, d, d))));
-    const trendAct = days.map((d) => db.sns.filter((s) => s.status === 'bound' && inDateRange(s.soldAt || s.bindAt, d, d)).length);
-    const dayLabels = days.map((d) => d.slice(5));
-    ensureDailyStats();
-    const dailyRows = (db.dailyStats || []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
-    const snStatus = [
-      { label: '原厂在库', value: db.sns.filter((s) => snCanonicalStatus(s) === 'warehouse').length, color: '#64748b' },
-      { label: '一级在库', value: db.sns.filter((s) => snCanonicalStatus(s) === 'l1').length, color: '#38bdf8' },
-      { label: '二级在库', value: db.sns.filter((s) => snCanonicalStatus(s) === 'l2').length, color: '#2dd4a8' },
-      { label: '已销售', value: actAll, color: '#00a46e' },
-    ];
-    const snTagPie = SN_BIZ_TAGS.map((t, i) => ({
-      label: t,
-      value: db.sns.filter((s) => snBusinessTags(s).includes(t)).length,
-      color: ['#f59e0b', '#38bdf8', '#2dd4a8', '#94a3b8'][i],
-    }));
-    const channelPie = [
-      { label: '分销', value: distRange || saleQty(soDist), color: '#2dd4a8' },
-      { label: '直销', value: dirRange || saleQty(soDir), color: '#38bdf8' },
-    ];
-    const l1Rank = db.agentsL1.map((a) => {
-      const q = soDone.filter((s) => s.l1Id === a.id && inDateRange(s.createdAt, from, to))
-        .reduce((n, s) => n + (s.scanned || []).length, 0);
-      return { label: a.name.replace(/锐涞|总代|代理/g, '').slice(0, 8) || a.name, value: q };
-    }).sort((a, b) => b.value - a.value);
-    const exByType = {};
-    db.exceptions.forEach((e) => { exByType[e.type || '其他'] = (exByType[e.type || '其他'] || 0) + 1; });
-    const exBars = Object.entries(exByType).map(([label, value]) => ({ label: label.slice(0, 8), value }))
-      .sort((a, b) => b.value - a.value).slice(0, 6);
-    const rtByStatus = [
-      { label: '待审', value: db.returns.filter((r) => r.status === 'pending').length, color: '#f59e0b' },
-      { label: '已通过', value: db.returns.filter((r) => r.status === 'approved').length, color: '#2dd4a8' },
-      { label: '已处理', value: db.returns.filter((r) => r.status === 'done').length, color: '#38bdf8' },
-      { label: '已驳回', value: db.returns.filter((r) => r.status === 'rejected').length, color: '#f87171' },
-    ];
-    const sizeMap = {};
-    soDone.filter((s) => inDateRange(s.createdAt, from, to)).forEach((s) => {
-      Object.entries(s.planBySize || {}).forEach(([sz, q]) => { sizeMap[sz] = (sizeMap[sz] || 0) + Number(q || 0); });
+    const snsScope = db.sns.filter((s) => {
+      if (l2Id) return s.l2Id === l2Id;
+      if (l1Id) return s.l1Id === l1Id;
+      return true;
     });
-    const sizeBars = BAND_SIZES.map((sz) => ({ label: sz, value: sizeMap[sz] || 0 }));
-    const kpi = (label, value, go, filter, tone = '') =>
-      `<button type="button" class="dash-kpi ${tone}" ${go ? `data-go="${go}"` : ''}${filter ? ` data-set-filter="${filter}"` : ''}>
+    const soScope = db.sales.filter((s) => s.status === 'done' && (!l2Id ? (!l1Id || s.l1Id === l1Id) : (s.l2Id === l2Id)));
+    return {
+      purchaseRange, purchaseAll, salesRange, salesAll, stock,
+      dayLabels: days.map((d) => d.slice(5)),
+      trendPurchase: days.map((d) => purchaseAtDay(d)),
+      trendSales: days.map((d) => salesAtDay(d)),
+      channelPie: [
+        { label: '分销', value: qtySo(soScope.filter((s) => s.channel === 'distribute')), color: '#2dd4a8' },
+        { label: '直销', value: l2Id
+          ? salesRange
+          : qtySo(soScope.filter((s) => s.channel === 'direct')), color: '#38bdf8' },
+      ],
+      snStatus: [
+        { label: '原厂在库', value: snsScope.filter((s) => snCanonicalStatus(s) === 'warehouse').length, color: '#64748b' },
+        { label: '一级在库', value: snsScope.filter((s) => snCanonicalStatus(s) === 'l1').length, color: '#38bdf8' },
+        { label: '二级在库', value: snsScope.filter((s) => snCanonicalStatus(s) === 'l2').length, color: '#2dd4a8' },
+        { label: '已销售', value: snsScope.filter((s) => s.status === 'bound').length, color: '#00a46e' },
+      ],
+      l1Id, l2Id, from, to,
+    };
+  }
+
+  function pageStats() {
+    const f = ui.filters.stats || (ui.filters.stats = {});
+    if (!f.from) f.from = monthStart();
+    if (!f.to) f.to = todayDate();
+    const l1Id = f.l1 || '';
+    const l2Opts = db.agentsL2.filter((a) => !a.pending && (!l1Id || a.parentId === l1Id));
+    if (f.l2 && !l2Opts.some((a) => a.id === f.l2)) f.l2 = '';
+    const l2Id = f.l2 || '';
+    const st = bizStats({ l1Id, l2Id, from: f.from, to: f.to });
+    const kpi = (label, value, go, filter) =>
+      `<button type="button" class="dash-kpi" ${go ? `data-go="${go}"` : ''}${filter ? ` data-set-filter="${filter}"` : ''}>
         <span class="dash-kpi-label">${escapeHtml(label)}</span>
         <strong class="dash-kpi-value num">${value}</strong>
       </button>`;
+    const poFilter = l1Id ? `purchase:l1=${l1Id}` : '';
+    const soFilter = l2Id ? `sales:l2=${l2Id}` : (l1Id ? `sales:l1=${l1Id}` : '');
+    const stockFilter = l2Id
+      ? `stock:type=l2;stock:agent=${l2Id}`
+      : (l1Id ? `stock:type=l1;stock:agent=${l1Id}` : '');
+    const l1Rank = (!l1Id && !l2Id) ? db.agentsL1.map((a) => {
+      const q = bizStats({ l1Id: a.id, from: f.from, to: f.to }).salesRange;
+      return { label: a.name.replace(/锐涞|总代|代理/g, '').slice(0, 8) || a.name, value: q };
+    }).sort((a, b) => b.value - a.value) : [];
+    const l2Rank = (l1Id && !l2Id) ? l2Opts.map((a) => ({
+      label: a.name.slice(0, 8),
+      value: bizStats({ l2Id: a.id, from: f.from, to: f.to }).salesRange,
+    })).sort((a, b) => b.value - a.value) : [];
+    const scopeHint = l2Id
+      ? `当前：${l2Name(l2Id)}（仅该二级）`
+      : (l1Id ? `当前：${l1Name(l1Id)}（本级及下属二级在库）` : '当前：全部一级 / 二级');
 
-    return `<div class="dash">
-      <div class="dash-kpis dash-kpis-5">
-        ${kpi('当月销售量', saleMonth, 'sn')}
-        ${kpi('历史销售总量', saleAll, 'sn')}
-        ${kpi('当月激活量', actMonthFixed, 'sn', 'sn:status=bound')}
-        ${kpi('历史总激活量', actAll, 'sn', 'sn:status=bound')}
-        ${kpi('所有代理在库数量', agentStock, 'stock')}
-      </div>
-      <p class="muted" style="margin:-4px 0 12px">以上五项每天统计一次；趋势图仍可按区间查看。</p>
-
-      <div class="dash-grid">
-        <section class="dash-panel dash-panel--wide">
-          <header class="dash-panel-hd"><h3>业务趋势</h3><span>销量 / 采购入库 / 激活</span></header>
-          ${svgMultiLine(dayLabels, [
-            { name: '销量', color: '#2dd4a8', values: trendSales },
-            { name: '采购', color: '#38bdf8', values: trendPo },
-            { name: '激活', color: '#fbbf24', values: trendAct },
-          ])}
-        </section>
-        <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>销售渠道</h3><span>区间出货构成</span></header>
-          ${svgDonut(channelPie)}
-        </section>
-        <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>一级代理销量榜</h3><span>区间 SN</span></header>
-          ${svgHBars(l1Rank, '#2dd4a8')}
-        </section>
-        <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>SN 状态分布</h3><span>四种状态</span></header>
-          ${svgDonut(snStatus)}
-        </section>
-        <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>SN 标签分布</h3><span>已退货 / 再入库 / 再销售 / 已冻结</span></header>
-          ${svgDonut(snTagPie)}
-        </section>
-        <section class="dash-panel dash-panel--wide">
-          <header class="dash-panel-hd"><h3>按日汇总</h3><span>每天统计一次</span></header>
-          <div class="page-card table-wrap" style="box-shadow:none;border:0;padding:0">
-            <table class="data">
-              <thead><tr><th>日期</th><th>当月销售量</th><th>历史销售总量</th><th>当月激活量</th><th>历史总激活量</th><th>所有代理在库</th></tr></thead>
-              <tbody>${dailyRows.map((d) => `<tr>
-                <td>${escapeHtml(d.date)}</td>
-                <td class="num">${d.salesMonth ?? 0}</td>
-                <td class="num">${d.salesAll ?? 0}</td>
-                <td class="num">${d.actMonth ?? 0}</td>
-                <td class="num">${d.actAll ?? 0}</td>
-                <td class="num">${d.stock ?? 0}</td>
-              </tr>`).join('') || `<tr><td colspan="6">${emptyHint('暂无日统计')}</td></tr>`}</tbody>
-            </table>
-          </div>
-        </section>
-        <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>尺码结构</h3><span>区间计划尺码</span></header>
-          ${svgVBars(sizeBars, '#38bdf8')}
-        </section>
-        <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>异常类型</h3><span>历史累计</span></header>
-          ${svgHBars(exBars, '#f87171')}
-        </section>
-        <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>退货状态</h3><span>区间外全库单量</span></header>
-          ${svgDonut(rtByStatus)}
-          <div class="dash-footnote">区间退货件数 <strong class="num">${rtMonth}</strong></div>
-        </section>
-        <section class="dash-panel dash-panel--wide">
-          <header class="dash-panel-hd"><h3>经营快照</h3><span>可下钻</span></header>
-          <div class="dash-snap">
-            <button type="button" class="dash-snap-item" data-go="purchase"><span>历史采购总量</span><strong class="num">${poQty(poAll)}</strong></button>
-            <button type="button" class="dash-snap-item" data-go="sn" data-set-filter="sn:channel=distribute"><span>分销历史</span><strong class="num">${saleQty(soDist)}</strong></button>
-            <button type="button" class="dash-snap-item" data-go="sn" data-set-filter="sn:channel=direct"><span>直销历史</span><strong class="num">${saleQty(soDir)}</strong></button>
-            <button type="button" class="dash-snap-item" data-go="sn" data-set-filter="sn:status=bound"><span>历史激活</span><strong class="num">${actAll}</strong></button>
-            <button type="button" class="dash-snap-item" data-go="return"><span>历史退货件数</span><strong class="num">${db.returns.reduce((n, r) => n + (r.sns || []).length, 0)}</strong></button>
-            <button type="button" class="dash-snap-item" data-go="exception"><span>异常总量</span><strong class="num">${db.exceptions.length}</strong></button>
-          </div>
-        </section>
-      </div>
-    </div>`;
+    return `${pageHeader('数据统计', '采购 / 销售 / 在库 · 可按一二级与日期筛选')}
+      ${filterBar(`
+        <select class="field-input" data-filter="stats:l1"><option value="">全部一级代理</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${a.id===l1Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <select class="field-input" data-filter="stats:l2"><option value="">全部二级代理</option>${l2Opts.map((a)=>`<option value="${a.id}" ${a.id===l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <input type="date" class="field-input" data-filter="stats:from" value="${escapeHtml(f.from)}" />
+        <input type="date" class="field-input" data-filter="stats:to" value="${escapeHtml(f.to)}" />
+      `)}
+      <p class="muted" style="margin:0 0 10px">${escapeHtml(scopeHint)} · 当月按所选日期区间；历史为累计；在库为当前快照</p>
+      <div class="dash">
+        <div class="dash-kpis dash-kpis-5">
+          ${kpi('当月采购数', st.purchaseRange, 'purchase', poFilter)}
+          ${kpi('历史总采购数', st.purchaseAll, 'purchase', poFilter)}
+          ${kpi('当月销售数', st.salesRange, 'sales', soFilter)}
+          ${kpi('历史总销售数', st.salesAll, 'sales', soFilter)}
+          ${kpi('当前在库数量', st.stock, 'stock', stockFilter)}
+        </div>
+        <div class="dash-grid">
+          <section class="dash-panel dash-panel--wide">
+            <header class="dash-panel-hd"><h3>采购 / 销售趋势</h3><span>按日</span></header>
+            ${svgMultiLine(st.dayLabels, [
+              { name: '采购', color: '#38bdf8', values: st.trendPurchase },
+              { name: '销售', color: '#2dd4a8', values: st.trendSales },
+            ])}
+          </section>
+          <section class="dash-panel">
+            <header class="dash-panel-hd"><h3>${l2Id ? '本级销售构成' : '销售渠道'}</h3><span>区间</span></header>
+            ${svgDonut(st.channelPie)}
+          </section>
+          <section class="dash-panel">
+            <header class="dash-panel-hd"><h3>${l2Id ? 'SN 状态' : (l1Id ? '下属二级销量' : '一级代理销量榜')}</h3><span>区间</span></header>
+            ${l2Id ? svgDonut(st.snStatus) : svgHBars(l1Id ? l2Rank : l1Rank, '#2dd4a8')}
+          </section>
+          ${l2Id ? '' : `<section class="dash-panel">
+            <header class="dash-panel-hd"><h3>SN 状态分布</h3><span>当前范围</span></header>
+            ${svgDonut(st.snStatus)}
+          </section>`}
+        </div>
+      </div>`;
   }
 
   function eachDateStr(from, to) {
@@ -3648,28 +3648,106 @@
   }
 
   /* ---------- Mini pages ---------- */
-  function pageMiniScan() {
-    if (ui.role === 'sub') {
-      return pageMiniShipScan(true);
-    }
+  function greetingText() {
+    const h = DEMO_NOW.getHours();
+    if (h < 5) return '夜深了';
+    if (h < 12) return '早上好';
+    if (h < 18) return '下午好';
+    return '晚上好';
+  }
+
+  function miniHomeDash() {
+    const isL2 = ui.role === 'l2';
+    const from = monthStart();
+    const to = todayDate();
+    const st = isL2
+      ? bizStats({ l2Id: currentL2Id(), from, to })
+      : bizStats({ l1Id: currentL1Id(), from, to });
+    const l2Bars = (!isL2)
+      ? db.agentsL2.filter((a) => !a.pending && a.parentId === currentL1Id()).map((a) => ({
+        label: a.name.replace(/专营|渠道|店/g, '').slice(0, 8) || a.name,
+        value: bizStats({ l2Id: a.id, from, to }).salesRange,
+      })).sort((a, b) => b.value - a.value)
+      : [];
+    const scope = isL2 ? '仅本级数据' : '含本级及下属二级';
+    return `<div class="glass-stack">
+      <div class="glass-pair">
+        <section class="glass-card">
+          <p class="glass-kicker">采购统计</p>
+          <div class="glass-duo">
+            <div><span>当月</span><strong class="num">${st.purchaseRange}</strong></div>
+            <div><span>历史</span><strong class="num">${st.purchaseAll}</strong></div>
+          </div>
+        </section>
+        <section class="glass-card">
+          <p class="glass-kicker">销售统计</p>
+          <div class="glass-duo">
+            <div><span>当月</span><strong class="num">${st.salesRange}</strong></div>
+            <div><span>历史</span><strong class="num">${st.salesAll}</strong></div>
+          </div>
+        </section>
+      </div>
+      <section class="glass-card glass-card--hero">
+        <div>
+          <p class="glass-kicker">当前在库</p>
+          <p class="glass-hero-sub">${escapeHtml(scope)}</p>
+        </div>
+        <strong class="glass-hero-num num">${st.stock}</strong>
+      </section>
+      <section class="glass-card">
+        <div class="glass-card-hd"><h3>本月趋势</h3><span>采购 / 销售</span></div>
+        ${svgMultiLine(st.dayLabels, [
+          { name: '采购', color: '#5ac8fa', values: st.trendPurchase },
+          { name: '销售', color: '#34c759', values: st.trendSales },
+        ])}
+      </section>
+      ${isL2 ? `<section class="glass-card">
+        <div class="glass-card-hd"><h3>库存构成</h3><span>本级 SN</span></div>
+        ${svgDonut(st.snStatus)}
+      </section>` : `<section class="glass-card">
+        <div class="glass-card-hd"><h3>下属二级销量</h3><span>当月</span></div>
+        ${svgHBars(l2Bars, '#34c759')}
+      </section>`}
+    </div>`;
+  }
+
+  function pageMiniScanOps() {
     if (ui.role === 'l2') {
       ui.scanMode = 'direct';
-      return `<div class="mini-page-title">扫码</div>
-        <div class="alert alert-info">出库不适用（二级不发货给下级）</div>
-        <p class="mini-page-desc">提示：库存查看请用「库存」页；查询单个 SN 也可在库存页搜索。本页仅做直销激活。</p>
+      return `<div class="alert alert-info">出库不适用（二级不发货给下级）</div>
+        <p class="mini-page-desc">库存请用「库存」页。本页仅做直销激活。</p>
         <div class="scan-mode-grid">
           <button type="button" class="scan-mode-card on" data-action="set-scan-mode" data-scan-mode="direct"><strong>直销激活</strong><span>先扫码再填客户</span></button>
         </div>
         <div style="margin-top:14px">${pageMiniDirectScan()}</div>`;
     }
     const mode = ui.scanMode || 'ship';
-    return `<div class="mini-page-title">扫码</div>
-      <p class="mini-page-desc">出货扫码 / 直销激活（已去掉查询扫码）</p>
+    return `<p class="mini-page-desc">出货扫码 / 直销激活</p>
       <div class="scan-mode-grid">
         <button type="button" class="scan-mode-card ${mode==='ship'?'on':''}" data-action="set-scan-mode" data-scan-mode="ship"><strong>出货扫码</strong><span>分销给二级</span></button>
         <button type="button" class="scan-mode-card ${mode==='direct'?'on':''}" data-action="set-scan-mode" data-scan-mode="direct"><strong>直销激活</strong><span>先扫码再填客户</span></button>
       </div>
       <div style="margin-top:14px">${mode==='direct'?pageMiniDirectScan():pageMiniShipScan(false)}</div>`;
+  }
+
+  function pageMiniScan() {
+    if (ui.role === 'sub') {
+      return pageMiniShipScan(true);
+    }
+    const panel = ui.tabs.miniHome || 'dash';
+    const who = ROLES[ui.role]?.name || '';
+    return `<div class="glass-home">
+      <header class="glass-home-hd">
+        <p class="glass-hello">${greetingText()}</p>
+        <h1>${escapeHtml(who)}</h1>
+        <p class="glass-home-sub">${ui.role === 'l2' ? '本级经营概览' : '本级及下属二级概览'}</p>
+      </header>
+      ${miniSegHtml('miniHome', [
+        { id: 'dash', title: '数据' },
+        { id: 'scan', title: '扫码' },
+      ])}
+      <div class="mini-seg-panel">${panel === 'scan' ? pageMiniScanOps() : miniHomeDash()}</div>
+    </div>`;
   }
 
   function pageMiniShipScan(subOnly) {
@@ -4170,7 +4248,7 @@
     if (f.addr) rows = rows.filter((r) => (r.addr || '').includes(f.addr));
     if (f.mark === '1') rows = rows.filter((r) => r.mark);
     return `${pageHeader('销售客户', '点击行看详情（编辑 / 删除在详情内）',
-      '<button class="btn btn-primary" data-action="open-create-customer">新建客户</button>')}
+      `${ui.backRoute === 'sales' ? '<button class="btn" data-go="sales">返回销售单</button>' : ''}<button class="btn btn-primary" data-action="open-create-customer">新建客户</button>`)}
       ${filterBar(`
         <input class="field-input" placeholder="SN" data-filter="customers:sn" value="${escapeHtml(f.sn||'')}" />
         <input class="field-input" placeholder="手机/姓名" data-filter="customers:phone" value="${escapeHtml(f.phone||'')}" />
@@ -5700,7 +5778,7 @@
           </button>`).join('')}
         </nav>
       </div>
-      <p class="mini-stage-hint">代理端仅小程序 · 底栏 4–5 项（玻璃态）· 顶栏可切换演示身份</p>
+      <p class="mini-stage-hint">代理端仅小程序 · 首页数据看板（玻璃态）· 顶栏可切换演示身份</p>
     </div>
     ${modalContent()}
     ${confirmOverlayHtml()}
@@ -7604,6 +7682,12 @@
 
     document.querySelectorAll('[data-tab]').forEach((el) => el.addEventListener('click', () => {
       const [key, id] = el.getAttribute('data-tab').split(':');
+      if (key === 'sales' && id === 'direct') {
+        ui.backRoute = 'sales';
+        ui.backModal = null;
+        navigate('customers');
+        return;
+      }
       ui.tabs[key] = id;
       if (key === 'exception' && ui.filters.exception) ui.filters.exception.type = '';
       render();
