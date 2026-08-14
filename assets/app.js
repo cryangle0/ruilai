@@ -1993,7 +1993,7 @@
       if (e.status !== '未处理') return false;
       if (exceptionDim(e) !== dim) return false;
       if (f.status && e.status !== f.status) return false;
-      if (f.type === 'dup' && !/客户信息重复/.test(e.type)) return false;
+      if (!matchExceptionType(e, f.type)) return false;
       if (f.from || f.to) {
         if (!inDateRange(e.time, f.from, f.to)) return false;
       }
@@ -2253,6 +2253,41 @@
       return `<button type="button" class="tab ${cur === it.id ? 'active' : ''}" data-tab="${key}:${it.id}">${escapeHtml(it.title)}${badge}</button>`;
     }).join('')}</div></div>`;
   }
+  const ENABLE_STATUS_OPTS = [{ id: '启用', label: '启用' }, { id: '停用', label: '停用' }];
+  const L2_KIND_OPTS = [{ id: '法人', label: '法人' }, { id: '个人', label: '个人' }];
+  const EX_STATUS_OPTS = [{ id: '未处理', label: '未处理' }, { id: '已处理', label: '已处理' }, { id: '仅记录', label: '仅记录' }];
+  const PRODUCT_STATUS_OPTS = [{ id: '上架', label: '上架' }, { id: '下架', label: '下架' }];
+  const SO_STATUS_OPTS = [{ id: 'scanning', label: '扫码中' }, { id: 'done', label: '已完成' }];
+  const RT_STATUS_OPTS = Object.entries(RT_STATUS).map(([id, label]) => ({ id, label }));
+  const SN_STATUS_OPTS = Object.entries(SN_STATUS_LABEL).map(([id, label]) => ({ id, label }));
+  function thFilterHtml(label, scope, field, options) {
+    const f = ui.filters[scope] || {};
+    const cur = f[field] || '';
+    const opts = [`<option value="">全部${escapeHtml(label)}</option>`].concat((options || []).map((o) => {
+      const id = o && o.id != null ? String(o.id) : String(o);
+      const lab = o && o.label != null ? o.label : String(o);
+      return `<option value="${escapeHtml(id)}" ${cur === id ? 'selected' : ''}>${escapeHtml(lab)}</option>`;
+    }));
+    return `<th class="th-filter ${cur ? 'is-filtered' : ''}">
+      <span class="th-filter-text">${escapeHtml(label)}<i class="th-caret">▾</i></span>
+      <select class="th-filter-select" data-filter="${scope}:${field}" title="筛选${escapeHtml(label)}">${opts.join('')}</select>
+    </th>`;
+  }
+  function matchExceptionType(e, type) {
+    if (!type) return true;
+    if (type === 'dup') return /客户信息重复/.test(e.type || '');
+    if (type === 'missing') return /扫码不在库/.test(e.type || '');
+    return e.type === type;
+  }
+  function exceptionTypeOptions(dim) {
+    const seen = [];
+    db.exceptions.forEach((e) => {
+      if (exceptionDim(e) !== dim) return;
+      const t = e.type || '';
+      if (t && !seen.includes(t)) seen.push(t);
+    });
+    return seen.map((t) => ({ id: t, label: t }));
+  }
   function confirmDialog(message, action, payload = {}, opts = {}) {
     ui.confirm = {
       title: opts.title || '请确认',
@@ -2450,10 +2485,9 @@
       ${filterBar(`
         <input class="field-input" placeholder="搜索名称/编码" data-filter="agent-l1:name" value="${escapeHtml(f.name || '')}" />
         <input class="field-input" placeholder="搜索区域" data-filter="agent-l1:region" value="${escapeHtml(f.region || '')}" />
-        <select class="field-input" data-filter="agent-l1:status"><option value="">状态</option><option value="启用" ${f.status==='启用'?'selected':''}>启用</option><option value="停用" ${f.status==='停用'?'selected':''}>停用</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>编码</th><th>名称</th><th>联系人</th><th>主授权区域</th><th>可销售范围</th><th>直销范围</th><th>状态</th><th>本月采购量</th><th>本月销售量</th><th>当前库存总数</th><th>自定义倍数</th></tr></thead>
+        <thead><tr><th>编码</th><th>名称</th><th>联系人</th><th>主授权区域</th><th>可销售范围</th><th>直销范围</th>${thFilterHtml('状态', 'agent-l1', 'status', ENABLE_STATUS_OPTS)}<th>本月采购量</th><th>本月销售量</th><th>当前库存总数</th><th>自定义倍数</th></tr></thead>
         <tbody>${tr || `<tr><td colspan="11">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
@@ -2576,6 +2610,7 @@
     if (tab !== 'user' && l2Id) {
       list = list.filter((r) => r.fromId === l2Id || (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === l2Id)));
     }
+    if (f.status) list = list.filter((r) => r.status === f.status);
     const l2Select = tab === 'user' ? '' : `<select class="field-input" data-filter="l1-return:l2"><option value="">全部二级代理</option>${l2Opts.map((a)=>`<option value="${a.id}" ${a.id===l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     return `${pageHeader('一级退货详情', `${l1Name(l1Id)} · 默认当月`, backToL1DetailAction('agent-l1'))}
       ${filterBar(`
@@ -2593,7 +2628,7 @@
       ])}
       <div class="metric-grid">${metricCard('当月退货', monthQty)}${metricCard('历史总量', histQty)}</div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>类型</th><th>理由</th><th>商品明细</th><th>状态</th><th>时间</th></tr></thead>
+        <thead><tr><th>单号</th><th>类型</th><th>理由</th><th>商品明细</th>${thFilterHtml('状态', 'l1-return', 'status', RT_STATUS_OPTS)}<th>时间</th></tr></thead>
         <tbody>${list.map((r)=>`<tr class="row-clickable" data-row-action="view-return" data-id="${r.id}">
           <td>${escapeHtml(r.no)}</td><td>${escapeHtml(r.typeLabel||r.type)}</td>
           <td>${tag(r.reasonType||'其他')} ${escapeHtml(r.reason||'')}</td>
@@ -2637,7 +2672,9 @@
     const all = db.returns.filter((r) => r.fromId === l2Id || (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === l2Id)));
     const monthQty = all.filter((r) => inDateRange(r.createdAt, from, to)).reduce((n, r) => n + (r.sns || []).length, 0);
     const histQty = all.reduce((n, r) => n + (r.sns || []).length, 0);
-    const list = all.filter((r) => inDateRange(r.createdAt, from, to));
+    let list = all.filter((r) => inDateRange(r.createdAt, from, to));
+    if (f.type) list = list.filter((r) => r.type === f.type);
+    if (f.status) list = list.filter((r) => r.status === f.status);
     return `${pageHeader('二级退货详情', `${l2Name(l2Id)} · 默认当月`, '<button class="btn" data-go="agent-l2">返回列表</button>')}
       ${filterBar(`
         <select class="field-input" data-filter="l2-return:l2Id">${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${a.id===l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -2646,7 +2683,7 @@
       `)}
       <div class="metric-grid">${metricCard('当月退货', monthQty)}${metricCard('历史总量', histQty)}</div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>类型</th><th>理由</th><th>SN</th><th>状态</th><th>时间</th></tr></thead>
+        <thead><tr><th>单号</th>${thFilterHtml('类型', 'l2-return', 'type', RETURN_TYPES)}<th>理由</th><th>SN</th>${thFilterHtml('状态', 'l2-return', 'status', RT_STATUS_OPTS)}<th>时间</th></tr></thead>
         <tbody>${list.map((r)=>`<tr class="row-clickable" data-row-action="view-return" data-id="${r.id}">
           <td>${escapeHtml(r.no)}</td><td>${escapeHtml(r.typeLabel||r.type)}</td>
           <td>${tag(r.reasonType||'其他')} ${escapeHtml(r.reason||'')}</td>
@@ -2668,6 +2705,7 @@
       rows = rows.filter((a) => [a.name, a.code, ...(a.areas || [])].join(' ').toLowerCase().includes(q));
     }
     if (f.type) rows = rows.filter((a) => a.type === f.type);
+    if (f.status) rows = rows.filter((a) => a.status === f.status);
     if (f.parent) rows = rows.filter((a) => a.parentId === f.parent);
     if (f.region) rows = rows.filter((a) => (a.areas || []).some((c) => c.includes(f.region)) || citiesForL1(a.parentId).includes(f.region));
     rows.sort((a, b) => {
@@ -2682,7 +2720,6 @@
     return `${pageHeader('二级代理商', '点击行进入详情（含解绑/改绑/围栏）；勾选后可设异常不报警')}
       ${filterBar(`
         <input class="field-input" placeholder="搜索" data-filter="agent-l2:q" value="${escapeHtml(f.q||'')}" />
-        <select class="field-input" data-filter="agent-l2:type"><option value="">类型</option><option value="法人" ${f.type==='法人'?'selected':''}>法人</option><option value="个人" ${f.type==='个人'?'selected':''}>个人</option></select>
         <select class="field-input" data-filter="agent-l2:parent"><option value="">所属一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.parent===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <input class="field-input" placeholder="所属地域/城市" data-filter="agent-l2:region" value="${escapeHtml(f.region||'')}" />
         <button type="button" class="btn btn-sm btn-primary" data-action="l2-ex-no-alarm" ${selN ? '' : 'disabled'} title="所选二级出现异常时只记录且默认已处理">异常不报警${selN ? ` (${selN})` : ''}</button>
@@ -2690,9 +2727,9 @@
       <div class="page-card table-wrap"><table class="data">
         <thead><tr>
           <th class="col-check"><input type="checkbox" data-action="toggle-l2-sel-all" ${allOn ? 'checked' : ''} title="全选当前列表" /></th>
-          <th>编码</th><th>名称</th><th>类型</th>
+          <th>编码</th><th>名称</th>${thFilterHtml('类型', 'agent-l2', 'type', L2_KIND_OPTS)}
           <th class="sortable" data-action="sort-col" data-sort-key="parent" data-sort-scope="agent-l2">所属一级${sortMark('parent')}</th>
-          <th>授权城市</th><th>状态</th><th>本月采购量</th><th>本月销售量</th><th>当前库存总数</th><th>自定义倍数</th>
+          <th>授权城市</th>${thFilterHtml('状态', 'agent-l2', 'status', ENABLE_STATUS_OPTS)}<th>本月采购量</th><th>本月销售量</th><th>当前库存总数</th><th>自定义倍数</th>
         </tr></thead>
         <tbody>${rows.map((a)=>{
           const exN = l2ExCount(a.id);
@@ -2741,6 +2778,7 @@
       rows = rows.filter((a) => l1Name(a.parentId).toLowerCase().includes(q)
         || l1Name(a.prevParentId).toLowerCase().includes(q));
     }
+    if (f.type) rows = rows.filter((a) => a.type === f.type);
     const statusCell = (a) => {
       if (a.auditStatus === 'pending') return tag('待审核', 'orange');
       if (a.auditStatus === 'rejected') return tag('已驳回', 'red');
@@ -2758,7 +2796,7 @@
         <input class="field-input" placeholder="搜索一级代理名称" data-filter="agent-l2-audit:l1" value="${escapeHtml(f.l1 || '')}" />
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>编码</th><th>名称</th><th>类型</th><th>申请一级</th><th>城市</th><th>状态</th></tr></thead>
+        <thead><tr><th>编码</th><th>名称</th>${thFilterHtml('类型', 'agent-l2-audit', 'type', L2_KIND_OPTS)}<th>申请一级</th><th>城市</th><th>状态</th></tr></thead>
         <tbody>${rows.map((a)=>`<tr class="row-clickable" data-row-action="view-l2-audit" data-id="${a.id}">
           <td>${escapeHtml(a.code)}</td><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.type)}</td>
           <td>${escapeHtml(l1Name(a.parentId))}</td><td>${escapeHtml((a.areas||[]).join('、'))}</td>
@@ -2805,10 +2843,9 @@
       ])}
       ${filterBar(`
         <input class="field-input" placeholder="搜索编码/名称/组件" data-filter="product:q" value="${escapeHtml(f.q || '')}" />
-        <select class="field-input" data-filter="product:status"><option value="">状态</option><option value="上架" ${f.status==='上架'?'selected':''}>上架</option><option value="下架" ${f.status==='下架'?'selected':''}>下架</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>编码</th><th>名称</th><th>类型</th><th>组件/规格</th><th>标品组合</th><th>状态</th><th>操作</th></tr></thead>
+        <thead><tr><th>编码</th><th>名称</th><th>类型</th><th>组件/规格</th><th>标品组合</th>${thFilterHtml('状态', 'product', 'status', PRODUCT_STATUS_OPTS)}<th>操作</th></tr></thead>
         <tbody>${rows.map((p)=>{
           const isKit = p.type === 'kit';
           const isSingle = p.type === 'single';
@@ -2863,7 +2900,6 @@
         <select class="field-input" data-filter="sn:l2"><option value="">二级</option>${db.agentsL2.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <select class="field-input" data-filter="sn:size"><option value="">弹力带尺码</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
         <select class="field-input" data-filter="sn:belt"><option value="">腰带尺码</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
-        <select class="field-input" data-filter="sn:status"><option value="">状态</option>${Object.entries(SN_STATUS_LABEL).map(([k,v])=>`<option value="${k}" ${f.status===k?'selected':''}>${v}</option>`).join('')}</select>
         <select class="field-input" data-filter="sn:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <select class="field-input" data-filter="sn:tag"><option value="">标签筛选</option>${allSnTags().map((t)=>`<option value="${escapeHtml(t)}" ${f.tag===t?'selected':''}>${escapeHtml(t)}</option>`).join('')}</select>
         <label class="muted">出厂</label><input type="date" class="field-input" data-filter="sn:factoryFrom" value="${escapeHtml(f.factoryFrom||'')}" /><input type="date" class="field-input" data-filter="sn:factoryTo" value="${escapeHtml(f.factoryTo||'')}" />
@@ -2871,7 +2907,7 @@
         <label class="muted">退货</label><input type="date" class="field-input" data-filter="sn:returnFrom" value="${escapeHtml(f.returnFrom||'')}" /><input type="date" class="field-input" data-filter="sn:returnTo" value="${escapeHtml(f.returnTo||'')}" />
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>SN</th><th>商品</th><th>尺寸</th><th>腰带</th><th>渠道</th><th>一级</th><th>二级</th><th>状态</th><th>标签</th></tr></thead>
+        <thead><tr><th>SN</th><th>商品</th><th>尺寸</th><th>腰带</th><th>渠道</th><th>一级</th><th>二级</th>${thFilterHtml('状态', 'sn', 'status', SN_STATUS_OPTS)}<th>标签</th></tr></thead>
         <tbody>${rows.map((s)=>{
           const st = snStatusMeta(s);
           const ch = snChannelMeta(s);
@@ -2940,10 +2976,9 @@
         <select class="field-input" data-filter="sales:channel"><option value="">渠道</option><option value="distribute" ${f.channel==='distribute'?'selected':''}>分销</option><option value="direct" ${f.channel==='direct'?'selected':''}>直售</option></select>
         <select class="field-input" data-filter="sales:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <select class="field-input" data-filter="sales:l2"><option value="">二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
-        <select class="field-input" data-filter="sales:status"><option value="">状态</option><option value="scanning" ${f.status==='scanning'?'selected':''}>扫码中</option><option value="done" ${f.status==='done'?'selected':''}>已完成</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>渠道</th><th>一级</th><th>二级</th><th>商品明细</th><th>计划/已扫</th><th>状态</th><th>时间</th></tr></thead>
+        <thead><tr><th>单号</th><th>渠道</th><th>一级</th><th>二级</th><th>商品明细</th><th>计划/已扫</th>${thFilterHtml('状态', 'sales', 'status', SO_STATUS_OPTS)}<th>时间</th></tr></thead>
         <tbody>${rows.map((s)=>`<tr class="row-clickable" data-row-action="view-sale" data-id="${s.id}">
           <td>${escapeHtml(s.no)}</td>
           <td>${tag(s.channel==='direct'?'直售':'分销', s.channel==='direct'?'orange':'blue')}</td>
@@ -3072,11 +3107,10 @@
       ${filterBar(`
         <select class="field-input" data-filter="return:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <select class="field-input" data-filter="return:l2"><option value="">全部二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
-        <select class="field-input" data-filter="return:type"><option value="">类型</option>${RETURN_TYPES.map((t)=>`<option value="${t.id}" ${f.type===t.id?'selected':''}>${t.label}</option>`).join('')}</select>
         <select class="field-input" data-filter="return:reasonType"><option value="">退货理由</option>${RETURN_REASONS.map((r)=>`<option value="${r.type}" ${f.reasonType===r.type?'selected':''}>${r.label}</option>`).join('')}</select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>类型</th><th>来源</th><th>理由</th><th>SN码</th><th>商品明细</th><th>状态</th><th>时间</th></tr></thead>
+        <thead><tr><th>单号</th>${thFilterHtml('类型', 'return', 'type', RETURN_TYPES)}<th>来源</th><th>理由</th><th>SN码</th><th>商品明细</th><th>状态</th><th>时间</th></tr></thead>
         <tbody>${rows.map((r)=>`<tr class="row-clickable" data-row-action="view-return" data-id="${r.id}">
           <td>${escapeHtml(r.no)}</td><td>${escapeHtml(r.typeLabel||r.type)}</td>
           <td>${escapeHtml(r.fromName||'')}</td>
@@ -3091,12 +3125,10 @@
   function pageException() {
     const dim = ui.tabs.exception || 'scan';
     const f = ui.filters.exception || {};
-    const rules = db.exceptionRules || { overOrderRatio: 1.0, stockTurnover: db.exceptionMultiplier || 1.5 };
     let rows = db.exceptions.filter((e) => exceptionDim(e) === dim);
     if (f.status) rows = rows.filter((e) => e.status === f.status);
     if (f.from || f.to) rows = rows.filter((e) => inDateRange(e.time, f.from, f.to));
-    if (f.type === 'dup') rows = rows.filter((e) => /客户信息重复/.test(e.type));
-    if (f.type === 'missing') rows = rows.filter((e) => /扫码不在库/.test(e.type));
+    if (f.type) rows = rows.filter((e) => matchExceptionType(e, f.type));
     if (f.l1) {
       const name = l1Name(f.l1);
       rows = rows.filter((e) => {
@@ -3119,38 +3151,30 @@
     };
     const histTotal = db.exceptions.filter((e) => exceptionDim(e) === dim).length;
     const openN = getOpenExceptionIdsInFilter().length;
-    return `${pageHeader('异常管理', '扫码 / 激活 / 销售库存（仅二级）· 未处理加粗', backToL1DetailAction())}
-      <div class="page-card" style="margin-bottom:12px;padding:14px;border:1px solid var(--primary);background:rgba(15,118,110,.04)">
-        <div style="font-weight:600;margin-bottom:8px">异常标准配置（平台可改 · 仅针对二级）</div>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-          <label style="font-size:12px">全局倍数 <input class="field-input" style="width:70px" type="number" step="0.1" value="${db.exceptionMultiplier}" id="f-ex-mult" /></label>
-          <label style="font-size:12px">超量比 <input class="field-input" style="width:70px" type="number" step="0.1" value="${rules.overOrderRatio}" id="f-ex-over" /></label>
-          <label style="font-size:12px">周转比 <input class="field-input" style="width:70px" type="number" step="0.1" value="${rules.stockTurnover}" id="f-ex-turn" /></label>
-          <button class="btn btn-sm btn-primary" data-action="save-ex-rules">保存标准</button>
-          <span class="muted">一级分销给二级不触发库存异常；二级详情可单独设严格/软报警</span>
-        </div>
-      </div>
+    const typeOpts = exceptionTypeOptions(dim);
+    const warnCard = dim === 'stock'
+      ? `<div class="metric-card"><div class="metric-label">预警倍数</div><div class="metric-value num">${db.exceptionMultiplier}×</div></div>`
+      : '';
+    return `${pageHeader('异常管理', '扫码 / 激活 / 销售库存（仅二级）· 未处理加粗', `${backToL1DetailAction()}<button class="btn" data-action="open-ex-rules">异常标准配置</button>`)}
       ${tabsHtml('exception', [
         { id: 'scan', title: '扫码异常', badge: counts.scan || null },
         { id: 'activate', title: '激活异常', badge: counts.activate || null },
         { id: 'stock', title: '销售库存异常', badge: counts.stock || null },
       ])}
-      <div class="metric-grid" style="margin-bottom:10px">
-        <div class="metric-card"><div class="metric-label">当前筛选</div><div class="metric-value num">${rows.length}</div></div>
-        <div class="metric-card"><div class="metric-label">本维历史总量</div><div class="metric-value num">${histTotal}</div></div>
-        <div class="metric-card"><div class="metric-label">未处理(当前筛)</div><div class="metric-value num">${openN}</div></div>
-        <div class="metric-card"><div class="metric-label">预警倍数</div><div class="metric-value num">${db.exceptionMultiplier}×</div></div>
-      </div>
       ${filterBar(`
-        <select class="field-input" data-filter="exception:status"><option value="">状态</option><option value="未处理" ${f.status==='未处理'?'selected':''}>未处理</option><option value="已处理" ${f.status==='已处理'?'selected':''}>已处理</option><option value="仅记录" ${f.status==='仅记录'?'selected':''}>仅记录</option></select>
-        <select class="field-input" data-filter="exception:type"><option value="">类型快捷</option><option value="dup" ${f.type==='dup'?'selected':''}>客户信息重复</option><option value="missing" ${f.type==='missing'?'selected':''}>扫码不在库</option></select>
         <select class="field-input" data-filter="exception:l1"><option value="">关联一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <select class="field-input" data-filter="exception:l2"><option value="">关联二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <input type="date" class="field-input" data-filter="exception:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="exception:to" value="${escapeHtml(f.to||'')}" />
       `)}
+      <div class="metric-grid" style="margin-bottom:10px">
+        <div class="metric-card"><div class="metric-label">当前筛选</div><div class="metric-value num">${rows.length}</div></div>
+        <div class="metric-card"><div class="metric-label">本维历史总量</div><div class="metric-value num">${histTotal}</div></div>
+        <div class="metric-card"><div class="metric-label">未处理(当前筛)</div><div class="metric-value num">${openN}</div></div>
+        ${warnCard}
+      </div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>时间</th><th>类型</th><th>对象</th><th>详情</th><th>一级解释</th><th>状态</th><th>操作</th></tr></thead>
+        <thead><tr><th>时间</th>${thFilterHtml('类型', 'exception', 'type', typeOpts)}<th>对象</th><th>详情</th><th>一级解释</th>${thFilterHtml('状态', 'exception', 'status', EX_STATUS_OPTS)}<th>操作</th></tr></thead>
         <tbody>${rows.map((e)=>{
           const bold = e.status === '未处理' ? 'ex-bold' : '';
           return `<tr class="${bold} row-clickable" data-row-action="view-exception" data-id="${e.id}">
@@ -3454,11 +3478,14 @@
 
   function pageRole() {
     const tab = ui.tabs.role || 'roles';
+    const fAcc = ui.filters['role-acc'] || {};
+    const fSub = ui.filters['role-sub'] || {};
     let table = '';
     if (tab === 'accounts') {
+      const accRows = fAcc.status ? db.accounts.filter((a) => a.status === fAcc.status) : db.accounts;
       table = `<div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>关联代理</th><th>状态</th><th>操作</th></tr></thead>
-        <tbody>${db.accounts.map((a)=>{
+        <thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>关联代理</th>${thFilterHtml('状态', 'role-acc', 'status', ENABLE_STATUS_OPTS)}<th>操作</th></tr></thead>
+        <tbody>${accRows.map((a)=>{
           const role = db.roles.find((r)=>r.id===a.roleId);
           return `<tr>
             <td>${escapeHtml(a.username)}</td><td>${escapeHtml(a.name)}</td>
@@ -3470,9 +3497,10 @@
         }).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
     } else if (tab === 'subs') {
+      const subRows = fSub.status ? db.subAccounts.filter((s) => s.status === fSub.status) : db.subAccounts;
       table = `<div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>用户名</th><th>姓名</th><th>所属一级</th><th>状态</th><th>操作</th></tr></thead>
-        <tbody>${db.subAccounts.map((s)=>`<tr>
+        <thead><tr><th>用户名</th><th>姓名</th><th>所属一级</th>${thFilterHtml('状态', 'role-sub', 'status', ENABLE_STATUS_OPTS)}<th>操作</th></tr></thead>
+        <tbody>${subRows.map((s)=>`<tr>
           <td>${escapeHtml(s.username)}</td><td>${escapeHtml(s.name)}</td>
           <td>${escapeHtml(l1Name(s.l1Id))}</td>
           <td>${tag(s.status, s.status==='启用'?'green':'gray')}</td>
@@ -3514,13 +3542,9 @@
     return `${pageHeader('操作日志', '12.1 关键操作留痕：审核 / 改码 / 调库 / 异常 / 导入生成等')}
       ${filterBar(`
         <input class="field-input" placeholder="搜索动作/账号" data-filter="log:q" value="${escapeHtml(f.q||'')}" />
-        <select class="field-input" data-filter="log:type">
-          <option value="">全部类型</option>
-          ${Object.keys(LOG_TYPE_LABELS).map((t)=>`<option value="${t}" ${f.type===t?'selected':''}>${LOG_TYPE_LABELS[t]}</option>`).join('')}
-        </select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>时间</th><th>账号</th><th>角色</th><th>类型</th><th>动作</th><th>IP</th><th>结果</th></tr></thead>
+        <thead><tr><th>时间</th><th>账号</th><th>角色</th>${thFilterHtml('类型', 'log', 'type', Object.entries(LOG_TYPE_LABELS).map(([id, label]) => ({ id, label })))}<th>动作</th><th>IP</th><th>结果</th></tr></thead>
         <tbody>${rows.map((l)=>`<tr>
           <td>${escapeHtml(l.time)}</td><td>${escapeHtml(l.account)}</td><td>${escapeHtml(l.role)}</td>
           <td>${tag(logTypeLabel(l.type||'op'))}</td>
@@ -4886,6 +4910,16 @@
       foot = `<button class="btn" data-action="leave-ex-stay">取消</button>
         <button class="btn" data-action="leave-ex-skip">暂不处理，离开</button>
         <button class="btn btn-primary" data-action="leave-ex-done">已处理并离开</button>`;
+    } else if (type === 'ex-rules') {
+      const rules = db.exceptionRules || { overOrderRatio: 1.0, stockTurnover: db.exceptionMultiplier || 1.5 };
+      title = '异常标准配置';
+      body = `<p class="muted" style="margin-bottom:12px">平台可改 · 仅针对二级。一级分销给二级不触发库存异常；二级详情可单独设严格/软报警。</p>
+        <div class="form-grid">
+          <div class="form-field"><label>全局倍数</label><input type="number" step="0.1" class="field-input" id="f-ex-mult" value="${db.exceptionMultiplier}" /></div>
+          <div class="form-field"><label>超量比</label><input type="number" step="0.1" class="field-input" id="f-ex-over" value="${rules.overOrderRatio}" /></div>
+          <div class="form-field"><label>周转比</label><input type="number" step="0.1" class="field-input" id="f-ex-turn" value="${rules.stockTurnover}" /></div>
+        </div>`;
+      foot = `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-ex-rules">保存标准</button>`;
     } else if (type === 'ex-explain') {
       const e = db.exceptions.find((x) => x.id === payload.id);
       title = '填写超量下单解释';
@@ -5764,6 +5798,7 @@
         const n = db.notifications.find((x)=>x.id===id); if (n) n.read = true; saveStore(); render(); break;
       }
       case 'apply-filter': render(); break;
+      case 'open-ex-rules': openModal('ex-rules'); break;
       case 'open-create-l1':
         openModal('create-l1', { draftSeed: { name: '', contact: '', username: '', password: '', mainAreas: [], saleAreas: [], directAreas: [], directCityQ: '', ent: {} } }); break;
       case 'edit-l1': {
@@ -6191,7 +6226,7 @@
         db.exceptionRules.overOrderRatio = Number($('#f-ex-over')?.value || 1);
         db.exceptionRules.stockTurnover = Number($('#f-ex-turn')?.value || db.exceptionMultiplier);
         addLog(`更新异常标准 倍数${db.exceptionMultiplier} 超量比${db.exceptionRules.overOrderRatio} 周转${db.exceptionRules.stockTurnover}`);
-        saveStore(); toast('异常标准已保存'); render(); break;
+        saveStore(); toast('异常标准已保存'); closeModal(); break;
       }
       case 'switch-line': {
         db.activeProductLineId = id;
@@ -7393,6 +7428,7 @@
     document.querySelectorAll('[data-tab]').forEach((el) => el.addEventListener('click', () => {
       const [key, id] = el.getAttribute('data-tab').split(':');
       ui.tabs[key] = id;
+      if (key === 'exception' && ui.filters.exception) ui.filters.exception.type = '';
       render();
     }));
 
