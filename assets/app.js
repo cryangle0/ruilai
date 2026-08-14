@@ -581,6 +581,10 @@
       `<button type="button" class="date-chip ${cur === p.id ? 'on' : ''}" data-action="set-date-preset" data-scope="${escapeHtml(scope)}" data-preset="${p.id}">${escapeHtml(p.title)}</button>`
     ).join('')}</div>`;
   }
+  function listDateFilter(scope, f) {
+    if ((f.preset || '') === 'all') return `${scope}:from=;${scope}:to=;${scope}:preset=all`;
+    return `${scope}:from=${f.from || ''};${scope}:to=${f.to || ''};${scope}:preset=${f.preset || 'custom'}`;
+  }
   function ensureMiniStatsFilter() {
     const f = ui.filters.miniStats || (ui.filters.miniStats = {});
     if (!f.from || !f.to) {
@@ -767,6 +771,22 @@
     // 一级退原厂：状态回到原厂在库，标签已冻结
     sns.push(mkSn('RL202606150001', { size: 'M', l1Id: null, status: 'warehouse', frozen: true, tags: ['已冻结'], factoryAt: null, returnAt: '2026-07-10 10:00' }));
     sns.push(mkSn('RL202606150002', { size: 'S', l1Id: null, status: 'warehouse', frozen: true, tags: ['已冻结'], returnAt: '2026-07-12 14:00' }));
+    const directDemoSns = [
+      { sn: 'RL202608050001', productId: 'P2', size: 'M', l1Id: 'L1B', soldAt: '2026-08-05 11:20',
+        user: { name: '刘洋', gender: '男', age: '34', phone: '13900002201', addr: '广州市天河区体育西路8号', phoneLoc: '广东' } },
+      { sn: 'RL202608030001', productId: 'P1', size: 'L', l1Id: 'L1A', soldAt: '2026-08-03 14:10',
+        user: { name: '王芳', gender: '女', age: '31', phone: '13700001108', addr: '杭州市西湖区文三路100号', phoneLoc: '浙江' } },
+      { sn: 'RL202608060001', productId: 'P1', size: 'S', l1Id: 'L1C', soldAt: '2026-08-06 16:40',
+        user: { name: '赵磊', gender: '男', age: '42', phone: '13600003321', addr: '北京市朝阳区建国路88号', phoneLoc: '北京' } },
+      { sn: 'RL202608060002', productId: 'P1', size: 'S', l1Id: 'L1C', soldAt: '2026-08-06 16:40',
+        user: { name: '赵磊', gender: '男', age: '42', phone: '13600003321', addr: '北京市朝阳区建国路88号', phoneLoc: '北京' } },
+    ];
+    directDemoSns.forEach((u) => {
+      sns.push(mkSn(u.sn, {
+        productId: u.productId, size: u.size, l1Id: u.l1Id, status: 'bound',
+        soldAt: u.soldAt, bindAt: u.soldAt, bindIpRegion: u.user.phoneLoc, user: u.user,
+      }));
+    });
 
     const soScannedA = ['RL202607200009', 'RL202607200010', 'RL202607200011', 'RL202607200012'];
     const soScannedB = ['RL202607210003', 'RL202607210004', 'RL202607210005', 'RL202607210006'];
@@ -850,13 +870,13 @@
           planTotal: 2, planBySize: { M: 2 }, scanned: ['RL202607200001', 'RL202607200002'], status: 'done', createdAt: '2026-07-25 12:00',
           customer: { name: '陈敏', gender: '女', age: '28', phone: '13800001001', addr: '杭州市西湖区文一路1号', phoneLoc: '浙江' } },
         { id: 'SO6', no: `SO${todayCompact()}101`, channel: 'direct', l1Id: 'L1B', l2Id: null, productId: 'P2',
-          planTotal: 1, planBySize: { M: 1 }, scanned: ['RL202608070001'], status: 'done', createdAt: '2026-08-05 11:20',
+          planTotal: 1, planBySize: { M: 1 }, scanned: ['RL202608050001'], status: 'done', createdAt: '2026-08-05 11:20',
           customer: { name: '刘洋', gender: '男', age: '34', phone: '13900002201', addr: '广州市天河区体育西路8号', phoneLoc: '广东' } },
         { id: 'SO7', no: `SO${todayCompact()}102`, channel: 'direct', l1Id: 'L1A', l2Id: null, productId: 'P1',
-          planTotal: 1, planBySize: { L: 1 }, scanned: ['RL202608010025'], status: 'done', createdAt: '2026-08-03 14:10',
+          planTotal: 1, planBySize: { L: 1 }, scanned: ['RL202608030001'], status: 'done', createdAt: '2026-08-03 14:10',
           customer: { name: '王芳', gender: '女', age: '31', phone: '13700001108', addr: '杭州市西湖区文三路100号', phoneLoc: '浙江' } },
         { id: 'SO8', no: `SO${todayCompact()}103`, channel: 'direct', l1Id: 'L1C', l2Id: null, productId: 'P1',
-          planTotal: 2, planBySize: { S: 2 }, scanned: ['RL202608010030', 'RL202608010031'], status: 'done', createdAt: '2026-08-06 16:40',
+          planTotal: 2, planBySize: { S: 2 }, scanned: ['RL202608060001', 'RL202608060002'], status: 'done', createdAt: '2026-08-06 16:40',
           customer: { name: '赵磊', gender: '男', age: '42', phone: '13600003321', addr: '北京市朝阳区建国路88号', phoneLoc: '北京' } },
       ],
       returns: [
@@ -1039,11 +1059,25 @@
             if (s.customer.phone) s.customer.phone = revealMaskedPhone(s.customer.phone);
           }
         });
-        const seedSales = seed().sales || [];
+        const seedDb = seed();
+        const seedSales = seedDb.sales || [];
         ['SO6', 'SO7', 'SO8'].forEach((sid) => {
-          if ((parsed.sales || []).some((s) => s.id === sid)) return;
           const row = seedSales.find((s) => s.id === sid);
-          if (row) parsed.sales.push(JSON.parse(JSON.stringify(row)));
+          if (!row) return;
+          const existing = (parsed.sales || []).find((s) => s.id === sid);
+          if (!existing) parsed.sales.push(JSON.parse(JSON.stringify(row)));
+          else {
+            existing.scanned = (row.scanned || []).slice();
+            existing.customer = JSON.parse(JSON.stringify(row.customer || {}));
+            existing.planBySize = { ...(row.planBySize || {}) };
+            existing.productId = row.productId;
+            existing.planTotal = row.planTotal;
+          }
+        });
+        ['RL202608050001', 'RL202608030001', 'RL202608060001', 'RL202608060002'].forEach((sn) => {
+          if ((parsed.sns || []).some((s) => s.sn === sn)) return;
+          const row = (seedDb.sns || []).find((s) => s.sn === sn);
+          if (row) parsed.sns.push(JSON.parse(JSON.stringify(row)));
         });
         if (parsed.seq && Number(parsed.seq.so) < 104) parsed.seq.so = 104;
         (parsed.customers || []).forEach((c) => {
@@ -1443,7 +1477,7 @@
   }
 
   function saleQty(s) {
-    return (s?.scanned || []).length || Number(s?.planTotal) || 0;
+    return (s?.scanned || []).length;
   }
 
   function saleDetailHtml(s) {
@@ -3079,7 +3113,7 @@
     if (tab !== 'all') rows = rows.filter((p) => p.status === tab);
     if (f.l1) rows = rows.filter((p) => p.l1Id === f.l1);
     if (f.from || f.to) rows = rows.filter((p) => inDateRange(p.createdAt, f.from, f.to));
-    const poScope = db.purchases.filter((p) => !f.l1 || p.l1Id === f.l1);
+    const poScope = db.purchases.filter((p) => (!f.l1 || p.l1Id === f.l1) && p.status !== 'rejected');
     const monthQty = poScope.filter((p) => inDateRange(p.createdAt, f.from, f.to)).reduce((n, p) => n + purchaseNeedQty(p), 0);
     const histQty = poScope.reduce((n, p) => n + purchaseNeedQty(p), 0);
     const poN = (st) => db.purchases.filter((p) => p.status === st).length;
@@ -3124,31 +3158,27 @@
     const tab = ui.tabs.sales || 'all';
     const l2Opts = db.agentsL2.filter((a) => !a.pending && (!f.l1 || a.parentId === f.l1));
     if (f.l2 && !l2Opts.some((a) => a.id === f.l2)) f.l2 = '';
-    let scoped = db.sales.slice();
-    if (f.l1) scoped = scoped.filter((s) => s.l1Id === f.l1);
+    let byAgent = db.sales.slice();
+    if (f.l1) byAgent = byAgent.filter((s) => s.l1Id === f.l1);
+    const inRangeAll = byAgent.filter((s) => inDateRange(s.createdAt, f.from, f.to));
+    const distN = inRangeAll.filter((s) => s.channel === 'distribute').length;
+    const dirN = inRangeAll.filter((s) => s.channel === 'direct').length;
+    let scoped = byAgent.slice();
     if (tab !== 'direct' && f.l2) scoped = scoped.filter((s) => s.l2Id === f.l2);
+    if (tab === 'distribute') scoped = scoped.filter((s) => s.channel === 'distribute');
+    if (tab === 'direct') scoped = scoped.filter((s) => s.channel === 'direct');
+    if (f.status) scoped = scoped.filter((s) => s.status === f.status);
     const histQty = scoped.reduce((n, s) => n + saleQty(s), 0);
-    const inRange = scoped.filter((s) => inDateRange(s.createdAt, f.from, f.to));
-    const monthQty = inRange.reduce((n, s) => n + saleQty(s), 0);
-    let rows = inRange.slice();
-    if (tab === 'distribute') rows = rows.filter((s) => s.channel === 'distribute');
-    if (tab === 'direct') rows = rows.filter((s) => s.channel === 'direct');
-    if (f.status) rows = rows.filter((s) => s.status === f.status);
-    const distN = inRange.filter((s) => s.channel === 'distribute').length;
-    const dirN = inRange.filter((s) => s.channel === 'direct').length;
+    const rows = scoped.filter((s) => inDateRange(s.createdAt, f.from, f.to));
+    const monthQty = rows.reduce((n, s) => n + saleQty(s), 0);
     const showCust = tab === 'direct';
     const l2Select = tab === 'direct' ? '' : `<select class="field-input" data-filter="sales:l2"><option value="">所有</option>${l2Opts.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     const headCols = showCust
-      ? '<th>单号</th><th>渠道</th><th>一级</th><th>姓名</th><th>手机号</th><th>地区</th><th>商品明细</th><th>数量</th>' + thFilterHtml('状态', 'sales', 'status', SO_STATUS_OPTS) + '<th>时间</th>'
-      : '<th>单号</th><th>渠道</th><th>一级</th><th>二级/客户</th><th>商品明细</th><th>数量</th>' + thFilterHtml('状态', 'sales', 'status', SO_STATUS_OPTS) + '<th>时间</th>';
+      ? '<th>单号</th><th>渠道</th><th>一级</th><th>姓名</th><th>手机号</th><th>地区</th><th>商品明细</th><th>已扫/计划</th>' + thFilterHtml('状态', 'sales', 'status', SO_STATUS_OPTS) + '<th>时间</th>'
+      : '<th>单号</th><th>渠道</th><th>一级</th><th>二级/客户</th><th>商品明细</th><th>已扫/计划</th>' + thFilterHtml('状态', 'sales', 'status', SO_STATUS_OPTS) + '<th>时间</th>';
     const colSpan = showCust ? 10 : 8;
     const desc = f.l1 ? `${l1Name(f.l1)} · 默认当月可改区间` : '分销 / 直售合一 · 默认当月可改区间';
     return `${pageHeader('销售单管理', desc, backToL1DetailAction())}
-      ${tabsHtml('sales', [
-        { id: 'distribute', title: '分销', badge: distN || null },
-        { id: 'direct', title: '直售', badge: dirN || null },
-        { id: 'all', title: '全部', badge: inRange.length || null },
-      ])}
       ${filterBar(`
         <select class="field-input" data-filter="sales:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         ${l2Select}
@@ -3156,11 +3186,16 @@
         <input type="date" class="field-input" data-filter="sales:to" value="${escapeHtml(f.to)}" />
       `)}
       <div class="metric-grid metric-grid-2">${metricCard('当月销量', monthQty)}${metricCard('历史销量', histQty)}</div>
+      ${tabsHtml('sales', [
+        { id: 'distribute', title: '分销', badge: distN || null },
+        { id: 'direct', title: '直售', badge: dirN || null },
+        { id: 'all', title: '全部', badge: inRangeAll.length || null },
+      ])}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr>${headCols}</tr></thead>
         <tbody>${rows.map((s)=>{
           const cust = saleCustomerInfo(s);
-          const party = s.channel === 'direct' ? (cust.name || 'C端直销') : escapeHtml(l2Name(s.l2Id));
+          const party = s.channel === 'direct' ? escapeHtml(cust.name || 'C端直销') : escapeHtml(l2Name(s.l2Id));
           const extra = showCust
             ? `<td>${escapeHtml(cust.name || '—')}</td><td>${escapeHtml(cust.phone || '—')}</td><td>${escapeHtml(cust.region || '—')}</td>`
             : `<td>${party}</td>`;
@@ -3170,7 +3205,7 @@
             <td>${escapeHtml(l1Name(s.l1Id))}</td>
             ${extra}
             <td>${escapeHtml(soProductDetail(s))}</td>
-            <td class="num">${saleQty(s)}</td>
+            <td class="num">${(s.scanned||[]).length}/${s.planTotal||0}</td>
             <td>${tag(s.status==='done'?'已完成':'扫码中', s.status==='done'?'green':'orange')}</td>
             <td>${escapeHtml(s.createdAt)}</td>
           </tr>`;
@@ -3847,18 +3882,14 @@
     const soTitle = isL2 || childView ? 'C端销售' : '销售统计';
     const mixTitle = isL2 || childView ? '到货 / 卖出' : '分销 / 直售';
     const poJump = (isL2 || childView)
-      ? `data-go="${isL2 ? 'mini-sales' : 'mini-biz'}" data-set-tab="${isL2 ? 'miniSalesTab:sales' : 'miniBiz:sales'}" data-set-filter="miniSo:from=${f.from};miniSo:to=${f.to}${childId ? `;miniSo:l2=${childId}` : ''};miniSo:preset=${f.preset || 'custom'}"`
-      : `data-go="mini-biz" data-set-tab="miniBiz:purchase" data-set-filter="miniPo:from=${f.from};miniPo:to=${f.to};miniPo:preset=${f.preset || 'custom'}"`;
+      ? `data-go="${isL2 ? 'mini-sales' : 'mini-biz'}" data-set-tab="${isL2 ? 'miniSalesTab:sales' : 'miniBiz:sales'}" data-set-filter="${listDateFilter('miniSo', f)}${childId ? `;miniSo:l2=${childId}` : ''}"`
+      : `data-go="mini-biz" data-set-tab="miniBiz:purchase" data-set-filter="${listDateFilter('miniPo', f)}"`;
     const soJump = (isL2 || childView)
-      ? `data-go="${isL2 ? 'mini-sales' : 'mini-biz'}" data-set-tab="${isL2 ? 'miniSalesTab:cend' : 'miniBiz:cend'}" data-set-filter="miniCend:from=${f.from};miniCend:to=${f.to};miniCend:preset=${f.preset || 'custom'}"`
-      : `data-go="mini-biz" data-set-tab="miniBiz:sales" data-set-filter="miniSo:from=${f.from};miniSo:to=${f.to};miniSo:preset=${f.preset || 'custom'}"`;
-    const distJump = (isL2 || childView)
-      ? poJump
-      : `data-go="mini-biz" data-set-tab="miniBiz:sales" data-set-filter="miniSo:from=${f.from};miniSo:to=${f.to};miniSo:preset=${f.preset || 'custom'}"`;
-    const directJump = (isL2 || childView)
-      ? soJump
-      : `data-go="mini-biz" data-set-tab="miniBiz:cend" data-set-filter="miniCend:from=${f.from};miniCend:to=${f.to};miniCend:preset=${f.preset || 'custom'}"`;
-    const rtJump = `data-go="mini-service" data-set-tab="miniService:return" data-set-filter="miniRt:from=${f.from};miniRt:to=${f.to};miniRt:preset=${f.preset || 'custom'}"`;
+      ? `data-go="${isL2 ? 'mini-sales' : 'mini-biz'}" data-set-tab="${isL2 ? 'miniSalesTab:cend' : 'miniBiz:cend'}" data-set-filter="${listDateFilter('miniCend', f)}"`
+      : '';
+    const distJump = `data-go="mini-biz" data-set-tab="miniBiz:sales" data-set-filter="${listDateFilter('miniSo', f)}"`;
+    const directJump = `data-go="mini-biz" data-set-tab="miniBiz:cend" data-set-filter="${listDateFilter('miniCend', f)}"`;
+    const rtJump = `data-go="mini-service" data-set-tab="miniService:return" data-set-filter="${listDateFilter('miniRt', f)}"`;
     const trendHint = eachDateStr(f.from, f.to).length > 45 ? '按月' : '按日';
     const l2Select = isL2 ? '' : `<select class="field-input" data-filter="miniStats:l2">
         <option value="">全部下属二级</option>
@@ -3883,30 +3914,30 @@
             <div><span>累计</span><strong class="num">${st.purchaseAll}</strong></div>
           </div>
         </button>
-        <button type="button" class="glass-card glass-stat" ${soJump}>
+        ${soJump ? `<button type="button" class="glass-card glass-stat" ${soJump}>` : '<section class="glass-card">'}
           <p class="glass-kicker">${escapeHtml(soTitle)}</p>
           <div class="glass-duo">
             <div><span>区间</span><strong class="num">${st.salesRange}</strong></div>
             <div><span>累计</span><strong class="num">${st.salesAll}</strong></div>
           </div>
-        </button>
+        ${soJump ? '</button>' : '</section>'}
       </div>
-      <div class="glass-pair">
+      ${isL2 || childView ? '' : `<div class="glass-pair">
         <button type="button" class="glass-card glass-stat" ${distJump}>
-          <p class="glass-kicker">${isL2 || childView ? '区间到货' : '区间分销'}</p>
+          <p class="glass-kicker">区间分销</p>
           <div class="glass-duo">
             <div><span>区间</span><strong class="num">${st.distRange}</strong></div>
             <div><span>累计</span><strong class="num">${st.distAll}</strong></div>
           </div>
         </button>
         <button type="button" class="glass-card glass-stat" ${directJump}>
-          <p class="glass-kicker">${isL2 || childView ? '区间C端' : '区间直售'}</p>
+          <p class="glass-kicker">区间直售</p>
           <div class="glass-duo">
             <div><span>区间</span><strong class="num">${st.directRange}</strong></div>
             <div><span>累计</span><strong class="num">${st.directAll}</strong></div>
           </div>
         </button>
-      </div>
+      </div>`}
       <div class="glass-pair">
         <button type="button" class="glass-card glass-stat" ${rtJump}>
           <p class="glass-kicker">退货</p>
