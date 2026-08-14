@@ -2761,6 +2761,7 @@
     let rows = db.purchases.slice();
     if (tab !== 'all') rows = rows.filter((p) => p.status === tab);
     if (f.l1) rows = rows.filter((p) => p.l1Id === f.l1);
+    if (f.from || f.to) rows = rows.filter((p) => inDateRange(p.createdAt, f.from, f.to));
     const poN = (st) => db.purchases.filter((p) => p.status === st).length;
     const tabItems = [
       { id: 'all', title: '全部', badge: db.purchases.length || null },
@@ -2772,6 +2773,9 @@
     return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即生效（下单仅一级小程序）')}
       ${filterBar(`
         <select class="field-input" data-filter="purchase:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <label class="muted">下单时间</label>
+        <input type="date" class="field-input" data-filter="purchase:from" value="${escapeHtml(f.from||'')}" />
+        <input type="date" class="field-input" data-filter="purchase:to" value="${escapeHtml(f.to||'')}" />
       `)}
       ${tabsHtml('purchase', tabItems)}
       <div class="page-card table-wrap"><table class="data">
@@ -4385,6 +4389,7 @@
       foot = editing
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-l1">保存</button>`
         : `<button class="btn" data-action="edit-l1" data-id="${a.id}">编辑</button>
+           <button class="btn btn-primary" data-go="purchase" data-set-filter="purchase:l1=${a.id};purchase:from=${monthStart()};purchase:to=${todayDate()}" data-set-tab="purchase:all">采购</button>
            <button class="btn btn-primary" data-go="l1-sales-detail" data-set-filter="l1-sales:l1Id=${a.id}">销售</button>
            <button class="btn btn-primary" data-go="l1-return-detail" data-set-filter="l1-return:l1Id=${a.id}">退货</button>
            <button class="btn ${exN ? 'btn-danger' : ''}" data-go="exception" data-set-filter="exception:l1=${a.id}">异常${exN ? ` ${exN}` : ''}</button>
