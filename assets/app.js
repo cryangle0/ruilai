@@ -770,6 +770,15 @@
         { id: 'SO5', no: `SO${todayCompact()}100`, channel: 'direct', l1Id: 'L1A', l2Id: null, productId: 'P1',
           planTotal: 2, planBySize: { M: 2 }, scanned: ['RL202607200001', 'RL202607200002'], status: 'done', createdAt: '2026-07-25 12:00',
           customer: { name: '陈敏', gender: '女', age: '28', phone: '13800001001', addr: '杭州市西湖区文一路1号', phoneLoc: '浙江' } },
+        { id: 'SO6', no: `SO${todayCompact()}101`, channel: 'direct', l1Id: 'L1B', l2Id: null, productId: 'P2',
+          planTotal: 1, planBySize: { M: 1 }, scanned: ['RL202608070001'], status: 'done', createdAt: '2026-08-05 11:20',
+          customer: { name: '刘洋', gender: '男', age: '34', phone: '13900002201', addr: '广州市天河区体育西路8号', phoneLoc: '广东' } },
+        { id: 'SO7', no: `SO${todayCompact()}102`, channel: 'direct', l1Id: 'L1A', l2Id: null, productId: 'P1',
+          planTotal: 1, planBySize: { L: 1 }, scanned: ['RL202608010025'], status: 'done', createdAt: '2026-08-03 14:10',
+          customer: { name: '王芳', gender: '女', age: '31', phone: '13700001108', addr: '杭州市西湖区文三路100号', phoneLoc: '浙江' } },
+        { id: 'SO8', no: `SO${todayCompact()}103`, channel: 'direct', l1Id: 'L1C', l2Id: null, productId: 'P1',
+          planTotal: 2, planBySize: { S: 2 }, scanned: ['RL202608010030', 'RL202608010031'], status: 'done', createdAt: '2026-08-06 16:40',
+          customer: { name: '赵磊', gender: '男', age: '42', phone: '13600003321', addr: '北京市朝阳区建国路88号', phoneLoc: '北京' } },
       ],
       returns: [
         { id: 'RT1', no: `RTU${todayCompact()}01`, type: 'user', typeLabel: '终端用户退货', fromId: 'L2A', fromName: '杭州城西专营',
@@ -850,7 +859,7 @@
       ],
       customers,
       dailyStats: [],
-      seq: { po: 32, so: 101, rt: 10, snBatch: 1, notify: 5, cu: customers.length },
+      seq: { po: 32, so: 104, rt: 10, snBatch: 1, notify: 5, cu: customers.length },
     };
   }
 
@@ -951,6 +960,13 @@
             if (s.customer.phone) s.customer.phone = revealMaskedPhone(s.customer.phone);
           }
         });
+        const seedSales = seed().sales || [];
+        ['SO6', 'SO7', 'SO8'].forEach((sid) => {
+          if ((parsed.sales || []).some((s) => s.id === sid)) return;
+          const row = seedSales.find((s) => s.id === sid);
+          if (row) parsed.sales.push(JSON.parse(JSON.stringify(row)));
+        });
+        if (parsed.seq && Number(parsed.seq.so) < 104) parsed.seq.so = 104;
         (parsed.customers || []).forEach((c) => {
           if (c.phone) c.phone = revealMaskedPhone(c.phone);
         });
@@ -1030,8 +1046,8 @@
     sales: '销售单管理', stock: '库存管理', return: '返货管理', exception: '异常管理', customers: '销售客户',
     stats: '数据统计', role: '角色与权限', log: '操作日志',
     'agent-l1-detail': '一级代理详情',
-    'l1-sales-detail': '一级销售详情', 'l1-return-detail': '一级退货详情',
-    'l2-sales-detail': '二级销售详情', 'l2-return-detail': '二级退货详情',
+    'l1-return-detail': '一级退货详情',
+    'l2-return-detail': '二级退货详情',
     'mini-scan': '首页', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
     'mini-service': '售后', 'mini-aftersale': '售后', 'mini-exception': '异常', 'mini-mine': '我的',
     'mini-mine-l2': '二级代理', 'mini-mine-sub': '子账号', 'mini-mine-customers': '客户',
@@ -1332,8 +1348,27 @@
     return rows;
   }
 
+  function saleCustomerInfo(s) {
+    const c = s?.customer || {};
+    const snUser = (s?.scanned || [])
+      .map((sn) => db.sns.find((x) => x.sn === sn))
+      .map((row) => row?.user || row?.prevUser)
+      .find(Boolean) || {};
+    return {
+      name: c.name || snUser.name || '',
+      phone: c.phone || snUser.phone || '',
+      region: c.phoneLoc || snUser.phoneLoc || '',
+      addr: c.addr || snUser.addr || '',
+    };
+  }
+
+  function saleQty(s) {
+    return (s?.scanned || []).length || Number(s?.planTotal) || 0;
+  }
+
   function saleDetailHtml(s) {
     const productRows = saleProductRows(s);
+    const cust = saleCustomerInfo(s);
     const snRows = (s.scanned || []).map((sn) => {
       const row = db.sns.find((x) => x.sn === sn);
       const u = row?.user || row?.prevUser;
@@ -1344,6 +1379,10 @@
         <div><span>状态</span>${saleStatusTag(s.status)}</div>
         <div><span>一级</span>${escapeHtml(l1Name(s.l1Id))}</div>
         <div><span>二级</span>${s.l2Id?escapeHtml(l2Name(s.l2Id)):'—'}</div>
+        ${s.channel === 'direct' ? `
+        <div><span>姓名</span>${escapeHtml(cust.name || '—')}</div>
+        <div><span>手机号</span>${escapeHtml(cust.phone || '—')}</div>
+        <div><span>地区</span>${escapeHtml(cust.region || '—')}</div>` : ''}
         <div><span>计划/已扫</span>${(s.scanned||[]).length}/${s.planTotal||0}</div>
         <div><span>时间</span>${escapeHtml(s.createdAt||'—')}</div>
       </div>
@@ -2319,7 +2358,7 @@
   }
   function sidebarActiveId() {
     const r = ui.route;
-    if (r === 'agent-l1-detail' || r === 'l1-sales-detail' || r === 'l1-return-detail') return 'agent-l1';
+    if (r === 'agent-l1-detail' || r === 'l1-return-detail') return 'agent-l1';
     return r;
   }
   function metricCard(label, value, go, setFilter = '', extra = '') {
@@ -2581,7 +2620,7 @@
   function l1DetailJumpAttr(a) {
     return {
       purchase: `data-go="purchase" data-set-filter="purchase:l1=${a.id};purchase:from=${monthStart()};purchase:to=${todayDate()}" data-set-tab="purchase:all" data-back="agent-l1-detail"`,
-      sales: `data-go="l1-sales-detail" data-set-filter="l1-sales:l1Id=${a.id};l1-sales:from=${monthStart()};l1-sales:to=${todayDate()}" data-back="agent-l1-detail"`,
+      sales: `data-go="sales" data-set-filter="sales:l1=${a.id};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:all" data-back="agent-l1-detail"`,
       ret: `data-go="l1-return-detail" data-set-filter="l1-return:l1Id=${a.id};l1-return:from=${monthStart()};l1-return:to=${todayDate()}" data-set-tab="l1-return:all" data-back="agent-l1-detail"`,
       ex: `data-go="exception" data-set-filter="exception:l1=${a.id}" data-back="agent-l1-detail"`,
       poPending: `data-go="purchase" data-set-filter="purchase:l1=${a.id}" data-set-tab="purchase:pending" data-back="agent-l1-detail"`,
@@ -2643,40 +2682,6 @@
       </div>`;
   }
 
-  function pageL1SalesDetail() {
-    const f = ui.filters['l1-sales'] || {};
-    const l1Id = f.l1Id || db.agentsL1[0]?.id;
-    const from = f.from || monthStart();
-    const to = f.to || todayDate();
-    const channel = ui.tabs['l1-sales'] || 'distribute';
-    const all = db.sales.filter((s) => s.l1Id === l1Id && s.status === 'done');
-    const monthQty = all.filter((s) => inDateRange(s.createdAt, from, to)).reduce((n, s) => n + (s.scanned || []).length, 0);
-    const histQty = all.reduce((n, s) => n + (s.scanned || []).length, 0);
-    const inRange = all.filter((s) => inDateRange(s.createdAt, from, to));
-    const list = inRange.filter((s) => s.channel === channel);
-    const distN = inRange.filter((s) => s.channel === 'distribute').length;
-    const dirN = inRange.filter((s) => s.channel === 'direct').length;
-    return `${pageHeader('一级销售详情', `${l1Name(l1Id)} · 默认当月可改区间`, backToL1DetailAction('agent-l1'))}
-      ${filterBar(`
-        <select class="field-input" data-filter="l1-sales:l1Id">${db.agentsL1.map((a)=>`<option value="${a.id}" ${a.id===l1Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
-        <input type="date" class="field-input" data-filter="l1-sales:from" value="${from}" />
-        <input type="date" class="field-input" data-filter="l1-sales:to" value="${to}" />
-      `)}
-      <div class="metric-grid">${metricCard('当月销量', monthQty)}${metricCard('历史总量', histQty)}</div>
-      ${tabsHtml('l1-sales', [
-        { id: 'distribute', title: '分销', badge: distN || null },
-        { id: 'direct', title: '直售', badge: dirN || null },
-      ])}
-      <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>渠道</th><th>二级/客户</th><th>商品明细</th><th>数量</th><th>时间</th></tr></thead>
-        <tbody>${list.map((s)=>`<tr class="row-clickable" data-row-action="view-sale" data-id="${s.id}">
-          <td>${escapeHtml(s.no)}</td><td>${tag(s.channel==='direct'?'直售':'分销', s.channel==='direct'?'orange':'blue')}</td>
-          <td>${s.channel==='direct'?'C端直销':escapeHtml(l2Name(s.l2Id))}</td>
-          <td>${escapeHtml(soProductDetail(s))}</td><td class="num">${(s.scanned||[]).length}</td><td>${escapeHtml(s.createdAt)}</td>
-        </tr>`).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
-      </table></div>`;
-  }
-
   function pageL1ReturnDetail() {
     const f = ui.filters['l1-return'] || {};
     const l1Id = f.l1Id || db.agentsL1[0]?.id;
@@ -2724,37 +2729,6 @@
           <td>${tag(r.status==='pending'?'待审':r.status==='approved'?'已通过':r.status)}</td>
           <td>${escapeHtml(r.createdAt)}</td>
         </tr>`).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
-      </table></div>`;
-  }
-
-  function pageL2SalesDetail() {
-    const f = ui.filters['l2-sales'] || {};
-    const parentOf = (id) => db.agentsL2.find((a) => a.id === id)?.parentId;
-    const l1Id = f.l1Id || parentOf(f.l2Id) || db.agentsL1[0]?.id;
-    const l2Opts = db.agentsL2.filter((a) => !a.pending && a.parentId === l1Id);
-    let l2Id = f.l2Id;
-    if (!l2Opts.some((a) => a.id === l2Id)) l2Id = l2Opts[0]?.id;
-    ui.filters['l2-sales'] = { ...f, l1Id, l2Id: l2Id || '' };
-    const from = f.from || monthStart();
-    const to = f.to || todayDate();
-    const all = db.sales.filter((s) => s.l2Id === l2Id && s.status === 'done');
-    const monthQty = all.filter((s) => inDateRange(s.createdAt, from, to)).reduce((n, s) => n + (s.scanned || []).length, 0);
-    const histQty = all.reduce((n, s) => n + (s.scanned || []).length, 0);
-    const list = all.filter((s) => inDateRange(s.createdAt, from, to));
-    return `${pageHeader('二级销售详情', `${l2Name(l2Id)} · 默认当月`, backToL1DetailAction('agent-l2'))}
-      ${filterBar(`
-        <select class="field-input" data-filter="l2-sales:l1Id">${db.agentsL1.map((a)=>`<option value="${a.id}" ${a.id===l1Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
-        <select class="field-input" data-filter="l2-sales:l2Id">${l2Opts.map((a)=>`<option value="${a.id}" ${a.id===l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('') || '<option value="">该一级暂无二级</option>'}</select>
-        <input type="date" class="field-input" data-filter="l2-sales:from" value="${from}" />
-        <input type="date" class="field-input" data-filter="l2-sales:to" value="${to}" />
-      `)}
-      <div class="metric-grid">${metricCard('当月销量', monthQty)}${metricCard('历史总量', histQty)}</div>
-      <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>渠道</th><th>商品明细</th><th>数量</th><th>时间</th></tr></thead>
-        <tbody>${list.map((s)=>`<tr class="row-clickable" data-row-action="view-sale" data-id="${s.id}">
-          <td>${escapeHtml(s.no)}</td><td>${tag('分销','blue')}</td>
-          <td>${escapeHtml(soProductDetail(s))}</td><td class="num">${(s.scanned||[]).length}</td><td>${escapeHtml(s.createdAt)}</td>
-        </tr>`).join('') || `<tr><td colspan="5">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -3018,11 +2992,16 @@
   }
   function pagePurchase() {
     const tab = ui.tabs.purchase || 'all';
-    const f = ui.filters.purchase || {};
+    const f = ui.filters.purchase || (ui.filters.purchase = {});
+    if (!f.from) f.from = monthStart();
+    if (!f.to) f.to = todayDate();
     let rows = db.purchases.slice();
     if (tab !== 'all') rows = rows.filter((p) => p.status === tab);
     if (f.l1) rows = rows.filter((p) => p.l1Id === f.l1);
     if (f.from || f.to) rows = rows.filter((p) => inDateRange(p.createdAt, f.from, f.to));
+    const poScope = db.purchases.filter((p) => !f.l1 || p.l1Id === f.l1);
+    const monthQty = poScope.filter((p) => inDateRange(p.createdAt, f.from, f.to)).reduce((n, p) => n + purchaseNeedQty(p), 0);
+    const histQty = poScope.reduce((n, p) => n + purchaseNeedQty(p), 0);
     const poN = (st) => db.purchases.filter((p) => p.status === st).length;
     const tabItems = [
       { id: 'all', title: '全部', badge: db.purchases.length || null },
@@ -3038,6 +3017,7 @@
         <input type="date" class="field-input" data-filter="purchase:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="purchase:to" value="${escapeHtml(f.to||'')}" />
       `)}
+      <div class="metric-grid metric-grid-2">${metricCard('当月采购量', monthQty)}${metricCard('历史采购量', histQty)}</div>
       ${tabsHtml('purchase', tabItems)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>时间</th></tr></thead>
@@ -3057,34 +3037,64 @@
   }
 
   function pageSales() {
-    const f = ui.filters.sales || {};
-    if (f.channel === 'direct') f.channel = 'distribute';
-    let rows = db.sales.slice();
-    rows = rows.filter((s) => s.channel === 'distribute');
-    if (f.l1) rows = rows.filter((s) => s.l1Id === f.l1);
-    if (f.l2) rows = rows.filter((s) => s.l2Id === f.l2);
+    const f = ui.filters.sales || (ui.filters.sales = {});
+    if (!f.from) f.from = monthStart();
+    if (!f.to) f.to = todayDate();
+    if (!ui.tabs.sales) ui.tabs.sales = 'all';
+    const tab = ui.tabs.sales || 'all';
+    const l2Opts = db.agentsL2.filter((a) => !a.pending && (!f.l1 || a.parentId === f.l1));
+    if (f.l2 && !l2Opts.some((a) => a.id === f.l2)) f.l2 = '';
+    let scoped = db.sales.slice();
+    if (f.l1) scoped = scoped.filter((s) => s.l1Id === f.l1);
+    if (tab !== 'direct' && f.l2) scoped = scoped.filter((s) => s.l2Id === f.l2);
+    const histQty = scoped.reduce((n, s) => n + saleQty(s), 0);
+    const inRange = scoped.filter((s) => inDateRange(s.createdAt, f.from, f.to));
+    const monthQty = inRange.reduce((n, s) => n + saleQty(s), 0);
+    let rows = inRange.slice();
+    if (tab === 'distribute') rows = rows.filter((s) => s.channel === 'distribute');
+    if (tab === 'direct') rows = rows.filter((s) => s.channel === 'direct');
     if (f.status) rows = rows.filter((s) => s.status === f.status);
-    return `${pageHeader('销售单管理', '分销出货给二级；直销跳转销售客户', backToL1DetailAction())}
-      <div class="page-card"><div class="tabs">
-        <button type="button" class="tab active" data-tab="sales:distribute">分销</button>
-        <button type="button" class="tab" data-go="customers" data-back="sales">直销</button>
-      </div></div>
+    const distN = inRange.filter((s) => s.channel === 'distribute').length;
+    const dirN = inRange.filter((s) => s.channel === 'direct').length;
+    const showCust = tab === 'direct';
+    const l2Select = tab === 'direct' ? '' : `<select class="field-input" data-filter="sales:l2"><option value="">所有</option>${l2Opts.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
+    const headCols = showCust
+      ? '<th>单号</th><th>渠道</th><th>一级</th><th>姓名</th><th>手机号</th><th>地区</th><th>商品明细</th><th>数量</th>' + thFilterHtml('状态', 'sales', 'status', SO_STATUS_OPTS) + '<th>时间</th>'
+      : '<th>单号</th><th>渠道</th><th>一级</th><th>二级/客户</th><th>商品明细</th><th>数量</th>' + thFilterHtml('状态', 'sales', 'status', SO_STATUS_OPTS) + '<th>时间</th>';
+    const colSpan = showCust ? 10 : 8;
+    const desc = f.l1 ? `${l1Name(f.l1)} · 默认当月可改区间` : '分销 / 直售合一 · 默认当月可改区间';
+    return `${pageHeader('销售单管理', desc, backToL1DetailAction())}
+      ${tabsHtml('sales', [
+        { id: 'distribute', title: '分销', badge: distN || null },
+        { id: 'direct', title: '直售', badge: dirN || null },
+        { id: 'all', title: '全部', badge: inRange.length || null },
+      ])}
       ${filterBar(`
-        <select class="field-input" data-filter="sales:l1"><option value="">一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
-        <select class="field-input" data-filter="sales:l2"><option value="">二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <select class="field-input" data-filter="sales:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        ${l2Select}
+        <input type="date" class="field-input" data-filter="sales:from" value="${escapeHtml(f.from)}" />
+        <input type="date" class="field-input" data-filter="sales:to" value="${escapeHtml(f.to)}" />
       `)}
+      <div class="metric-grid metric-grid-2">${metricCard('当月销量', monthQty)}${metricCard('历史销量', histQty)}</div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>渠道</th><th>一级</th><th>二级</th><th>商品明细</th><th>计划/已扫</th>${thFilterHtml('状态', 'sales', 'status', SO_STATUS_OPTS)}<th>时间</th></tr></thead>
-        <tbody>${rows.map((s)=>`<tr class="row-clickable" data-row-action="view-sale" data-id="${s.id}">
-          <td>${escapeHtml(s.no)}</td>
-          <td>${tag(s.channel==='direct'?'直售':'分销', s.channel==='direct'?'orange':'blue')}</td>
-          <td>${escapeHtml(l1Name(s.l1Id))}</td>
-          <td>${s.channel==='direct'?'—':escapeHtml(l2Name(s.l2Id))}</td>
-          <td>${escapeHtml(soProductDetail(s))}</td>
-          <td class="num">${s.planTotal||0} / ${(s.scanned||[]).length}</td>
-          <td>${tag(s.status==='done'?'已完成':'扫码中', s.status==='done'?'green':'orange')}</td>
-          <td>${escapeHtml(s.createdAt)}</td>
-        </tr>`).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
+        <thead><tr>${headCols}</tr></thead>
+        <tbody>${rows.map((s)=>{
+          const cust = saleCustomerInfo(s);
+          const party = s.channel === 'direct' ? (cust.name || 'C端直销') : escapeHtml(l2Name(s.l2Id));
+          const extra = showCust
+            ? `<td>${escapeHtml(cust.name || '—')}</td><td>${escapeHtml(cust.phone || '—')}</td><td>${escapeHtml(cust.region || '—')}</td>`
+            : `<td>${party}</td>`;
+          return `<tr class="row-clickable" data-row-action="view-sale" data-id="${s.id}">
+            <td>${escapeHtml(s.no)}</td>
+            <td>${tag(s.channel==='direct'?'直售':'分销', s.channel==='direct'?'orange':'blue')}</td>
+            <td>${escapeHtml(l1Name(s.l1Id))}</td>
+            ${extra}
+            <td>${escapeHtml(soProductDetail(s))}</td>
+            <td class="num">${saleQty(s)}</td>
+            <td>${tag(s.status==='done'?'已完成':'扫码中', s.status==='done'?'green':'orange')}</td>
+            <td>${escapeHtml(s.createdAt)}</td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="${colSpan}">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -4496,8 +4506,8 @@
     'agent-pending': pageAgentPending, sn: pageSN, product: pageProduct, purchase: pagePurchase,
     sales: pageSales, stock: pageStock, return: pageReturn, exception: pageException, customers: pageCustomers,
     stats: pageStats, role: pageRole, log: pageLog,
-    'l1-sales-detail': pageL1SalesDetail, 'l1-return-detail': pageL1ReturnDetail,
-    'l2-sales-detail': pageL2SalesDetail, 'l2-return-detail': pageL2ReturnDetail,
+    'l1-return-detail': pageL1ReturnDetail,
+    'l2-return-detail': pageL2ReturnDetail,
     'mini-scan': pageMiniScan, 'mini-biz': pageMiniBiz, 'mini-purchase': pageMiniPurchase, 'mini-sales': pageMiniSales,
     'mini-stock': pageMiniStock, 'mini-service': pageMiniService, 'mini-aftersale': pageMiniAftersale, 'mini-exception': pageMiniException,
     'mini-mine': pageMiniMine, 'mini-mine-l2': pageMiniMineL2, 'mini-mine-sub': pageMiniMineSub,
@@ -4774,8 +4784,8 @@
            ${a.type==='法人'&&a.parentId?`<button class="btn btn-danger" data-action="unbind-l2" data-id="${a.id}">解绑法人</button>`:''}
            <button class="btn btn-primary" data-action="save-l2">保存</button>`
         : `<button class="btn" data-action="edit-l2" data-id="${a.id}">编辑</button>
-           <button class="btn btn-primary" data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId||''};sales:channel=distribute" data-back="view-agent-l2" data-back-id="${a.id}">采购</button>
-           <button class="btn btn-primary" data-go="l2-sales-detail" data-set-filter="l2-sales:l1Id=${a.parentId||''};l2-sales:l2Id=${a.id}" data-back="view-agent-l2" data-back-id="${a.id}">销售</button>
+           <button class="btn btn-primary" data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId||''};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:distribute" data-back="view-agent-l2" data-back-id="${a.id}">采购</button>
+           <button class="btn btn-primary" data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId||''};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:all" data-back="view-agent-l2" data-back-id="${a.id}">销售</button>
            <button class="btn btn-primary" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}" data-back="view-agent-l2" data-back-id="${a.id}">退货</button>
            <button class="btn btn-primary" data-go="stock" data-set-filter="stock:type=l2;stock:agent=${a.id}" data-set-tab="stock:summary" data-back="view-agent-l2" data-back-id="${a.id}">库存</button>
            <button class="btn ${exN ? 'btn-danger' : ''}" data-go="exception" data-set-filter="exception:l2=${a.id}" data-back="view-agent-l2" data-back-id="${a.id}">异常${exN ? ` ${exN}` : ''}</button>
@@ -5895,7 +5905,35 @@
     maybePromptL1Disable();
   }
 
+  function applySalesAlias(id) {
+    if (id === 'l1-sales-detail') {
+      const f = ui.filters['l1-sales'] || {};
+      ui.filters.sales = {
+        ...(ui.filters.sales || {}),
+        l1: f.l1Id || ui.filters.sales?.l1 || '',
+        from: f.from || monthStart(),
+        to: f.to || todayDate(),
+      };
+      if (ui.tabs['l1-sales'] === 'direct' || ui.tabs['l1-sales'] === 'distribute') ui.tabs.sales = ui.tabs['l1-sales'];
+      return 'sales';
+    }
+    if (id === 'l2-sales-detail') {
+      const f = ui.filters['l2-sales'] || {};
+      ui.filters.sales = {
+        ...(ui.filters.sales || {}),
+        l1: f.l1Id || '',
+        l2: f.l2Id || '',
+        from: f.from || monthStart(),
+        to: f.to || todayDate(),
+      };
+      if (!ui.tabs.sales) ui.tabs.sales = 'all';
+      return 'sales';
+    }
+    return id;
+  }
+
   function doNavigate(id) {
+    id = applySalesAlias(id);
     if (!PAGES[id]) return toast('页面不存在', 'err');
     if (ui.mode === 'mini') {
       if (!miniAllowedRoutes().includes(id)) return toast('当前小程序角色无此页', 'err');
@@ -7682,12 +7720,6 @@
 
     document.querySelectorAll('[data-tab]').forEach((el) => el.addEventListener('click', () => {
       const [key, id] = el.getAttribute('data-tab').split(':');
-      if (key === 'sales' && id === 'direct') {
-        ui.backRoute = 'sales';
-        ui.backModal = null;
-        navigate('customers');
-        return;
-      }
       ui.tabs[key] = id;
       if (key === 'exception' && ui.filters.exception) ui.filters.exception.type = '';
       render();
@@ -8051,7 +8083,12 @@
 
   /* ---------- Boot ---------- */
   window.addEventListener('hashchange', () => {
-    const id = location.hash.replace(/^#/, '');
+    let id = location.hash.replace(/^#/, '');
+    const aliased = applySalesAlias(id);
+    if (aliased !== id) {
+      history.replaceState(null, '', `#${aliased}`);
+      id = aliased;
+    }
     if (id && PAGES[id] && ui.loggedIn) {
       if (ui.route === 'exception' && id !== 'exception' && !ui._skipExLeave && ui.mode === 'admin') {
         const openIds = getOpenExceptionIdsInFilter();
@@ -8069,8 +8106,11 @@
   });
 
   if (ui.loggedIn && location.hash) {
-    const id = location.hash.replace(/^#/, '');
-    if (PAGES[id]) ui.route = id;
+    let id = applySalesAlias(location.hash.replace(/^#/, ''));
+    if (PAGES[id]) {
+      ui.route = id;
+      if (location.hash.replace(/^#/, '') !== id) history.replaceState(null, '', `#${id}`);
+    }
   }
 
   render();
