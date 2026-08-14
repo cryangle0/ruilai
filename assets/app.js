@@ -517,6 +517,85 @@
     if (to && ts > parseTime(to + ' 23:59')) return false;
     return true;
   }
+  function ymdFromDate(d) {
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+  function weekStart() {
+    const d = new Date(DEMO_NOW);
+    const day = d.getDay();
+    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+    return ymdFromDate(d);
+  }
+  function lastMonthStart() {
+    return ymdFromDate(new Date(DEMO_NOW.getFullYear(), DEMO_NOW.getMonth() - 1, 1));
+  }
+  function lastMonthEnd() {
+    return ymdFromDate(new Date(DEMO_NOW.getFullYear(), DEMO_NOW.getMonth(), 0));
+  }
+  function datePart(t) {
+    return String(t || '').slice(0, 10);
+  }
+  function earliestDataDate() {
+    const acc = [];
+    (db.purchases || []).forEach((p) => acc.push(p.approvedAt || p.createdAt));
+    (db.sales || []).forEach((s) => acc.push(s.createdAt));
+    (db.returns || []).forEach((r) => acc.push(r.createdAt));
+    (db.sns || []).forEach((s) => acc.push(s.soldAt || s.bindAt || s.createdAt));
+    const dates = acc.map(datePart).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    return dates[0] || monthStart();
+  }
+  function datePresetRange(preset) {
+    const to = todayDate();
+    if (preset === 'today') return { from: to, to };
+    if (preset === 'week') return { from: weekStart(), to };
+    if (preset === 'last') return { from: lastMonthStart(), to: lastMonthEnd() };
+    if (preset === 'all') return { from: earliestDataDate(), to };
+    return { from: monthStart(), to };
+  }
+  const DATE_PRESETS = [
+    { id: 'today', title: '今日' },
+    { id: 'week', title: '本周' },
+    { id: 'month', title: '本月' },
+    { id: 'last', title: '上月' },
+    { id: 'all', title: '全部' },
+  ];
+  const LIST_DATE_SCOPES = new Set(['miniPo', 'miniSo', 'miniCend', 'miniRt', 'miniEx']);
+  function applyDatePreset(scope, preset) {
+    if (!scope || !preset) return;
+    const f = ui.filters[scope] || (ui.filters[scope] = {});
+    f.preset = preset;
+    if (preset === 'all' && LIST_DATE_SCOPES.has(scope)) {
+      f.from = '';
+      f.to = '';
+      return;
+    }
+    const r = datePresetRange(preset);
+    f.from = r.from;
+    f.to = r.to;
+  }
+  function datePresetChipsHtml(scope) {
+    const f = ui.filters[scope] || {};
+    const cur = f.preset || '';
+    return `<div class="date-chips">${DATE_PRESETS.map((p) =>
+      `<button type="button" class="date-chip ${cur === p.id ? 'on' : ''}" data-action="set-date-preset" data-scope="${escapeHtml(scope)}" data-preset="${p.id}">${escapeHtml(p.title)}</button>`
+    ).join('')}</div>`;
+  }
+  function ensureMiniStatsFilter() {
+    const f = ui.filters.miniStats || (ui.filters.miniStats = {});
+    if (!f.from || !f.to) {
+      const r = datePresetRange(f.preset || 'month');
+      if (!f.from) f.from = r.from;
+      if (!f.to) f.to = r.to;
+      if (!f.preset) f.preset = 'month';
+    }
+    if (f.from && f.to && f.from > f.to) {
+      const tmp = f.from;
+      f.from = f.to;
+      f.to = tmp;
+    }
+    return f;
+  }
   function tag(text, tone = 'gray') {
     return `<span class="tag tag-${tone || 'gray'}">${escapeHtml(text)}</span>`;
   }
@@ -1298,11 +1377,12 @@
 
   function miniTimeSnFilters(scope) {
     const f = ui.filters[scope] || {};
-    return `<div class="mini-filters">
-      <input type="date" class="field-input" data-filter="${scope}:from" value="${escapeHtml(f.from || '')}" title="开始日期" />
-      <input type="date" class="field-input" data-filter="${scope}:to" value="${escapeHtml(f.to || '')}" title="结束日期" />
-      <input class="field-input" data-filter="${scope}:sn" placeholder="SN码" value="${escapeHtml(f.sn || '')}" />
-    </div>`;
+    return `${datePresetChipsHtml(scope)}
+      <div class="mini-filters">
+        <input type="date" class="field-input" data-filter="${scope}:from" value="${escapeHtml(f.from || '')}" title="开始日期" />
+        <input type="date" class="field-input" data-filter="${scope}:to" value="${escapeHtml(f.to || '')}" title="结束日期" />
+        <input class="field-input" data-filter="${scope}:sn" placeholder="SN码" value="${escapeHtml(f.sn || '')}" />
+      </div>`;
   }
 
   function matchTimeSnFilter(time, snList, f) {
@@ -3338,10 +3418,11 @@
     const l2Id = scope.l2Id || '';
     const from = scope.from || monthStart();
     const to = scope.to || todayDate();
-    const qtySo = (list) => list.reduce((n, s) => n + (s.scanned || []).length, 0);
+    const qtySo = (list) => list.reduce((n, s) => n + saleQty(s), 0);
     const poOk = (p) => p.status === 'approved' || p.status === 'approvedPending';
     const poQty = (list) => list.reduce((n, p) => n + purchaseNeedQty(p), 0);
     const poTime = (p) => p.approvedAt || p.createdAt;
+    const rtQty = (list) => list.reduce((n, r) => n + ((r.sns || []).length || 0), 0);
 
     let purchaseAll = 0;
     let purchaseRange = 0;
@@ -3361,17 +3442,39 @@
     let salesAll = 0;
     let salesRange = 0;
     let salesAtDay = (d) => 0;
+    let distRange = 0;
+    let distAll = 0;
+    let directRange = 0;
+    let directAll = 0;
+    let productMap = {};
+    const addProduct = (name, n) => {
+      if (!name || !n) return;
+      productMap[name] = (productMap[name] || 0) + n;
+    };
     if (l2Id) {
       const bound = db.sns.filter((s) => s.l2Id === l2Id && s.status === 'bound');
       const t = (s) => s.soldAt || s.bindAt;
       salesAll = bound.length;
-      salesRange = bound.filter((s) => inDateRange(t(s), from, to)).length;
+      const boundRange = bound.filter((s) => inDateRange(t(s), from, to));
+      salesRange = boundRange.length;
       salesAtDay = (d) => bound.filter((s) => inDateRange(t(s), d, d)).length;
+      directAll = salesAll;
+      directRange = salesRange;
+      boundRange.forEach((s) => addProduct(productName(s.productId), 1));
+      const inboundRange = db.sales.filter((s) => s.l2Id === l2Id && s.channel === 'distribute' && s.status === 'done' && inDateRange(s.createdAt, from, to));
+      distRange = qtySo(inboundRange);
+      distAll = qtySo(db.sales.filter((s) => s.l2Id === l2Id && s.channel === 'distribute' && s.status === 'done'));
     } else {
       const so = db.sales.filter((s) => s.status === 'done' && (!l1Id || s.l1Id === l1Id));
+      const soRange = so.filter((s) => inDateRange(s.createdAt, from, to));
       salesAll = qtySo(so);
-      salesRange = qtySo(so.filter((s) => inDateRange(s.createdAt, from, to)));
+      salesRange = qtySo(soRange);
       salesAtDay = (d) => qtySo(so.filter((s) => inDateRange(s.createdAt, d, d)));
+      distAll = qtySo(so.filter((s) => s.channel === 'distribute'));
+      distRange = qtySo(soRange.filter((s) => s.channel === 'distribute'));
+      directAll = qtySo(so.filter((s) => s.channel === 'direct'));
+      directRange = qtySo(soRange.filter((s) => s.channel === 'direct'));
+      soRange.forEach((s) => addProduct(productName(s.productId) || soProductDetail(s), saleQty(s)));
     }
 
     const inStock = (s) => {
@@ -3384,30 +3487,64 @@
     else if (l1Id) stock = db.sns.filter((s) => inStock(s) && s.l1Id === l1Id).length;
     else stock = db.sns.filter(inStock).length;
 
-    const days = eachDateStr(from, to);
+    const returns = db.returns.filter((r) => {
+      if (l2Id) {
+        const snOk = (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === l2Id));
+        return r.fromId === l2Id || snOk;
+      }
+      if (l1Id) {
+        const snOk = (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l1Id === l1Id));
+        return r.fromId === l1Id || r.approverId === l1Id || snOk;
+      }
+      return true;
+    });
+    const returnAll = rtQty(returns);
+    const returnRange = rtQty(returns.filter((r) => inDateRange(r.createdAt, from, to)));
+
+    const actSrc = db.sns.filter((s) => {
+      if (s.status !== 'bound') return false;
+      if (l2Id) return s.l2Id === l2Id;
+      if (l1Id) return s.l1Id === l1Id;
+      return true;
+    });
+    const actAll = actSrc.length;
+    const actRange = actSrc.filter((s) => inDateRange(s.soldAt || s.bindAt, from, to)).length;
+
     const snsScope = db.sns.filter((s) => {
       if (l2Id) return s.l2Id === l2Id;
       if (l1Id) return s.l1Id === l1Id;
       return true;
     });
-    const soScope = db.sales.filter((s) => s.status === 'done' && (!l2Id ? (!l1Id || s.l1Id === l1Id) : (s.l2Id === l2Id)));
+    const purchaseTrend = bucketTrend(from, to, purchaseAtDay);
+    const salesTrend = bucketTrend(from, to, salesAtDay);
+    const productBars = Object.entries(productMap)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+
     return {
       purchaseRange, purchaseAll, salesRange, salesAll, stock,
-      dayLabels: days.map((d) => d.slice(5)),
-      trendPurchase: days.map((d) => purchaseAtDay(d)),
-      trendSales: days.map((d) => salesAtDay(d)),
-      channelPie: [
-        { label: '分销', value: qtySo(soScope.filter((s) => s.channel === 'distribute')), color: '#2dd4a8' },
-        { label: '直销', value: l2Id
-          ? salesRange
-          : qtySo(soScope.filter((s) => s.channel === 'direct')), color: '#38bdf8' },
-      ],
+      distRange, distAll, directRange, directAll,
+      returnRange, returnAll, actRange, actAll,
+      dayLabels: purchaseTrend.labels,
+      trendPurchase: purchaseTrend.values,
+      trendSales: salesTrend.values,
+      channelPie: l2Id
+        ? [
+          { label: '到货', value: purchaseRange, color: '#5ac8fa' },
+          { label: 'C端', value: salesRange, color: '#34c759' },
+        ]
+        : [
+          { label: '分销', value: distRange, color: '#2dd4a8' },
+          { label: '直售', value: directRange, color: '#38bdf8' },
+        ],
       snStatus: [
         { label: '原厂在库', value: snsScope.filter((s) => snCanonicalStatus(s) === 'warehouse').length, color: '#64748b' },
         { label: '一级在库', value: snsScope.filter((s) => snCanonicalStatus(s) === 'l1').length, color: '#38bdf8' },
         { label: '二级在库', value: snsScope.filter((s) => snCanonicalStatus(s) === 'l2').length, color: '#2dd4a8' },
         { label: '已销售', value: snsScope.filter((s) => s.status === 'bound').length, color: '#00a46e' },
       ],
+      productBars,
       l1Id, l2Id, from, to,
     };
   }
@@ -3450,13 +3587,13 @@
         <input type="date" class="field-input" data-filter="stats:from" value="${escapeHtml(f.from)}" />
         <input type="date" class="field-input" data-filter="stats:to" value="${escapeHtml(f.to)}" />
       `)}
-      <p class="muted" style="margin:0 0 10px">${escapeHtml(scopeHint)} · 当月按所选日期区间；历史为累计；在库为当前快照</p>
+      <p class="muted" style="margin:0 0 10px">${escapeHtml(scopeHint)} · 所选日期为统计区间；历史为累计；在库为当前快照</p>
       <div class="dash">
         <div class="dash-kpis dash-kpis-5">
-          ${kpi('当月采购数', st.purchaseRange, 'purchase', poFilter)}
-          ${kpi('历史总采购数', st.purchaseAll, 'purchase', poFilter)}
-          ${kpi('当月销售数', st.salesRange, 'sales', soFilter)}
-          ${kpi('历史总销售数', st.salesAll, 'sales', soFilter)}
+          ${kpi('区间采购数', st.purchaseRange, 'purchase', poFilter)}
+          ${kpi('累计采购数', st.purchaseAll, 'purchase', poFilter)}
+          ${kpi('区间销售数', st.salesRange, 'sales', soFilter)}
+          ${kpi('累计销售数', st.salesAll, 'sales', soFilter)}
           ${kpi('当前在库数量', st.stock, 'stock', stockFilter)}
         </div>
         <div class="dash-grid">
@@ -3487,15 +3624,33 @@
     const out = [];
     const cur = new Date(String(from).replace(/-/g, '/'));
     const end = new Date(String(to).replace(/-/g, '/'));
-    if (Number.isNaN(cur.getTime()) || Number.isNaN(end.getTime())) return [from];
+    if (Number.isNaN(cur.getTime()) || Number.isNaN(end.getTime())) return from ? [from] : [];
+    if (cur > end) return [];
     let guard = 0;
-    while (cur <= end && guard < 62) {
+    while (cur <= end && guard < 400) {
       const p = (n) => String(n).padStart(2, '0');
       out.push(`${cur.getFullYear()}-${p(cur.getMonth() + 1)}-${p(cur.getDate())}`);
       cur.setDate(cur.getDate() + 1);
       guard += 1;
     }
-    return out.length ? out : [from];
+    return out.length ? out : (from ? [from] : []);
+  }
+
+  function bucketTrend(from, to, atDay) {
+    const days = eachDateStr(from, to);
+    if (!days.length) return { labels: [], values: [] };
+    if (days.length <= 45) {
+      return { labels: days.map((d) => d.slice(5)), values: days.map((d) => atDay(d)) };
+    }
+    const map = new Map();
+    days.forEach((d) => {
+      const key = d.slice(0, 7);
+      map.set(key, (map.get(key) || 0) + atDay(d));
+    });
+    return {
+      labels: [...map.keys()].map((k) => k.slice(2)),
+      values: [...map.values()],
+    };
   }
 
   function svgMultiLine(labels, series) {
@@ -3668,54 +3823,133 @@
 
   function miniHomeDash() {
     const isL2 = ui.role === 'l2';
-    const from = monthStart();
-    const to = todayDate();
+    const f = ensureMiniStatsFilter();
+    const l2Opts = db.agentsL2.filter((a) => !a.pending && a.parentId === currentL1Id());
+    if (!isL2 && f.l2 && !l2Opts.some((a) => a.id === f.l2)) f.l2 = '';
+    const childId = isL2 ? '' : (f.l2 || '');
+    const childView = !!childId;
     const st = isL2
-      ? bizStats({ l2Id: currentL2Id(), from, to })
-      : bizStats({ l1Id: currentL1Id(), from, to });
-    const l2Bars = (!isL2)
-      ? db.agentsL2.filter((a) => !a.pending && a.parentId === currentL1Id()).map((a) => ({
+      ? bizStats({ l2Id: currentL2Id(), from: f.from, to: f.to })
+      : childView
+        ? bizStats({ l2Id: childId, from: f.from, to: f.to })
+        : bizStats({ l1Id: currentL1Id(), from: f.from, to: f.to });
+    const l2Bars = (!isL2 && !childView)
+      ? l2Opts.map((a) => ({
         label: a.name.replace(/专营|渠道|店/g, '').slice(0, 8) || a.name,
-        value: bizStats({ l2Id: a.id, from, to }).salesRange,
+        value: bizStats({ l2Id: a.id, from: f.from, to: f.to }).salesRange,
       })).sort((a, b) => b.value - a.value)
       : [];
-    const scope = isL2 ? '仅本级数据' : '含本级及下属二级';
+    const rangeText = f.from === f.to ? f.from : `${f.from} ~ ${f.to}`;
+    const scope = isL2
+      ? '仅本级'
+      : (childView ? `下属 ${l2Name(childId)}` : '本级及下属二级');
+    const poTitle = isL2 || childView ? '到货采购' : '采购统计';
+    const soTitle = isL2 || childView ? 'C端销售' : '销售统计';
+    const mixTitle = isL2 || childView ? '到货 / 卖出' : '分销 / 直售';
+    const poJump = (isL2 || childView)
+      ? `data-go="${isL2 ? 'mini-sales' : 'mini-biz'}" data-set-tab="${isL2 ? 'miniSalesTab:sales' : 'miniBiz:sales'}" data-set-filter="miniSo:from=${f.from};miniSo:to=${f.to}${childId ? `;miniSo:l2=${childId}` : ''};miniSo:preset=${f.preset || 'custom'}"`
+      : `data-go="mini-biz" data-set-tab="miniBiz:purchase" data-set-filter="miniPo:from=${f.from};miniPo:to=${f.to};miniPo:preset=${f.preset || 'custom'}"`;
+    const soJump = (isL2 || childView)
+      ? `data-go="${isL2 ? 'mini-sales' : 'mini-biz'}" data-set-tab="${isL2 ? 'miniSalesTab:cend' : 'miniBiz:cend'}" data-set-filter="miniCend:from=${f.from};miniCend:to=${f.to};miniCend:preset=${f.preset || 'custom'}"`
+      : `data-go="mini-biz" data-set-tab="miniBiz:sales" data-set-filter="miniSo:from=${f.from};miniSo:to=${f.to};miniSo:preset=${f.preset || 'custom'}"`;
+    const distJump = (isL2 || childView)
+      ? poJump
+      : `data-go="mini-biz" data-set-tab="miniBiz:sales" data-set-filter="miniSo:from=${f.from};miniSo:to=${f.to};miniSo:preset=${f.preset || 'custom'}"`;
+    const directJump = (isL2 || childView)
+      ? soJump
+      : `data-go="mini-biz" data-set-tab="miniBiz:cend" data-set-filter="miniCend:from=${f.from};miniCend:to=${f.to};miniCend:preset=${f.preset || 'custom'}"`;
+    const rtJump = `data-go="mini-service" data-set-tab="miniService:return" data-set-filter="miniRt:from=${f.from};miniRt:to=${f.to};miniRt:preset=${f.preset || 'custom'}"`;
+    const trendHint = eachDateStr(f.from, f.to).length > 45 ? '按月' : '按日';
+    const l2Select = isL2 ? '' : `<select class="field-input" data-filter="miniStats:l2">
+        <option value="">全部下属二级</option>
+        ${l2Opts.map((a) => `<option value="${a.id}" ${childId === a.id ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
+      </select>`;
     return `<div class="glass-stack">
+      <section class="glass-card glass-range">
+        <p class="glass-kicker">统计区间</p>
+        ${datePresetChipsHtml('miniStats')}
+        <div class="glass-range-row">
+          <input type="date" class="field-input" data-filter="miniStats:from" value="${escapeHtml(f.from)}" />
+          <input type="date" class="field-input" data-filter="miniStats:to" value="${escapeHtml(f.to)}" />
+        </div>
+        ${l2Select}
+        <p class="glass-range-hint">${escapeHtml(scope)} · ${escapeHtml(rangeText)}</p>
+      </section>
       <div class="glass-pair">
-        <section class="glass-card">
-          <p class="glass-kicker">采购统计</p>
+        <button type="button" class="glass-card glass-stat" ${poJump}>
+          <p class="glass-kicker">${escapeHtml(poTitle)}</p>
           <div class="glass-duo">
-            <div><span>当月</span><strong class="num">${st.purchaseRange}</strong></div>
-            <div><span>历史</span><strong class="num">${st.purchaseAll}</strong></div>
+            <div><span>区间</span><strong class="num">${st.purchaseRange}</strong></div>
+            <div><span>累计</span><strong class="num">${st.purchaseAll}</strong></div>
           </div>
-        </section>
-        <section class="glass-card">
-          <p class="glass-kicker">销售统计</p>
+        </button>
+        <button type="button" class="glass-card glass-stat" ${soJump}>
+          <p class="glass-kicker">${escapeHtml(soTitle)}</p>
           <div class="glass-duo">
-            <div><span>当月</span><strong class="num">${st.salesRange}</strong></div>
-            <div><span>历史</span><strong class="num">${st.salesAll}</strong></div>
+            <div><span>区间</span><strong class="num">${st.salesRange}</strong></div>
+            <div><span>累计</span><strong class="num">${st.salesAll}</strong></div>
+          </div>
+        </button>
+      </div>
+      <div class="glass-pair">
+        <button type="button" class="glass-card glass-stat" ${distJump}>
+          <p class="glass-kicker">${isL2 || childView ? '区间到货' : '区间分销'}</p>
+          <div class="glass-duo">
+            <div><span>区间</span><strong class="num">${st.distRange}</strong></div>
+            <div><span>累计</span><strong class="num">${st.distAll}</strong></div>
+          </div>
+        </button>
+        <button type="button" class="glass-card glass-stat" ${directJump}>
+          <p class="glass-kicker">${isL2 || childView ? '区间C端' : '区间直售'}</p>
+          <div class="glass-duo">
+            <div><span>区间</span><strong class="num">${st.directRange}</strong></div>
+            <div><span>累计</span><strong class="num">${st.directAll}</strong></div>
+          </div>
+        </button>
+      </div>
+      <div class="glass-pair">
+        <button type="button" class="glass-card glass-stat" ${rtJump}>
+          <p class="glass-kicker">退货</p>
+          <div class="glass-duo">
+            <div><span>区间</span><strong class="num">${st.returnRange}</strong></div>
+            <div><span>累计</span><strong class="num">${st.returnAll}</strong></div>
+          </div>
+        </button>
+        <section class="glass-card">
+          <p class="glass-kicker">激活绑定</p>
+          <div class="glass-duo">
+            <div><span>区间</span><strong class="num">${st.actRange}</strong></div>
+            <div><span>累计</span><strong class="num">${st.actAll}</strong></div>
           </div>
         </section>
       </div>
       <section class="glass-card glass-card--hero">
         <div>
           <p class="glass-kicker">当前在库</p>
-          <p class="glass-hero-sub">${escapeHtml(scope)}</p>
+          <p class="glass-hero-sub">${escapeHtml(scope)} · 实时快照</p>
         </div>
         <strong class="glass-hero-num num">${st.stock}</strong>
       </section>
       <section class="glass-card">
-        <div class="glass-card-hd"><h3>本月趋势</h3><span>采购 / 销售</span></div>
+        <div class="glass-card-hd"><h3>采购 / 销售趋势</h3><span>${escapeHtml(trendHint)}</span></div>
         ${svgMultiLine(st.dayLabels, [
           { name: '采购', color: '#5ac8fa', values: st.trendPurchase },
           { name: '销售', color: '#34c759', values: st.trendSales },
         ])}
       </section>
-      ${isL2 ? `<section class="glass-card">
-        <div class="glass-card-hd"><h3>库存构成</h3><span>本级 SN</span></div>
+      <section class="glass-card">
+        <div class="glass-card-hd"><h3>${escapeHtml(mixTitle)}</h3><span>按区间</span></div>
+        ${svgDonut(st.channelPie)}
+      </section>
+      <section class="glass-card">
+        <div class="glass-card-hd"><h3>商品销量</h3><span>按区间</span></div>
+        ${svgHBars(st.productBars, '#34c759')}
+      </section>
+      ${isL2 || childView ? `<section class="glass-card">
+        <div class="glass-card-hd"><h3>库存构成</h3><span>当前 SN</span></div>
         ${svgDonut(st.snStatus)}
       </section>` : `<section class="glass-card">
-        <div class="glass-card-hd"><h3>下属二级销量</h3><span>当月</span></div>
+        <div class="glass-card-hd"><h3>下属二级销量</h3><span>按区间 C端</span></div>
         ${svgHBars(l2Bars, '#34c759')}
       </section>`}
     </div>`;
@@ -3750,7 +3984,7 @@
       <header class="glass-home-hd">
         <p class="glass-hello">${greetingText()}</p>
         <h1>${escapeHtml(who)}</h1>
-        <p class="glass-home-sub">${ui.role === 'l2' ? '本级经营概览' : '本级及下属二级概览'}</p>
+        <p class="glass-home-sub">${ui.role === 'l2' ? '本级经营概览 · 可按区间筛选' : '本级及下属二级概览 · 可按区间筛选'}</p>
       </header>
       ${miniSegHtml('miniHome', [
         { id: 'dash', title: '数据' },
@@ -3822,6 +4056,7 @@
     let list = ui.role === 'l2'
       ? db.sales.filter((s) => s.l2Id === currentL2Id())
       : db.sales.filter((s) => s.l1Id === currentL1Id() && s.channel !== 'direct');
+    if (f.l2) list = list.filter((s) => s.l2Id === f.l2);
     list = list.filter((s) => matchTimeSnFilter(s.createdAt, s.scanned || [], f));
     list = list.slice().sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
     const actions = ui.role === 'l2' ? '' : `<button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">创建销售单</button>`;
@@ -3873,6 +4108,8 @@
       else list = list.filter((r) => r.type === 'l2_to_l1');
     }
     if (statusTab !== 'all') list = list.filter((r) => r.status === statusTab);
+    const rf = ui.filters.miniRt || {};
+    list = list.filter((r) => matchTimeSnFilter(r.createdAt, r.sns || [], rf));
     list = list.slice().sort((a, b) => {
       const pa = a.status === 'pending' ? 0 : 1;
       const pb = b.status === 'pending' ? 0 : 1;
@@ -3904,6 +4141,7 @@
           ? rtAll.filter((r) => (typeTab === 'upward' ? r.type === 'l1_to_factory' : typeTab === 'cend' ? r.type === 'user' : r.type === 'l2_to_l1') && r.status === 'done')
           : rtAll.filter((r) => r.status === 'done')).length || null },
       ])}
+      ${miniTimeSnFilters('miniRt')}
       <div class="mini-list">${list.map((r)=>`<button type="button" class="mini-list-item ${r.status==='pending'?'rt-pending':''}" data-action="open-view-return" data-id="${r.id}">
         <strong class="rt-row-hd"><span>${escapeHtml(r.no)}</span>${returnStatusTag(r.status)}</strong>
         <span>${tag(r.reasonType||'')} ${escapeHtml(r.reason||'')}</span>
@@ -3924,12 +4162,15 @@
     const exAll = list.slice();
     const exN = (d) => (d === 'all' ? exAll.length : exAll.filter((e) => exceptionDim(e) === d).length);
     if (dim !== 'all') list = list.filter((e) => exceptionDim(e) === dim);
+    const ef = ui.filters.miniEx || {};
+    list = list.filter((e) => matchTimeSnFilter(e.time, [e.target], ef));
     return `${miniSegHtml('miniEx', [
       { id: 'all', title: '全部', badge: exN('all') || null },
       { id: 'scan', title: '扫码', badge: exN('scan') || null },
       { id: 'activate', title: '激活', badge: exN('activate') || null },
       { id: 'stock', title: '库存', badge: exN('stock') || null },
     ])}
+      ${miniTimeSnFilters('miniEx')}
       <div class="mini-list">${list.map((e)=>`<button type="button" class="mini-list-item ${e.status==='未处理'?'ex-bold':''}" data-action="open-view-exception" data-id="${e.id}">
         <strong>${escapeHtml(e.type)}</strong>
         <span>${tag(exceptionDim(e)==='scan'?'扫码':exceptionDim(e)==='stock'?'库存':'激活')}</span>
@@ -6064,6 +6305,10 @@
         const n = db.notifications.find((x)=>x.id===id); if (n) n.read = true; saveStore(); render(); break;
       }
       case 'apply-filter': render(); break;
+      case 'set-date-preset':
+        applyDatePreset(el.getAttribute('data-scope'), el.getAttribute('data-preset'));
+        render();
+        break;
       case 'open-ex-rules': openModal('ex-rules'); break;
       case 'open-create-l1':
         openModal('create-l1', { draftSeed: { name: '', contact: '', username: '', password: '', mainAreas: [], saleAreas: [], directAreas: [], directCityQ: '', ent: {} } }); break;
@@ -7730,6 +7975,7 @@
         const [key, field] = el.getAttribute('data-filter').split(':');
         ui.filters[key] = ui.filters[key] || {};
         ui.filters[key][field] = el.value;
+        if ((field === 'from' || field === 'to') && ui.filters[key].preset) ui.filters[key].preset = 'custom';
       };
       el.addEventListener('change', () => { apply(); render(); });
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { apply(); render(); } });

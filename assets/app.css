@@ -1305,6 +1305,29 @@ table.data .col-check input[type="checkbox"] {
   gap: 8px;
   margin: 10px 0 4px;
 }
+.date-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  position: relative;
+  z-index: 1;
+}
+.date-chip {
+  border: 0;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(60, 60, 67, 0.72);
+  background: rgba(118, 118, 128, 0.14);
+  cursor: pointer;
+}
+.date-chip.on {
+  background: #1c1c1e;
+  color: #fff;
+}
 .mini-filters .field-input:nth-child(3) {
   grid-column: 1 / -1;
 }
@@ -2007,4 +2030,34 @@ th.sortable:hover { color: var(--primary); }
 .glass-home .mini-seg-btn.on {
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+.glass-range-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+.glass-range .field-input,
+.glass-range select.field-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(255, 255, 255, 0.85);
+}
+.glass-range select.field-input { margin-top: 8px; }
+.glass-range-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: rgba(60, 60, 67, 0.5);
+  position: relative;
+  z-index: 1;
+}
+button.glass-stat {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  appearance: none;
 }
