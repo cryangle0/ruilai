@@ -898,9 +898,18 @@
           sns: ['RL202608010055'], status: 'pending', createdAt: '2026-08-09 14:05', reason: '客诉升级，一级集中退原厂', reasonType: '投诉' },
         { id: 'RT9', no: `RT${todayCompact()}09`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1B', fromName: '华南渠道中心',
           sns: ['RL202608020020', 'RL202608020021'], status: 'pending', createdAt: '2026-08-10 09:40', reason: '质量问题：弹力带老化', reasonType: '质量' },
-        { id: 'RT10', no: `RTU${todayCompact()}10`, type: 'user', typeLabel: '终端用户退货', fromId: 'L1A', fromName: '华东锐涞总代',
+        { id: 'RT10', no: `RTU${todayCompact()}10`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1A', fromName: '华东锐涞总代',
           sns: ['RL202608010025'], status: 'approved', createdAt: '2026-08-06 10:15', reason: '尺码不合适', reasonType: '尺码',
-          customer: { name: '陈默', phone: '13800001006', phoneLoc: '浙江' } },
+          customer: { name: '陈默', phone: '13800001006', addr: '杭州市西湖区文一路88号', phoneLoc: '浙江' } },
+        { id: 'RT11', no: `RTU${todayCompact()}11`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1A', fromName: '华东锐涞总代',
+          sns: ['RL202608030001'], status: 'pending', createdAt: '2026-08-05 16:40', reason: '尺码偏大，直售客户申请退货', reasonType: '尺码',
+          customer: { name: '王芳', gender: '女', age: '31', phone: '13700001108', addr: '杭州市西湖区文三路100号', phoneLoc: '浙江' } },
+        { id: 'RT12', no: `RTU${todayCompact()}12`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1B', fromName: '华南渠道中心',
+          sns: ['RL202608050001'], status: 'pending', createdAt: '2026-08-06 09:30', reason: '面料起球，直售客户退货', reasonType: '质量',
+          customer: { name: '刘洋', gender: '男', age: '34', phone: '13900002201', addr: '广州市天河区体育西路8号', phoneLoc: '广东' } },
+        { id: 'RT13', no: `RTU${todayCompact()}13`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1C', fromName: '华北联合代理',
+          sns: ['RL202608060001'], status: 'approved', createdAt: '2026-08-07 11:05', reason: '客诉升级，直售客户退货', reasonType: '投诉',
+          customer: { name: '赵磊', gender: '男', age: '42', phone: '13600003321', addr: '北京市朝阳区建国路88号', phoneLoc: '北京' } },
       ],
       exceptions: [
         { id: 'EX1', time: '2026-07-25 12:05', type: '归属地异常', target: 'RL202607200004', detail: '手机归属广东 · IP地区浙江不一致', notify: '一级+原厂', status: '未处理', dim: 'activate' },
@@ -958,7 +967,7 @@
       ],
       customers,
       dailyStats: [],
-      seq: { po: 32, so: 104, rt: 10, snBatch: 1, notify: 5, cu: customers.length },
+      seq: { po: 32, so: 104, rt: 13, snBatch: 1, notify: 5, cu: customers.length },
     };
   }
 
@@ -1080,6 +1089,15 @@
           if (row) parsed.sns.push(JSON.parse(JSON.stringify(row)));
         });
         if (parsed.seq && Number(parsed.seq.so) < 104) parsed.seq.so = 104;
+        (seedDb.returns || []).forEach((row) => {
+          const existing = (parsed.returns || []).find((r) => r.id === row.id);
+          if (!existing) parsed.returns.push(JSON.parse(JSON.stringify(row)));
+          else if (row.typeLabel && existing.typeLabel !== row.typeLabel && existing.id === 'RT10') {
+            existing.typeLabel = row.typeLabel;
+            if (row.customer) existing.customer = JSON.parse(JSON.stringify(row.customer));
+          }
+        });
+        if (parsed.seq && Number(parsed.seq.rt) < 13) parsed.seq.rt = 13;
         (parsed.customers || []).forEach((c) => {
           if (c.phone) c.phone = revealMaskedPhone(c.phone);
         });
@@ -1159,6 +1177,7 @@
     sales: '销售单管理', stock: '库存管理', return: '返货管理', exception: '异常管理', customers: '销售客户',
     stats: '数据统计', role: '角色与权限', log: '操作日志',
     'agent-l1-detail': '一级代理详情',
+    'agent-l2-detail': '二级代理详情',
     'l1-return-detail': '一级退货详情',
     'l2-return-detail': '二级退货详情',
     'mini-scan': '首页', 'mini-biz': '业务', 'mini-purchase': '采购', 'mini-sales': '销售', 'mini-stock': '库存',
@@ -2465,14 +2484,15 @@
     if (ui.backRoute === 'agent-l1-detail') {
       return '<button class="btn" data-go="agent-l1-detail">返回详情</button>';
     }
-    if (ui.backModal?.type === 'view-agent-l2' && ui.backModal.id) {
-      return '<button class="btn" data-action="open-back-modal">返回详情</button>';
+    if (ui.backRoute === 'agent-l2-detail') {
+      return '<button class="btn" data-go="agent-l2-detail">返回详情</button>';
     }
     return fallbackGo ? `<button class="btn" data-go="${fallbackGo}">${escapeHtml(fallbackLabel)}</button>` : '';
   }
   function sidebarActiveId() {
     const r = ui.route;
     if (r === 'agent-l1-detail' || r === 'l1-return-detail') return 'agent-l1';
+    if (r === 'agent-l2-detail' || r === 'l2-return-detail') return 'agent-l2';
     return r;
   }
   function metricCard(label, value, go, setFilter = '', extra = '') {
@@ -2742,6 +2762,17 @@
       stock: `data-go="stock" data-set-filter="stock:type=l1;stock:agent=${a.id}" data-set-tab="stock:summary" data-back="agent-l1-detail"`,
     };
   }
+  function l2DetailJumpAttr(a) {
+    return {
+      purchase: `data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId || ''};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:distribute" data-back="agent-l2-detail"`,
+      sales: `data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId || ''};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:all" data-back="agent-l2-detail"`,
+      ret: `data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id};l2-return:from=${monthStart()};l2-return:to=${todayDate()}" data-back="agent-l2-detail"`,
+      ex: `data-go="exception" data-set-filter="exception:l2=${a.id}" data-back="agent-l2-detail"`,
+      poPending: `data-go="purchase" data-set-filter="purchase:l1=${a.parentId || ''}" data-set-tab="purchase:pending" data-back="agent-l2-detail"`,
+      aftersale: `data-go="return" data-set-filter="return:l2=${a.id}" data-set-tab="return:pending" data-back="agent-l2-detail"`,
+      stock: `data-go="stock" data-set-filter="stock:type=l2;stock:agent=${a.id}" data-set-tab="stock:summary" data-back="agent-l2-detail"`,
+    };
+  }
 
   function pageAgentL1Detail() {
     const f = ui.filters['agent-l1-detail'] || {};
@@ -2796,6 +2827,52 @@
       </div>`;
   }
 
+  function pageAgentL2Detail() {
+    const f = ui.filters['agent-l2-detail'] || {};
+    const a = db.agentsL2.find((x) => x.id === f.id);
+    const backList = '<button class="btn" data-go="agent-l2">返回列表</button>';
+    if (!a) {
+      return `${pageHeader('二级代理详情', '未找到该二级代理', backList)}<div class="page-card">${emptyHint('请从二级代理商列表点击进入')}</div>`;
+    }
+    const acc = l2Account(a.id);
+    const exN = l2ExCount(a.id);
+    const poN = l2PendingPoCount(a.id);
+    const rtN = l2PendingAftersaleCount(a.id);
+    const jump = l2DetailJumpAttr(a);
+    const warnText = a.exNoAlarm ? tag('异常不报警', 'gray') : (a.warnMultiplier || a.warnMode ? `${a.warnMultiplier || '继承'}× / ${a.warnMode || '继承'}` : '继承一级');
+    return `${pageHeader('二级代理详情', a.name, backList)}
+      <div class="page-card">
+        <div class="detail-grid">
+          <div><span>编码</span>${escapeHtml(a.code)}</div>
+          <div><span>类型</span>${escapeHtml(a.type)}</div>
+          <div><span>账号登录名称</span>${escapeHtml(acc?.username || '—')}</div>
+          <div><span>密码</span>${escapeHtml(acc?.password || '—')}</div>
+          <div><span>所属一级</span>${escapeHtml(l1Name(a.parentId))}</div>
+          <div><span>城市</span>${escapeHtml((a.areas || []).join('、') || '—')}</div>
+          <div><span>状态</span>${tag(a.status)}</div>
+          <div><span>报警</span>${warnText}</div>
+          <div><span>本月采购量</span><strong class="num">${l2MonthPurchaseQty(a.id)}</strong></div>
+          <div><span>本月销售量</span><strong class="num">${l2MonthSalesQty(a.id)}</strong></div>
+          <div><span>当前库存总数</span><strong class="num">${l2StockCount(a.id)}</strong></div>
+        </div>
+        ${a.ent ? `<h4 style="margin-top:16px">企业信息</h4><div class="detail-grid"><div class="span-2"><span>公司</span>${escapeHtml(a.ent.company || '—')}</div></div>` : ''}
+        ${a.exNoAlarm ? '<p class="muted" style="margin-top:8px">该二级已设「异常不报警」：新异常只记录且默认已处理，不推送未处理预警。</p>' : ''}
+      </div>
+      <div class="page-card" style="margin-top:12px">
+        <div class="page-actions">
+          <button class="btn" data-action="edit-l2" data-id="${a.id}">编辑</button>
+          <button class="btn btn-primary" ${jump.purchase}>采购</button>
+          <button class="btn btn-primary" ${jump.sales}>销售</button>
+          <button class="btn btn-primary" ${jump.ret}>退货</button>
+          <button class="btn btn-primary" ${jump.stock}>库存</button>
+          <button class="btn ${exN ? 'btn-danger' : ''}" ${jump.ex}>异常${exN ? ` ${exN}` : ''}</button>
+          <button class="btn" ${jump.poPending}>采购待审核${poN ? ` ${poN}` : ''}</button>
+          <button class="btn" ${jump.aftersale}>售后待处理${rtN ? ` ${rtN}` : ''}</button>
+          <button class="btn btn-danger" data-action="toggle-l2" data-id="${a.id}">${a.status === '启用' ? '停用' : '启用'}</button>
+        </div>
+      </div>`;
+  }
+
   function pageL1ReturnDetail() {
     const f = ui.filters['l1-return'] || {};
     const l1Id = f.l1Id || db.agentsL1[0]?.id;
@@ -2819,7 +2896,14 @@
     }
     if (f.status) list = list.filter((r) => r.status === f.status);
     const l2Select = tab === 'user' ? '' : `<select class="field-input" data-filter="l1-return:l2"><option value="">全部二级代理</option>${l2Opts.map((a)=>`<option value="${a.id}" ${a.id===l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
+    const showCust = tab === 'user' || tab === 'all';
     return `${pageHeader('一级退货详情', `${l1Name(l1Id)} · 默认当月`, backToL1DetailAction('agent-l1'))}
+      ${tabsHtml('l1-return', [
+        { id: 'user', title: '直售客户退货', badge: countOf('user') || null },
+        { id: 'l2', title: '二级代理退货', badge: countOf('l2') || null },
+        { id: 'factory', title: '一级代理退原厂', badge: countOf('factory') || null },
+        { id: 'all', title: '全部类型', badge: all.filter((r) => inDateRange(r.createdAt, from, to)).length || null },
+      ])}
       ${filterBar(`
         <select class="field-input" data-filter="l1-return:l1Id">${db.agentsL1.map((a)=>`<option value="${a.id}" ${a.id===l1Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         ${l2Select}
@@ -2827,22 +2911,21 @@
         <input type="date" class="field-input" data-filter="l1-return:from" value="${from}" />
         <input type="date" class="field-input" data-filter="l1-return:to" value="${to}" />
       `)}
-      ${tabsHtml('l1-return', [
-        { id: 'user', title: '直售客户退货', badge: countOf('user') || null },
-        { id: 'l2', title: '二级代理退货', badge: countOf('l2') || null },
-        { id: 'factory', title: '一级代理退原厂', badge: countOf('factory') || null },
-        { id: 'all', title: '全部类型', badge: all.filter((r) => inDateRange(r.createdAt, from, to)).length || null },
-      ])}
       <div class="metric-grid">${metricCard('当月退货', monthQty)}${metricCard('历史总量', histQty)}</div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>类型</th><th>理由</th><th>商品明细</th>${thFilterHtml('状态', 'l1-return', 'status', RT_STATUS_OPTS)}<th>时间</th></tr></thead>
-        <tbody>${list.map((r)=>`<tr class="row-clickable" data-row-action="view-return" data-id="${r.id}">
+        <thead><tr><th>单号</th><th>类型</th>${showCust ? '<th>姓名</th><th>手机号</th><th>地区</th>' : ''}<th>理由</th><th>商品明细</th>${thFilterHtml('状态', 'l1-return', 'status', RT_STATUS_OPTS)}<th>时间</th></tr></thead>
+        <tbody>${list.map((r)=>{
+          const cust = returnCustomerInfo(r);
+          const extra = showCust ? `<td>${escapeHtml(cust.name)}</td><td>${escapeHtml(cust.phone)}</td><td>${escapeHtml(cust.region)}</td>` : '';
+          return `<tr class="row-clickable" data-row-action="view-return" data-id="${r.id}">
           <td>${escapeHtml(r.no)}</td><td>${escapeHtml(r.typeLabel||r.type)}</td>
+          ${extra}
           <td>${tag(r.reasonType||'其他')} ${escapeHtml(r.reason||'')}</td>
           <td>${escapeHtml(snsProductDetail(r.sns))}</td>
           <td>${tag(r.status==='pending'?'待审':r.status==='approved'?'已通过':r.status)}</td>
           <td>${escapeHtml(r.createdAt)}</td>
-        </tr>`).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
+        </tr>`;
+        }).join('') || `<tr><td colspan="${showCust ? 9 : 6}">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -3125,6 +3208,7 @@
       { id: 'rejected', title: '已驳回', badge: poN('rejected') || null },
     ];
     return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即生效（下单仅一级小程序）', backToL1DetailAction())}
+      ${tabsHtml('purchase', tabItems)}
       ${filterBar(`
         <select class="field-input" data-filter="purchase:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <label class="muted">下单时间</label>
@@ -3132,7 +3216,6 @@
         <input type="date" class="field-input" data-filter="purchase:to" value="${escapeHtml(f.to||'')}" />
       `)}
       <div class="metric-grid metric-grid-2">${metricCard('当月采购量', monthQty)}${metricCard('历史采购量', histQty)}</div>
-      ${tabsHtml('purchase', tabItems)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>时间</th></tr></thead>
         <tbody>${rows.map((p)=>{
@@ -3179,6 +3262,11 @@
     const colSpan = showCust ? 10 : 8;
     const desc = f.l1 ? `${l1Name(f.l1)} · 默认当月可改区间` : '分销 / 直售合一 · 默认当月可改区间';
     return `${pageHeader('销售单管理', desc, backToL1DetailAction())}
+      ${tabsHtml('sales', [
+        { id: 'distribute', title: '分销', badge: distN || null },
+        { id: 'direct', title: '直售', badge: dirN || null },
+        { id: 'all', title: '全部', badge: inRangeAll.length || null },
+      ])}
       ${filterBar(`
         <select class="field-input" data-filter="sales:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         ${l2Select}
@@ -3186,11 +3274,6 @@
         <input type="date" class="field-input" data-filter="sales:to" value="${escapeHtml(f.to)}" />
       `)}
       <div class="metric-grid metric-grid-2">${metricCard('当月销量', monthQty)}${metricCard('历史销量', histQty)}</div>
-      ${tabsHtml('sales', [
-        { id: 'distribute', title: '分销', badge: distN || null },
-        { id: 'direct', title: '直售', badge: dirN || null },
-        { id: 'all', title: '全部', badge: inRangeAll.length || null },
-      ])}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr>${headCols}</tr></thead>
         <tbody>${rows.map((s)=>{
@@ -3291,19 +3374,32 @@
   }
 
   function pageReturn() {
-    const f = ui.filters.return || {};
+    const f = ui.filters.return || (ui.filters.return = {});
+    if (!f.from) f.from = monthStart();
+    if (!f.to) f.to = todayDate();
+    if (!ui.tabs['return-kind']) ui.tabs['return-kind'] = 'all';
+    const kind = ui.tabs['return-kind'] || 'all';
     const tab = ui.tabs.return || (f.status || 'all');
     if (f.status && !ui.tabs.return) ui.tabs.return = f.status;
-    let rows = db.returns.slice();
-    if (f.type) rows = rows.filter((r) => r.type === f.type);
-    if (f.reasonType) rows = rows.filter((r) => r.reasonType === f.reasonType);
-    if (f.l1) {
+    const l2Opts = db.agentsL2.filter((a) => !a.pending && (!f.l1 || a.parentId === f.l1));
+    if (f.l2 && !l2Opts.some((a) => a.id === f.l2)) f.l2 = '';
+    const matchL1 = (r) => {
+      if (!f.l1) return true;
       const l2Ids = new Set(db.agentsL2.filter((a) => a.parentId === f.l1).map((a) => a.id));
-      rows = rows.filter((r) => r.fromId === f.l1 || r.approverId === f.l1 || l2Ids.has(r.fromId));
-    }
-    if (f.l2) {
+      return r.fromId === f.l1 || r.approverId === f.l1 || l2Ids.has(r.fromId)
+        || (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l1Id === f.l1));
+    };
+    let byAgent = db.returns.filter(matchL1);
+    const inRangeAll = byAgent.filter((r) => inDateRange(r.createdAt, f.from, f.to));
+    const countKind = (id) => inRangeAll.filter((r) => l1ReturnTypeTab(r) === id).length;
+    let rows = inRangeAll.slice();
+    if (kind && kind !== 'all') rows = rows.filter((r) => l1ReturnTypeTab(r) === kind);
+    if (kind !== 'user' && f.l2) {
       rows = rows.filter((r) => r.fromId === f.l2 || (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === f.l2)));
     }
+    if (f.reasonType) rows = rows.filter((r) => r.reasonType === f.reasonType);
+    if (f.type) rows = rows.filter((r) => r.type === f.type);
+    const statusRows = rows.slice();
     if (tab && tab !== 'all') rows = rows.filter((r) => r.status === tab);
     rows.sort((a, b) => {
       const pa = a.status === 'pending' ? 0 : 1;
@@ -3311,17 +3407,20 @@
       if (pa !== pb) return pa - pb;
       return parseTime(b.createdAt) - parseTime(a.createdAt);
     });
-    const monthQty = db.returns.filter((r) => inDateRange(r.createdAt, monthStart(), todayDate())).reduce((n, r) => n + (r.sns || []).length, 0);
-    const histQty = db.returns.reduce((n, r) => n + (r.sns || []).length, 0);
-    const rtN = (st) => db.returns.filter((r) => r.status === st).length;
+    const monthQty = inRangeAll.reduce((n, r) => n + (r.sns || []).length, 0);
+    const histQty = byAgent.reduce((n, r) => n + (r.sns || []).length, 0);
+    const rtN = (st) => statusRows.filter((r) => r.status === st).length;
+    const l2Select = kind === 'user' ? '' : `<select class="field-input" data-filter="return:l2"><option value="">全部二级</option>${l2Opts.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
+    const showCust = kind === 'user';
     return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', `${backToL1DetailAction()}<button class="btn" data-go="stats">数据统计</button>`)}
-      <div class="metric-grid" style="margin-bottom:10px">
-        ${metricCard('本月退货件数', monthQty, 'return')}
-        ${metricCard('历史退货件数', histQty, 'return')}
-        ${metricCard('待审单', rtN('pending'), 'return', 'tab:return:pending')}
-      </div>
+      ${tabsHtml('return-kind', [
+        { id: 'user', title: '直售客户退货', badge: countKind('user') || null },
+        { id: 'l2', title: '二级代理退货', badge: countKind('l2') || null },
+        { id: 'factory', title: '一级代理退原厂', badge: countKind('factory') || null },
+        { id: 'all', title: '全部类型', badge: inRangeAll.length || null },
+      ])}
       ${tabsHtml('return', [
-        { id: 'all', title: '全部', badge: db.returns.length || null },
+        { id: 'all', title: '全部', badge: statusRows.length || null },
         { id: 'pending', title: '待审核', badge: rtN('pending') || null },
         { id: 'approved', title: '已通过', badge: rtN('approved') || null },
         { id: 'done', title: '已处理', badge: rtN('done') || null },
@@ -3329,19 +3428,32 @@
       ])}
       ${filterBar(`
         <select class="field-input" data-filter="return:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
-        <select class="field-input" data-filter="return:l2"><option value="">全部二级</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        ${l2Select}
         <select class="field-input" data-filter="return:reasonType"><option value="">退货理由</option>${RETURN_REASONS.map((r)=>`<option value="${r.type}" ${f.reasonType===r.type?'selected':''}>${r.label}</option>`).join('')}</select>
+        <label class="muted">退货时间</label>
+        <input type="date" class="field-input" data-filter="return:from" value="${escapeHtml(f.from)}" />
+        <input type="date" class="field-input" data-filter="return:to" value="${escapeHtml(f.to)}" />
       `)}
+      <div class="metric-grid" style="margin-bottom:10px">
+        ${metricCard('本月退货件数', monthQty, 'return')}
+        ${metricCard('历史退货件数', histQty, 'return')}
+        ${metricCard('待审单', rtN('pending'), 'return', 'tab:return:pending')}
+      </div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th>${thFilterHtml('类型', 'return', 'type', RETURN_TYPES)}<th>来源</th><th>理由</th><th>SN码</th><th>商品明细</th><th>状态</th><th>时间</th></tr></thead>
-        <tbody>${rows.map((r)=>`<tr class="row-clickable" data-row-action="view-return" data-id="${r.id}">
+        <thead><tr><th>单号</th>${thFilterHtml('类型', 'return', 'type', RETURN_TYPES)}<th>来源</th>${showCust ? '<th>姓名</th><th>手机号</th><th>地区</th>' : ''}<th>理由</th><th>SN码</th><th>商品明细</th><th>状态</th><th>时间</th></tr></thead>
+        <tbody>${rows.map((r)=>{
+          const cust = returnCustomerInfo(r);
+          const extra = showCust ? `<td>${escapeHtml(cust.name)}</td><td>${escapeHtml(cust.phone)}</td><td>${escapeHtml(cust.region)}</td>` : '';
+          return `<tr class="row-clickable" data-row-action="view-return" data-id="${r.id}">
           <td>${escapeHtml(r.no)}</td><td>${escapeHtml(r.typeLabel||r.type)}</td>
           <td>${escapeHtml(r.fromName||'')}</td>
+          ${extra}
           <td>${tag(r.reasonType||'其他')} ${escapeHtml(r.reason||'')}</td>
           <td>${(r.sns||[]).map((sn)=>`<code>${escapeHtml(sn)}</code>`).join('<br>')||'—'}</td>
           <td>${escapeHtml(snsProductDetail(r.sns))}</td>
           <td>${returnStatusTag(r.status)}</td><td>${escapeHtml(r.createdAt)}</td>
-        </tr>`).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
+        </tr>`;
+        }).join('') || `<tr><td colspan="${showCust ? 11 : 8}">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -4392,6 +4504,28 @@
     };
   }
 
+  function customerAgentIds(c) {
+    const l1Ids = new Set();
+    const l2Ids = new Set();
+    (c.snRows || []).forEach((s) => {
+      if (s.l1Id) l1Ids.add(s.l1Id);
+      if (s.l2Id) l2Ids.add(s.l2Id);
+    });
+    return { l1Ids: [...l1Ids], l2Ids: [...l2Ids] };
+  }
+
+  function customerInDateRange(c, from, to) {
+    if (!from && !to) return true;
+    const dates = [];
+    if (c.updatedAt) dates.push(c.updatedAt);
+    if (c.createdAt) dates.push(c.createdAt);
+    (c.snRows || []).forEach((s) => {
+      if (s.soldAt) dates.push(s.soldAt);
+      if (s.bindAt) dates.push(s.bindAt);
+    });
+    return dates.some((d) => inDateRange(d, from, to));
+  }
+
   function listAdminCustomers() {
     ensureCustomersStore(db);
     const rows = (db.customers || []).map(enrichCustomer);
@@ -4523,8 +4657,15 @@
   }
 
   function pageCustomers() {
-    const f = ui.filters.customers || {};
+    const f = ui.filters.customers || (ui.filters.customers = {});
+    if (!f.from) f.from = monthStart();
+    if (!f.to) f.to = todayDate();
+    const l2Opts = db.agentsL2.filter((a) => !a.pending && (!f.l1 || a.parentId === f.l1));
+    if (f.l2 && !l2Opts.some((a) => a.id === f.l2)) f.l2 = '';
     let rows = listAdminCustomers();
+    if (f.from || f.to) rows = rows.filter((r) => customerInDateRange(r, f.from, f.to));
+    if (f.l1) rows = rows.filter((r) => customerAgentIds(r).l1Ids.includes(f.l1));
+    if (f.l2) rows = rows.filter((r) => customerAgentIds(r).l2Ids.includes(f.l2));
     if (f.sn) rows = rows.filter((r) => (r.sns || []).some((sn) => sn.toLowerCase().includes(f.sn.toLowerCase())));
     if (f.phone) rows = rows.filter((r) => (r.phone || '').includes(f.phone) || (r.name || '').includes(f.phone));
     if (f.addr) rows = rows.filter((r) => (r.addr || '').includes(f.addr));
@@ -4532,6 +4673,11 @@
     return `${pageHeader('销售客户', '点击行看详情（编辑 / 删除在详情内）',
       `${ui.backRoute === 'sales' ? '<button class="btn" data-go="sales">返回销售单</button>' : ''}<button class="btn btn-primary" data-action="open-create-customer">新建客户</button>`)}
       ${filterBar(`
+        <select class="field-input" data-filter="customers:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <select class="field-input" data-filter="customers:l2"><option value="">全部二级</option>${l2Opts.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        <label class="muted">销售时间</label>
+        <input type="date" class="field-input" data-filter="customers:from" value="${escapeHtml(f.from)}" />
+        <input type="date" class="field-input" data-filter="customers:to" value="${escapeHtml(f.to)}" />
         <input class="field-input" placeholder="SN" data-filter="customers:sn" value="${escapeHtml(f.sn||'')}" />
         <input class="field-input" placeholder="手机/姓名" data-filter="customers:phone" value="${escapeHtml(f.phone||'')}" />
         <input class="field-input" placeholder="地址" data-filter="customers:addr" value="${escapeHtml(f.addr||'')}" />
@@ -4774,7 +4920,7 @@
   }
 
   const PAGES = {
-    home: pageHome, 'agent-l1': pageAgentL1, 'agent-l1-detail': pageAgentL1Detail, 'agent-l2': pageAgentL2, 'agent-l2-audit': pageAgentL2Audit,
+    home: pageHome, 'agent-l1': pageAgentL1, 'agent-l1-detail': pageAgentL1Detail, 'agent-l2': pageAgentL2, 'agent-l2-detail': pageAgentL2Detail, 'agent-l2-audit': pageAgentL2Audit,
     'agent-pending': pageAgentPending, sn: pageSN, product: pageProduct, purchase: pagePurchase,
     sales: pageSales, stock: pageStock, return: pageReturn, exception: pageException, customers: pageCustomers,
     stats: pageStats, role: pageRole, log: pageLog,
@@ -4791,6 +4937,12 @@
       ui.filters['agent-l1-detail'] = { ...(ui.filters['agent-l1-detail'] || {}), id: payload.id };
       ui.modal = null;
       navigate('agent-l1-detail');
+      return;
+    }
+    if (type === 'view-agent-l2') {
+      ui.filters['agent-l2-detail'] = { ...(ui.filters['agent-l2-detail'] || {}), id: payload.id };
+      ui.modal = null;
+      navigate('agent-l2-detail');
       return;
     }
     ui.modal = { type, payload, draft: payload.draft || JSON.parse(JSON.stringify(payload.draftSeed || {})) };
@@ -5005,17 +5157,12 @@
           </div>`;
         }).join('') || emptyHint('暂无待会签')}`;
       foot = `<button class="btn" data-action="close-modal">稍后处理</button>`;
-    } else if (type === 'view-agent-l2' || type === 'edit-l2') {
-      const a = type === 'edit-l2' ? draft : db.agentsL2.find((x) => x.id === payload.id);
-      const editing = type === 'edit-l2';
-      title = editing ? '编辑二级代理' : `二级详情 · ${a.name}`;
+    } else if (type === 'edit-l2') {
+      const a = draft;
+      title = '编辑二级代理';
       const cities = citiesForL1(a.parentId);
       const cityOpts = cities.length ? cities : ['杭州市'];
-      const acc = l2Account(a.id);
-      const exN = l2ExCount(a.id);
-      const poN = l2PendingPoCount(a.id);
-      const rtN = l2PendingAftersaleCount(a.id);
-      body = editing ? `<div class="form-grid">
+      body = `<div class="form-grid">
           <div class="form-field"><label>名称</label><input class="field-input" id="f-name" value="${escapeHtml(a.name)}" /></div>
           <div class="form-field"><label>类型</label><input class="field-input" value="${escapeHtml(a.type)}" readonly /></div>
           <div class="form-field span-2"><label>所属一级（更改绑定）</label>
@@ -5036,33 +5183,10 @@
             <input type="checkbox" id="f-ex-no-alarm" ${a.exNoAlarm ? 'checked' : ''} />
             <span>异常不报警（新异常只记录且默认已处理，不推送未处理预警）</span>
           </label></div>
-        </div>${a.type==='法人'?entFieldsHtml(a.ent||{}):''}`
-        : `<div class="detail-grid">
-          <div><span>编码</span>${escapeHtml(a.code)}</div>
-          <div><span>类型</span>${escapeHtml(a.type)}</div>
-          <div><span>账号登录名称</span>${escapeHtml(acc?.username || '—')}</div>
-          <div><span>密码</span>${escapeHtml(acc?.password || '—')}</div>
-          <div><span>所属一级</span>${escapeHtml(l1Name(a.parentId))}</div>
-          <div><span>城市</span>${escapeHtml((a.areas||[]).join('、')||'—')}</div>
-          <div><span>状态</span>${tag(a.status)}</div>
-          <div><span>报警</span>${a.exNoAlarm ? tag('异常不报警', 'gray') : (a.warnMultiplier || a.warnMode ? `${a.warnMultiplier || '继承'}× / ${a.warnMode || '继承'}` : '继承一级')}</div>
-          <div><span>本月采购量</span><strong class="num">${l2MonthPurchaseQty(a.id)}</strong></div>
-          <div><span>本月销售量</span><strong class="num">${l2MonthSalesQty(a.id)}</strong></div>
-          <div><span>当前库存总数</span><strong class="num">${l2StockCount(a.id)}</strong></div>
-        </div>${a.ent?`<h4>企业</h4><div class="detail-grid"><div class="span-2">${escapeHtml(a.ent.company||'')}</div></div>`:''}
-        ${a.exNoAlarm ? '<p class="muted" style="margin-top:8px">该二级已设「异常不报警」：新异常只记录且默认已处理，不推送未处理预警。</p>' : ''}`;
-      foot = editing
-        ? `<button class="btn" data-action="close-modal">取消</button>
+        </div>${a.type==='法人'?entFieldsHtml(a.ent||{}):''}`;
+      foot = `<button class="btn" data-action="close-modal">取消</button>
            ${a.type==='法人'&&a.parentId?`<button class="btn btn-danger" data-action="unbind-l2" data-id="${a.id}">解绑法人</button>`:''}
-           <button class="btn btn-primary" data-action="save-l2">保存</button>`
-        : `<button class="btn" data-action="edit-l2" data-id="${a.id}">编辑</button>
-           <button class="btn btn-primary" data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId||''};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:distribute" data-back="view-agent-l2" data-back-id="${a.id}">采购</button>
-           <button class="btn btn-primary" data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId||''};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:all" data-back="view-agent-l2" data-back-id="${a.id}">销售</button>
-           <button class="btn btn-primary" data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id}" data-back="view-agent-l2" data-back-id="${a.id}">退货</button>
-           <button class="btn btn-primary" data-go="stock" data-set-filter="stock:type=l2;stock:agent=${a.id}" data-set-tab="stock:summary" data-back="view-agent-l2" data-back-id="${a.id}">库存</button>
-           <button class="btn ${exN ? 'btn-danger' : ''}" data-go="exception" data-set-filter="exception:l2=${a.id}" data-back="view-agent-l2" data-back-id="${a.id}">异常${exN ? ` ${exN}` : ''}</button>
-           <button class="btn" data-go="return" data-set-filter="return:l2=${a.id}" data-set-tab="return:pending" data-back="view-agent-l2" data-back-id="${a.id}">售后待处理${rtN ? ` ${rtN}` : ''}</button>
-           <button class="btn btn-danger" data-action="toggle-l2" data-id="${a.id}">${a.status==='启用'?'停用':'启用'}</button>`;
+           <button class="btn btn-primary" data-action="save-l2">保存</button>`;
     } else if (type === 'rebind-l2') {
       const a = db.agentsL2.find((x) => x.id === payload.id);
       const d = draft || {};
@@ -5772,7 +5896,7 @@
       body = `<p>${escapeHtml(payload.message || type)}</p>`;
     }
 
-    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'edit-l1' || type === 'create-l1' || type === 'view-agent-l2' || type === 'edit-l2' || type === 'rebind-l2' || type === 'order-cart' || type === 'view-exception' || type === 'create-product' || type === 'edit-product' || type === 'view-stock' || type === 'view-return' || type === 'view-customer' || type === 'create-customer' || type === 'edit-customer' || type === 'create-role';
+    const wide = type === 'audit-po' || type === 'view-sn' || type === 'edit-sn' || type === 'edit-l1' || type === 'create-l1' || type === 'edit-l2' || type === 'rebind-l2' || type === 'order-cart' || type === 'view-exception' || type === 'create-product' || type === 'edit-product' || type === 'view-stock' || type === 'view-return' || type === 'view-customer' || type === 'create-customer' || type === 'edit-customer' || type === 'create-role';
     return `<div class="modal-mask" id="modal-mask"><div class="modal ${wide ? 'modal--wide' : ''}" id="modal-box">
       <div class="modal-hd"><strong>${escapeHtml(title)}</strong><button class="btn btn-sm btn-ghost" data-action="close-modal">×</button></div>
       <div class="modal-bd">${body}</div>
@@ -6186,7 +6310,18 @@
         from: f.from || monthStart(),
         to: f.to || todayDate(),
       };
-      if (ui.tabs['l1-sales'] === 'direct' || ui.tabs['l1-sales'] === 'distribute') ui.tabs.sales = ui.tabs['l1-sales'];
+      if (ui.tabs['l1-sales'] === 'direct') {
+        ui.filters.customers = {
+          ...(ui.filters.customers || {}),
+          from: f.from || monthStart(),
+          to: f.to || todayDate(),
+          l1: f.l1Id || ui.filters.sales?.l1 || '',
+          l2: '',
+        };
+        ui.backRoute = 'sales';
+        return 'customers';
+      }
+      if (ui.tabs['l1-sales'] === 'distribute') ui.tabs.sales = 'distribute';
       return 'sales';
     }
     if (id === 'l2-sales-detail') {
@@ -6295,18 +6430,6 @@
       case 'logout':
         confirmDialog('确认退出当前账号？', 'logout-ok', {}, { title: '退出登录', okText: '确认退出' });
         break;
-      case 'open-back-modal': {
-        const bm = ui.backModal;
-        ui.backModal = null;
-        if (bm?.type === 'view-agent-l2' && bm.id) {
-          if (ui.route !== 'agent-l2') {
-            ui.route = 'agent-l2';
-            location.hash = 'agent-l2';
-          }
-          openModal('view-agent-l2', { id: bm.id });
-        } else render();
-        break;
-      }
       case 'sign-l1-disable': {
         const a = db.agentsL1.find((x) => x.id === id);
         if (!a) break;
@@ -7980,14 +8103,10 @@
       }
       const dest = el.getAttribute('data-go');
       const back = el.getAttribute('data-back');
-      const backId = el.getAttribute('data-back-id');
-      if (back === 'view-agent-l2' && backId) {
-        ui.backModal = { type: 'view-agent-l2', id: backId };
-        ui.backRoute = '';
-      } else if (back) {
+      if (back) {
         ui.backRoute = back;
         ui.backModal = null;
-      } else if (dest !== 'agent-l1-detail' && dest !== ui.route) {
+      } else if (dest !== 'agent-l1-detail' && dest !== 'agent-l2-detail' && dest !== ui.route) {
         ui.backRoute = '';
         ui.backModal = null;
       }
@@ -7996,6 +8115,20 @@
 
     document.querySelectorAll('[data-tab]').forEach((el) => el.addEventListener('click', () => {
       const [key, id] = el.getAttribute('data-tab').split(':');
+      if (key === 'sales' && id === 'direct') {
+        const sf = ui.filters.sales || {};
+        ui.filters.customers = {
+          ...(ui.filters.customers || {}),
+          from: sf.from || monthStart(),
+          to: sf.to || todayDate(),
+          l1: sf.l1 || '',
+          l2: '',
+        };
+        ui.backRoute = 'sales';
+        ui.backModal = null;
+        navigate('customers');
+        return;
+      }
       ui.tabs[key] = id;
       if (key === 'exception' && ui.filters.exception) ui.filters.exception.type = '';
       render();
