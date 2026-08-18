@@ -787,6 +787,22 @@
         soldAt: u.soldAt, bindAt: u.soldAt, bindIpRegion: u.user.phoneLoc, user: u.user,
       }));
     });
+    const extraCustSns = [
+      { sn: 'RL202608040001', productId: 'P1', size: 'M', l1Id: 'L1A', l2Id: 'L2A', soldAt: '2026-08-04 10:15',
+        user: { name: '周宁', gender: '女', age: '26', phone: '13600004401', addr: '杭州市西湖区黄龙路12号', phoneLoc: '浙江' } },
+      { sn: 'RL202608040002', productId: 'P1', size: 'L', l1Id: 'L1A', l2Id: 'L2B', soldAt: '2026-08-04 15:40',
+        user: { name: '韩雪', gender: '女', age: '33', phone: '13500004402', addr: '宁波市海曙区药行街66号', phoneLoc: '浙江' } },
+      { sn: 'RL202608050002', productId: 'P2', size: 'LL', l1Id: 'L1B', l2Id: 'L2C', soldAt: '2026-08-05 13:05',
+        user: { name: '何超', gender: '男', age: '39', phone: '13900004403', addr: '广州市天河区猎德大道20号', phoneLoc: '广东' } },
+      { sn: 'RL202608070001', productId: 'P1', size: 'S', l1Id: 'L1A', soldAt: '2026-08-07 09:50',
+        user: { name: '林晓', gender: '女', age: '29', phone: '13700004404', addr: '杭州市滨江区网商路88号', phoneLoc: '浙江' } },
+    ];
+    extraCustSns.forEach((u) => {
+      sns.push(mkSn(u.sn, {
+        productId: u.productId, size: u.size, l1Id: u.l1Id, l2Id: u.l2Id || null, status: 'bound',
+        soldAt: u.soldAt, bindAt: u.soldAt, bindIpRegion: u.user.phoneLoc, user: u.user,
+      }));
+    });
 
     const soScannedA = ['RL202607200009', 'RL202607200010', 'RL202607200011', 'RL202607200012'];
     const soScannedB = ['RL202607210003', 'RL202607210004', 'RL202607210005', 'RL202607210006'];
@@ -1083,7 +1099,8 @@
             existing.planTotal = row.planTotal;
           }
         });
-        ['RL202608050001', 'RL202608030001', 'RL202608060001', 'RL202608060002'].forEach((sn) => {
+        ['RL202608050001', 'RL202608030001', 'RL202608060001', 'RL202608060002',
+          'RL202608040001', 'RL202608040002', 'RL202608050002', 'RL202608070001'].forEach((sn) => {
           if ((parsed.sns || []).some((s) => s.sn === sn)) return;
           const row = (seedDb.sns || []).find((s) => s.sn === sn);
           if (row) parsed.sns.push(JSON.parse(JSON.stringify(row)));
@@ -2755,7 +2772,7 @@
     return {
       purchase: `data-go="purchase" data-set-filter="purchase:l1=${a.id};purchase:from=${monthStart()};purchase:to=${todayDate()}" data-set-tab="purchase:all" data-back="agent-l1-detail"`,
       sales: `data-go="sales" data-set-filter="sales:l1=${a.id};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:all" data-back="agent-l1-detail"`,
-      ret: `data-go="l1-return-detail" data-set-filter="l1-return:l1Id=${a.id};l1-return:from=${monthStart()};l1-return:to=${todayDate()}" data-set-tab="l1-return:all" data-back="agent-l1-detail"`,
+      ret: `data-go="return" data-set-filter="return:l1=${a.id};return:l2=;return:from=${monthStart()};return:to=${todayDate()}" data-set-tab="return-kind:all;return:all" data-back="agent-l1-detail"`,
       ex: `data-go="exception" data-set-filter="exception:l1=${a.id}" data-back="agent-l1-detail"`,
       poPending: `data-go="purchase" data-set-filter="purchase:l1=${a.id}" data-set-tab="purchase:pending" data-back="agent-l1-detail"`,
       aftersale: `data-go="return" data-set-filter="return:l1=${a.id}" data-set-tab="return:pending" data-back="agent-l1-detail"`,
@@ -2766,7 +2783,7 @@
     return {
       purchase: `data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId || ''};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:distribute" data-back="agent-l2-detail"`,
       sales: `data-go="sales" data-set-filter="sales:l2=${a.id};sales:l1=${a.parentId || ''};sales:from=${monthStart()};sales:to=${todayDate()}" data-set-tab="sales:all" data-back="agent-l2-detail"`,
-      ret: `data-go="l2-return-detail" data-set-filter="l2-return:l2Id=${a.id};l2-return:from=${monthStart()};l2-return:to=${todayDate()}" data-back="agent-l2-detail"`,
+      ret: `data-go="return" data-set-filter="return:l1=${a.parentId || ''};return:l2=${a.id};return:from=${monthStart()};return:to=${todayDate()}" data-set-tab="return-kind:all;return:all" data-back="agent-l2-detail"`,
       ex: `data-go="exception" data-set-filter="exception:l2=${a.id}" data-back="agent-l2-detail"`,
       poPending: `data-go="purchase" data-set-filter="purchase:l1=${a.parentId || ''}" data-set-tab="purchase:pending" data-back="agent-l2-detail"`,
       aftersale: `data-go="return" data-set-filter="return:l2=${a.id}" data-set-tab="return:pending" data-back="agent-l2-detail"`,
@@ -4453,11 +4470,40 @@
     return [...map.values()];
   }
 
+  function mergeCustomersFromSns(store) {
+    const built = buildCustomersFromSns(store.sns || []);
+    store.customers = store.customers || [];
+    built.forEach((row) => {
+      const hit = store.customers.find((c) => (row.phone && c.phone === row.phone)
+        || ((row.sns || []).some((sn) => (c.sns || []).includes(sn))));
+      if (!hit) {
+        const next = (store.seq.cu = (store.seq.cu || store.customers.length) + 1);
+        row.id = `CU${String(next).padStart(3, '0')}`;
+        store.customers.push(row);
+        return;
+      }
+      (row.sns || []).forEach((sn) => {
+        if (!hit.sns) hit.sns = [];
+        if (!hit.sns.includes(sn)) hit.sns.push(sn);
+      });
+      if (!hit.name && row.name) hit.name = row.name;
+      if (!hit.gender && row.gender) hit.gender = row.gender;
+      if (!hit.age && row.age) hit.age = row.age;
+      if (!hit.addr && row.addr) hit.addr = row.addr;
+      if (!hit.phoneLoc && row.phoneLoc) hit.phoneLoc = row.phoneLoc;
+      if (row.createdAt && (!hit.createdAt || parseTime(row.createdAt) < parseTime(hit.createdAt))) hit.createdAt = row.createdAt;
+      if (row.updatedAt && (!hit.updatedAt || parseTime(row.updatedAt) > parseTime(hit.updatedAt))) hit.updatedAt = row.updatedAt;
+    });
+  }
+
   function ensureCustomersStore(store) {
     if (!store) return;
     store.seq = store.seq || {};
-    if (!Array.isArray(store.customers) || !store.customers.length) {
+    if (!Array.isArray(store.customers)) store.customers = [];
+    if (!store.customers.length) {
       store.customers = buildCustomersFromSns(store.sns || []);
+    } else {
+      mergeCustomersFromSns(store);
     }
     store.customers.forEach((c, i) => {
       if (!c.id) c.id = `CU${String(i + 1).padStart(3, '0')}`;
@@ -4512,6 +4558,13 @@
       if (s.l2Id) l2Ids.add(s.l2Id);
     });
     return { l1Ids: [...l1Ids], l2Ids: [...l2Ids] };
+  }
+
+  function customerAgentText(c) {
+    const { l1Ids, l2Ids } = customerAgentIds(c);
+    const l1 = [...new Set(l1Ids.map((id) => l1Name(id)).filter((n) => n && n !== '—'))].join('、') || '—';
+    const l2 = [...new Set(l2Ids.map((id) => l2Name(id)).filter((n) => n && n !== '—'))].join('、') || '—';
+    return { l1, l2 };
   }
 
   function customerInDateRange(c, from, to) {
@@ -4615,6 +4668,8 @@
         <div><span>年龄</span>${escapeHtml(row.age || '—')}</div>
         <div><span>手机</span>${escapeHtml(row.phone || '—')}</div>
         <div><span>归属地</span>${escapeHtml(row.phoneLoc || '—')}</div>
+        <div><span>一级代理</span>${escapeHtml(customerAgentText(row).l1)}</div>
+        <div><span>二级代理</span>${escapeHtml(customerAgentText(row).l2)}</div>
         <div><span>标记</span>${row.dupPhone ? tag('重复手机', 'orange') : ''}${dupAddr ? tag('重复地址', 'orange') : ''}${!(row.dupPhone || dupAddr) ? '—' : ''}</div>
         <div class="span-2"><span>地址</span>${escapeHtml(row.addr || '—')}</div>
         <div class="span-2"><span>备注</span>${escapeHtml(row.note || '—')}</div>
@@ -4684,9 +4739,13 @@
         <select class="field-input" data-filter="customers:mark"><option value="">标记</option><option value="1" ${f.mark==='1'?'selected':''}>仅重复</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>姓名</th><th>性别</th><th>年龄</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th></tr></thead>
-        <tbody>${rows.map((r)=>`<tr class="row-clickable" data-row-action="view-customer" data-id="${escapeHtml(r.id)}">
+        <thead><tr><th>姓名</th><th>一级代理</th><th>二级代理</th><th>性别</th><th>年龄</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th></tr></thead>
+        <tbody>${rows.map((r)=>{
+          const ag = customerAgentText(r);
+          return `<tr class="row-clickable" data-row-action="view-customer" data-id="${escapeHtml(r.id)}">
           <td>${escapeHtml(r.name || '—')}</td>
+          <td>${escapeHtml(ag.l1)}</td>
+          <td>${escapeHtml(ag.l2)}</td>
           <td>${escapeHtml(r.gender || '—')}</td>
           <td>${escapeHtml(r.age || '—')}</td>
           <td>${escapeHtml(r.phone||'—')}</td>
@@ -4695,7 +4754,8 @@
           <td>${escapeHtml((r.products || []).join('，') || '—')}</td>
           <td>${(r.sns||[]).map((sn)=>`<code style="margin-right:4px">${escapeHtml(sn)}</code>`).join('')||'—'}</td>
           <td>${r.dupPhone?tag('重复手机','orange'):''} ${r.dupAddr?tag('重复地址','orange'):''} ${!r.mark?'—':''}</td>
-        </tr>`).join('') || `<tr><td colspan="9">${emptyHint()}</td></tr>`}</tbody>
+        </tr>`;
+        }).join('') || `<tr><td colspan="11">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -8098,8 +8158,10 @@
       }
       const setTab = el.getAttribute('data-set-tab');
       if (setTab) {
-        const [key, id] = setTab.split(':');
-        if (key && id) ui.tabs[key] = id;
+        setTab.split(';').forEach((item) => {
+          const [key, id] = item.split(':');
+          if (key && id) ui.tabs[key] = id;
+        });
       }
       const dest = el.getAttribute('data-go');
       const back = el.getAttribute('data-back');
