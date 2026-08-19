@@ -897,15 +897,15 @@
       ],
       returns: [
         { id: 'RT1', no: `RTU${todayCompact()}01`, type: 'user', typeLabel: '终端用户退货', fromId: 'L2A', fromName: '杭州城西专营',
-          sns: ['RL202607200007'], status: 'approved', createdAt: '2026-08-01 11:20', reason: '尺码不合适', reasonType: '尺码' },
+          sns: ['RL202607200007'], status: 'done', createdAt: '2026-08-01 11:20', reason: '尺码不合适', reasonType: '尺码' },
         { id: 'RT2', no: `RT${todayCompact()}02`, type: 'l2_to_l1', typeLabel: '二级退一级', fromId: 'L2A', fromName: '杭州城西专营', approverId: 'L1A',
-          sns: ['RL202607200011'], status: 'pending', createdAt: '2026-08-04 09:00', reason: '质量问题：面料起球', reasonType: '质量' },
+          sns: ['RL202607200011'], status: 'done', createdAt: '2026-08-04 09:00', reason: '质量问题：面料起球', reasonType: '质量' },
         { id: 'RT3', no: `RT${todayCompact()}03`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
           sns: ['RL202608010041'], status: 'pending', createdAt: '2026-08-04 15:30', reason: '批次瑕疵，申请退回原厂', reasonType: '批次' },
         { id: 'RT4', no: `RT${todayCompact()}04`, type: 'self', typeLabel: '自行售后处理', fromId: 'L2A', fromName: '杭州城西专营',
           sns: ['RL202607200010'], status: 'done', createdAt: '2026-08-03 13:10', reason: '轻微线头，自行换货处理', reasonType: '其他' },
         { id: 'RT5', no: `RT${todayCompact()}05`, type: 'l2_to_l1', typeLabel: '二级退一级', fromId: 'L2B', fromName: '宁波海曙店', approverId: 'L1A',
-          sns: ['RL202607210006'], status: 'approved', createdAt: '2026-07-30 16:40', reason: '客诉退货，转退一级', reasonType: '投诉' },
+          sns: ['RL202607210006'], status: 'done', createdAt: '2026-07-30 16:40', reason: '客诉退货，转退一级', reasonType: '投诉' },
         { id: 'RT6', no: `RT${todayCompact()}06`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
           sns: ['RL202606150001', 'RL202606150002'], status: 'approved', createdAt: '2026-07-10 10:00', reason: '质量退货回原厂（已冻结）', reasonType: '质量' },
         { id: 'RT7', no: `RT${todayCompact()}07`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
@@ -915,16 +915,16 @@
         { id: 'RT9', no: `RT${todayCompact()}09`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1B', fromName: '华南渠道中心',
           sns: ['RL202608020020', 'RL202608020021'], status: 'pending', createdAt: '2026-08-10 09:40', reason: '质量问题：弹力带老化', reasonType: '质量' },
         { id: 'RT10', no: `RTU${todayCompact()}10`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1A', fromName: '华东锐涞总代',
-          sns: ['RL202608010025'], status: 'approved', createdAt: '2026-08-06 10:15', reason: '尺码不合适', reasonType: '尺码',
+          sns: ['RL202608010025'], status: 'done', createdAt: '2026-08-06 10:15', reason: '尺码不合适', reasonType: '尺码',
           customer: { name: '陈默', phone: '13800001006', addr: '杭州市西湖区文一路88号', phoneLoc: '浙江' } },
         { id: 'RT11', no: `RTU${todayCompact()}11`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1A', fromName: '华东锐涞总代',
-          sns: ['RL202608030001'], status: 'pending', createdAt: '2026-08-05 16:40', reason: '尺码偏大，直售客户申请退货', reasonType: '尺码',
+          sns: ['RL202608030001'], status: 'done', createdAt: '2026-08-05 16:40', reason: '尺码偏大，直售客户申请退货', reasonType: '尺码',
           customer: { name: '王芳', gender: '女', age: '31', phone: '13700001108', addr: '杭州市西湖区文三路100号', phoneLoc: '浙江' } },
         { id: 'RT12', no: `RTU${todayCompact()}12`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1B', fromName: '华南渠道中心',
-          sns: ['RL202608050001'], status: 'pending', createdAt: '2026-08-06 09:30', reason: '面料起球，直售客户退货', reasonType: '质量',
+          sns: ['RL202608050001'], status: 'done', createdAt: '2026-08-06 09:30', reason: '面料起球，直售客户退货', reasonType: '质量',
           customer: { name: '刘洋', gender: '男', age: '34', phone: '13900002201', addr: '广州市天河区体育西路8号', phoneLoc: '广东' } },
         { id: 'RT13', no: `RTU${todayCompact()}13`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1C', fromName: '华北联合代理',
-          sns: ['RL202608060001'], status: 'approved', createdAt: '2026-08-07 11:05', reason: '客诉升级，直售客户退货', reasonType: '投诉',
+          sns: ['RL202608060001'], status: 'done', createdAt: '2026-08-07 11:05', reason: '客诉升级，直售客户退货', reasonType: '投诉',
           customer: { name: '赵磊', gender: '男', age: '42', phone: '13600003321', addr: '北京市朝阳区建国路88号', phoneLoc: '北京' } },
       ],
       exceptions: [
@@ -1118,7 +1118,10 @@
         (parsed.customers || []).forEach((c) => {
           if (c.phone) c.phone = revealMaskedPhone(c.phone);
         });
-        (parsed.returns || []).forEach((r) => { if (!r.reasonType) r.reasonType = '其他'; });
+        (parsed.returns || []).forEach((r) => {
+          if (!r.reasonType) r.reasonType = '其他';
+          normalizeReturnAuditStatus(r);
+        });
         (parsed.exceptions || []).forEach((e) => {
           if (e.dim === 'nonSn') e.dim = 'scan';
           else if (e.dim === 'sn') e.dim = 'activate';
@@ -1330,20 +1333,27 @@
 
   function canAuditReturn(r) {
     if (!r || r.status !== 'pending') return false;
-    // 二级 / 子账号：不可审核（二级退一级由一级审）
+    if (!returnNeedsAudit(r)) return false;
     if (ui.role === 'l2' || ui.role === 'sub') return false;
-    // 向上申请（一级退原厂）：仅原厂 PC 后台审核
-    if (r.type === 'l1_to_factory') {
-      return ui.mode === 'admin' && ui.role === 'admin';
-    }
-    // 二级退一级：一级代理审核
-    if (r.type === 'l2_to_l1') {
-      if (ui.role === 'l1') return !r.approverId || r.approverId === currentL1Id();
-      return ui.mode === 'admin' && ui.role === 'admin';
-    }
-    // 其他类型：一级小程序或后台可审
-    if (ui.role === 'l1' || (ui.mode === 'admin' && ui.role === 'admin')) return true;
-    return false;
+    return ui.mode === 'admin' && ui.role === 'admin';
+  }
+
+  function returnNeedsAudit(r) {
+    return !!(r && r.type === 'l1_to_factory');
+  }
+
+  function normalizeReturnAuditStatus(r) {
+    if (!r || returnNeedsAudit(r)) return;
+    if (r.status === 'pending' || r.status === 'approved') r.status = 'done';
+  }
+
+  function returnKindTabItems(countKind, allN) {
+    return [
+      { id: 'l2', title: '二级代理退货', badge: countKind('l2') || null },
+      { id: 'user', title: '直售客户退货', badge: countKind('user') || null },
+      { id: 'factory', title: '一级代理退原厂', badge: countKind('factory') || null },
+      { id: 'all', title: '全部类型', badge: allN || null },
+    ];
   }
 
   function returnCustomerInfo(r) {
@@ -2179,7 +2189,7 @@
     return db.purchases.filter((p) => ['pending', 'cosigning'].includes(p.status)).length;
   }
   function pendingReturnCount() {
-    return db.returns.filter((r) => r.status === 'pending').length;
+    return db.returns.filter((r) => r.status === 'pending' && returnNeedsAudit(r)).length;
   }
   function openExCount() {
     return db.exceptions.filter((e) => e.status === '未处理').length;
@@ -2263,7 +2273,7 @@
   function l1PendingAftersaleCount(l1Id) {
     const l2Ids = new Set(db.agentsL2.filter((a) => a.parentId === l1Id).map((a) => a.id));
     return db.returns.filter((r) => {
-      if (r.status !== 'pending') return false;
+      if (r.status !== 'pending' || !returnNeedsAudit(r)) return false;
       return r.fromId === l1Id || r.approverId === l1Id || l2Ids.has(r.fromId);
     }).length;
   }
@@ -2375,7 +2385,7 @@
   }
   function l2PendingAftersaleCount(l2Id) {
     return db.returns.filter((r) => {
-      if (r.status !== 'pending') return false;
+      if (r.status !== 'pending' || !returnNeedsAudit(r)) return false;
       if (r.fromId === l2Id) return true;
       return (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === l2Id));
     }).length;
@@ -2699,7 +2709,7 @@
       <div class="metric-grid">
         ${metricCard('一级代理', db.agentsL1.filter((a) => a.status === '启用').length, 'agent-l1')}
         ${metricCard('二级代理', db.agentsL2.filter((a) => a.auditStatus === 'approved' && !a.pending).length, 'agent-l2')}
-        ${metricCard('当月销量', monthSales, 'sales')}
+        ${metricCard('筛选区间销量', monthSales, 'sales')}
         ${metricCard('已销售SN', snBound, 'sn')}
         ${metricCard('待审采购', pendingPo, 'purchase')}
         ${metricCard('未处理异常', openEx, 'exception')}
@@ -2911,16 +2921,12 @@
     if (tab !== 'user' && l2Id) {
       list = list.filter((r) => r.fromId === l2Id || (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === l2Id)));
     }
-    if (f.status) list = list.filter((r) => r.status === f.status);
+    const noAudit = tab === 'user' || tab === 'l2';
+    if (f.status && !noAudit) list = list.filter((r) => r.status === f.status);
     const l2Select = tab === 'user' ? '' : `<select class="field-input" data-filter="l1-return:l2"><option value="">全部二级代理</option>${l2Opts.map((a)=>`<option value="${a.id}" ${a.id===l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     const showCust = tab === 'user' || tab === 'all';
     return `${pageHeader('一级退货详情', `${l1Name(l1Id)} · 默认当月`, backToL1DetailAction('agent-l1'))}
-      ${tabsHtml('l1-return', [
-        { id: 'user', title: '直售客户退货', badge: countOf('user') || null },
-        { id: 'l2', title: '二级代理退货', badge: countOf('l2') || null },
-        { id: 'factory', title: '一级代理退原厂', badge: countOf('factory') || null },
-        { id: 'all', title: '全部类型', badge: all.filter((r) => inDateRange(r.createdAt, from, to)).length || null },
-      ])}
+      ${tabsHtml('l1-return', returnKindTabItems(countOf, all.filter((r) => inDateRange(r.createdAt, from, to)).length))}
       ${filterBar(`
         <select class="field-input" data-filter="l1-return:l1Id">${db.agentsL1.map((a)=>`<option value="${a.id}" ${a.id===l1Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         ${l2Select}
@@ -2930,7 +2936,7 @@
       `)}
       <div class="metric-grid">${metricCard('当月退货', monthQty)}${metricCard('历史总量', histQty)}</div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>类型</th>${showCust ? '<th>姓名</th><th>手机号</th><th>地区</th>' : ''}<th>理由</th><th>商品明细</th>${thFilterHtml('状态', 'l1-return', 'status', RT_STATUS_OPTS)}<th>时间</th></tr></thead>
+        <thead><tr><th>单号</th><th>类型</th>${showCust ? '<th>姓名</th><th>手机号</th><th>地区</th>' : ''}<th>理由</th><th>商品明细</th>${noAudit ? '' : thFilterHtml('状态', 'l1-return', 'status', RT_STATUS_OPTS)}<th>时间</th></tr></thead>
         <tbody>${list.map((r)=>{
           const cust = returnCustomerInfo(r);
           const extra = showCust ? `<td>${escapeHtml(cust.name)}</td><td>${escapeHtml(cust.phone)}</td><td>${escapeHtml(cust.region)}</td>` : '';
@@ -2939,10 +2945,10 @@
           ${extra}
           <td>${tag(r.reasonType||'其他')} ${escapeHtml(r.reason||'')}</td>
           <td>${escapeHtml(snsProductDetail(r.sns))}</td>
-          <td>${tag(r.status==='pending'?'待审':r.status==='approved'?'已通过':r.status)}</td>
+          ${noAudit ? '' : `<td>${tag(r.status==='pending'?'待审':r.status==='approved'?'已通过':r.status)}</td>`}
           <td>${escapeHtml(r.createdAt)}</td>
         </tr>`;
-        }).join('') || `<tr><td colspan="${showCust ? 9 : 6}">${emptyHint()}</td></tr>`}</tbody>
+        }).join('') || `<tr><td colspan="${(showCust ? 8 : 5) + (noAudit ? 0 : 1)}">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -3290,7 +3296,7 @@
         <input type="date" class="field-input" data-filter="sales:from" value="${escapeHtml(f.from)}" />
         <input type="date" class="field-input" data-filter="sales:to" value="${escapeHtml(f.to)}" />
       `)}
-      <div class="metric-grid metric-grid-2">${metricCard('当月销量', monthQty)}${metricCard('历史销量', histQty)}</div>
+      <div class="metric-grid metric-grid-2">${metricCard('筛选区间销量', monthQty)}${metricCard('历史销量', histQty)}</div>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr>${headCols}</tr></thead>
         <tbody>${rows.map((s)=>{
@@ -3417,7 +3423,10 @@
     if (f.reasonType) rows = rows.filter((r) => r.reasonType === f.reasonType);
     if (f.type) rows = rows.filter((r) => r.type === f.type);
     const statusRows = rows.slice();
-    if (tab && tab !== 'all') rows = rows.filter((r) => r.status === tab);
+    const noAuditKind = kind === 'user' || kind === 'l2';
+    if (noAuditKind && tab !== 'all' && tab !== 'done') ui.tabs.return = 'all';
+    const statusTab = noAuditKind ? 'all' : (ui.tabs.return || tab);
+    if (statusTab && statusTab !== 'all') rows = rows.filter((r) => r.status === statusTab);
     rows.sort((a, b) => {
       const pa = a.status === 'pending' ? 0 : 1;
       const pb = b.status === 'pending' ? 0 : 1;
@@ -3429,20 +3438,17 @@
     const rtN = (st) => statusRows.filter((r) => r.status === st).length;
     const l2Select = kind === 'user' ? '' : `<select class="field-input" data-filter="return:l2"><option value="">全部二级</option>${l2Opts.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     const showCust = kind === 'user';
-    return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', `${backToL1DetailAction()}<button class="btn" data-go="stats">数据统计</button>`)}
-      ${tabsHtml('return-kind', [
-        { id: 'user', title: '直售客户退货', badge: countKind('user') || null },
-        { id: 'l2', title: '二级代理退货', badge: countKind('l2') || null },
-        { id: 'factory', title: '一级代理退原厂', badge: countKind('factory') || null },
-        { id: 'all', title: '全部类型', badge: inRangeAll.length || null },
-      ])}
-      ${tabsHtml('return', [
+    const statusTabs = noAuditKind ? '' : `${tabsHtml('return', [
         { id: 'all', title: '全部', badge: statusRows.length || null },
         { id: 'pending', title: '待审核', badge: rtN('pending') || null },
         { id: 'approved', title: '已通过', badge: rtN('approved') || null },
         { id: 'done', title: '已处理', badge: rtN('done') || null },
         { id: 'rejected', title: '已驳回', badge: rtN('rejected') || null },
-      ])}
+      ])}`;
+    const pendingCard = noAuditKind ? '' : metricCard('待审单', rtN('pending'), 'return', 'tab:return:pending');
+    return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', `${backToL1DetailAction()}<button class="btn" data-go="stats">数据统计</button>`)}
+      ${tabsHtml('return-kind', returnKindTabItems(countKind, inRangeAll.length))}
+      ${statusTabs}
       ${filterBar(`
         <select class="field-input" data-filter="return:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         ${l2Select}
@@ -3454,10 +3460,10 @@
       <div class="metric-grid" style="margin-bottom:10px">
         ${metricCard('本月退货件数', monthQty, 'return')}
         ${metricCard('历史退货件数', histQty, 'return')}
-        ${metricCard('待审单', rtN('pending'), 'return', 'tab:return:pending')}
+        ${pendingCard}
       </div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th>${thFilterHtml('类型', 'return', 'type', RETURN_TYPES)}<th>来源</th>${showCust ? '<th>姓名</th><th>手机号</th><th>地区</th>' : ''}<th>理由</th><th>SN码</th><th>商品明细</th><th>状态</th><th>时间</th></tr></thead>
+        <thead><tr><th>单号</th>${thFilterHtml('类型', 'return', 'type', RETURN_TYPES)}<th>来源</th>${showCust ? '<th>姓名</th><th>手机号</th><th>地区</th>' : ''}<th>理由</th><th>SN码</th><th>商品明细</th>${noAuditKind ? '' : '<th>状态</th>'}<th>时间</th></tr></thead>
         <tbody>${rows.map((r)=>{
           const cust = returnCustomerInfo(r);
           const extra = showCust ? `<td>${escapeHtml(cust.name)}</td><td>${escapeHtml(cust.phone)}</td><td>${escapeHtml(cust.region)}</td>` : '';
@@ -3468,9 +3474,9 @@
           <td>${tag(r.reasonType||'其他')} ${escapeHtml(r.reason||'')}</td>
           <td>${(r.sns||[]).map((sn)=>`<code>${escapeHtml(sn)}</code>`).join('<br>')||'—'}</td>
           <td>${escapeHtml(snsProductDetail(r.sns))}</td>
-          <td>${returnStatusTag(r.status)}</td><td>${escapeHtml(r.createdAt)}</td>
+          ${noAuditKind ? '' : `<td>${returnStatusTag(r.status)}</td>`}<td>${escapeHtml(r.createdAt)}</td>
         </tr>`;
-        }).join('') || `<tr><td colspan="${showCust ? 11 : 8}">${emptyHint()}</td></tr>`}</tbody>
+        }).join('') || `<tr><td colspan="${(showCust ? 10 : 7) + (noAuditKind ? 0 : 1)}">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -4567,6 +4573,17 @@
     return { l1, l2 };
   }
 
+  function customerIsDirect(c) {
+    return customerAgentIds(c).l2Ids.length === 0;
+  }
+
+  function customerSalesQty(c, from, to) {
+    const sns = c.snRows || [];
+    const hist = sns.length;
+    const range = sns.filter((s) => inDateRange(s.soldAt || s.bindAt || c.updatedAt || c.createdAt, from, to)).length;
+    return { range, hist };
+  }
+
   function customerInDateRange(c, from, to) {
     if (!from && !to) return true;
     const dates = [];
@@ -4717,10 +4734,12 @@
     if (!f.to) f.to = todayDate();
     const l2Opts = db.agentsL2.filter((a) => !a.pending && (!f.l1 || a.parentId === f.l1));
     if (f.l2 && !l2Opts.some((a) => a.id === f.l2)) f.l2 = '';
+    const directOnly = f.directOnly === '1';
     let rows = listAdminCustomers();
+    if (directOnly) rows = rows.filter(customerIsDirect);
     if (f.from || f.to) rows = rows.filter((r) => customerInDateRange(r, f.from, f.to));
     if (f.l1) rows = rows.filter((r) => customerAgentIds(r).l1Ids.includes(f.l1));
-    if (f.l2) rows = rows.filter((r) => customerAgentIds(r).l2Ids.includes(f.l2));
+    if (!directOnly && f.l2) rows = rows.filter((r) => customerAgentIds(r).l2Ids.includes(f.l2));
     if (f.sn) rows = rows.filter((r) => (r.sns || []).some((sn) => sn.toLowerCase().includes(f.sn.toLowerCase())));
     if (f.phone) rows = rows.filter((r) => (r.phone || '').includes(f.phone) || (r.name || '').includes(f.phone));
     if (f.addr) rows = rows.filter((r) => (r.addr || '').includes(f.addr));
@@ -4729,7 +4748,7 @@
       `${ui.backRoute === 'sales' ? '<button class="btn" data-go="sales">返回销售单</button>' : ''}<button class="btn btn-primary" data-action="open-create-customer">新建客户</button>`)}
       ${filterBar(`
         <select class="field-input" data-filter="customers:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
-        <select class="field-input" data-filter="customers:l2"><option value="">全部二级</option>${l2Opts.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
+        ${directOnly ? '' : `<select class="field-input" data-filter="customers:l2"><option value="">全部二级</option>${l2Opts.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`}
         <label class="muted">销售时间</label>
         <input type="date" class="field-input" data-filter="customers:from" value="${escapeHtml(f.from)}" />
         <input type="date" class="field-input" data-filter="customers:to" value="${escapeHtml(f.to)}" />
@@ -4739,13 +4758,14 @@
         <select class="field-input" data-filter="customers:mark"><option value="">标记</option><option value="1" ${f.mark==='1'?'selected':''}>仅重复</option></select>
       `)}
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>姓名</th><th>一级代理</th><th>二级代理</th><th>性别</th><th>年龄</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>标记</th></tr></thead>
+        <thead><tr><th>姓名</th><th>一级代理</th>${directOnly ? '' : '<th>二级代理</th>'}<th>性别</th><th>年龄</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>筛选区间销量</th><th>历史销量</th><th>标记</th></tr></thead>
         <tbody>${rows.map((r)=>{
           const ag = customerAgentText(r);
+          const qty = customerSalesQty(r, f.from, f.to);
           return `<tr class="row-clickable" data-row-action="view-customer" data-id="${escapeHtml(r.id)}">
           <td>${escapeHtml(r.name || '—')}</td>
           <td>${escapeHtml(ag.l1)}</td>
-          <td>${escapeHtml(ag.l2)}</td>
+          ${directOnly ? '' : `<td>${escapeHtml(ag.l2)}</td>`}
           <td>${escapeHtml(r.gender || '—')}</td>
           <td>${escapeHtml(r.age || '—')}</td>
           <td>${escapeHtml(r.phone||'—')}</td>
@@ -4753,9 +4773,11 @@
           <td>${escapeHtml(r.addr||'—')}</td>
           <td>${escapeHtml((r.products || []).join('，') || '—')}</td>
           <td>${(r.sns||[]).map((sn)=>`<code style="margin-right:4px">${escapeHtml(sn)}</code>`).join('')||'—'}</td>
+          <td class="num">${qty.range}</td>
+          <td class="num">${qty.hist}</td>
           <td>${r.dupPhone?tag('重复手机','orange'):''} ${r.dupAddr?tag('重复地址','orange'):''} ${!r.mark?'—':''}</td>
         </tr>`;
-        }).join('') || `<tr><td colspan="11">${emptyHint()}</td></tr>`}</tbody>
+        }).join('') || `<tr><td colspan="${directOnly ? 12 : 13}">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -5435,8 +5457,7 @@
       const s = db.sales.find((x) => x.id === payload.id);
       title = `销售单 ${s.no}`;
       body = saleDetailHtml(s);
-      foot = `<button class="btn" data-action="close-modal">关闭</button>
-        ${s.status === 'scanning' && ui.role !== 'l2' ? `<button class="btn btn-primary" data-action="mini-open-scan-so" data-id="${s.id}">去扫码</button>` : ''}`;
+      foot = `<button class="btn" data-action="close-modal">关闭</button>`;
     } else if (type === 'view-cend') {
       const order = listCendOrders().find((o) => o.id === payload.id)
         || { id: payload.id, kind: String(payload.id).startsWith('CO_') ? 'bind' : 'sale', no: payload.id, sns: [], snRow: db.sns.find((x) => x.sn === String(payload.id).replace(/^CO_/, '')) };
@@ -6377,6 +6398,7 @@
           to: f.to || todayDate(),
           l1: f.l1Id || ui.filters.sales?.l1 || '',
           l2: '',
+          directOnly: '1',
         };
         ui.backRoute = 'sales';
         return 'customers';
@@ -8092,7 +8114,7 @@
       id: uid('RT'), no: `RT${todayCompact()}${String(++db.seq.rt).padStart(2, '0')}`,
       type: payload.type, typeLabel: payload.typeLabel,
       fromId: payload.fromId, fromRole: payload.fromRole || ui.role, fromName: payload.fromName, approverId: payload.approverId,
-      sns: payload.sns || [], status: payload.immediate ? 'approved' : 'pending', createdAt: nowStr(),
+      sns: payload.sns || [], status: payload.immediate ? 'done' : 'pending', createdAt: nowStr(),
       reason: payload.reason || '', reasonType: payload.reasonType,
       returnedTagN: payload.returnedTagN || 0,
     };
@@ -8164,6 +8186,13 @@
         });
       }
       const dest = el.getAttribute('data-go');
+      if (dest === 'customers') {
+        const set = el.getAttribute('data-set-filter') || '';
+        if (!set.includes('customers:directOnly')) {
+          ui.filters.customers = ui.filters.customers || {};
+          ui.filters.customers.directOnly = '';
+        }
+      }
       const back = el.getAttribute('data-back');
       if (back) {
         ui.backRoute = back;
@@ -8185,6 +8214,7 @@
           to: sf.to || todayDate(),
           l1: sf.l1 || '',
           l2: '',
+          directOnly: '1',
         };
         ui.backRoute = 'sales';
         ui.backModal = null;
