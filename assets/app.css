@@ -119,6 +119,12 @@ a { color: inherit; text-decoration: none; }
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-soft);
 }
+.form-field input:disabled, .form-field select:disabled, .field-input:disabled,
+.form-field input[readonly], .field-input[readonly] {
+  background: #f3f4f6;
+  color: var(--text-3);
+  cursor: not-allowed;
+}
 
 .role-pills {
   display: flex;
@@ -1212,6 +1218,9 @@ table.data .col-check input[type="checkbox"] {
   line-height: 16px;
   font-weight: 700;
 }
+.mini-seg-badge-ok {
+  background: #00a46e;
+}
 .mini-seg-panel { min-height: 40px; }
 
 .mini-page-title { font-size: 20px; font-weight: 800; color: var(--text-strong); }
@@ -1531,6 +1540,10 @@ table.data .col-check input[type="checkbox"] {
   font-weight: 700;
   font-family: var(--font-num);
 }
+.menu-badge-ok {
+  background: #ecfdf5;
+  color: #047857;
+}
 .nav-item .menu-badge { margin-left: auto; }
 .countdown {
   margin-top: 4px;
@@ -1682,6 +1695,19 @@ th.sortable:hover { color: var(--primary); }
 .dash-kpi.danger { border-color: #fca5a5; background: #fef2f2; }
 .dash-kpi-label { display: block; font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
 .dash-kpi-value { display: block; font-size: 26px; font-weight: 800; color: var(--text-strong); line-height: 1; }
+.dash-kpi-extra {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.dash-kpi-link {
+  cursor: pointer;
+  color: var(--text-2);
+  font-weight: 600;
+}
+.dash-kpi-link:hover { color: var(--primary); }
 .dash-kpi.warn .dash-kpi-value { color: var(--warning); }
 .dash-kpi.danger .dash-kpi-value { color: var(--danger); }
 
