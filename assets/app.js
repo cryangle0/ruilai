@@ -434,8 +434,15 @@
   };
   const SN_BIZ_TAGS = ['已退货', '再入库', '再销售', '已冻结'];
   const PO_STATUS = {
-    pending: '待审核', cosigning: '会签中', approved: '已生效', rejected: '已驳回',
+    pending: '待处理', cosigning: '会签中', approved: '已完成', rejected: '已删除',
   };
+  function poStatusTag(status) {
+    const tone = status === 'pending' ? 'orange'
+      : status === 'cosigning' ? 'blue'
+      : status === 'approved' ? 'green'
+      : 'gray';
+    return tag(PO_STATUS[status] || status || '—', tone);
+  }
   const SO_STATUS = {
     scanning: '扫码中', done: '已完成', cancelled: '已取消',
   };
@@ -962,8 +969,8 @@
         { id: 'EX1', time: '2026-07-25 12:05', type: '归属地异常', target: 'RL202607200004', detail: '手机归属广东 · IP地区浙江不一致', notify: '一级+原厂', status: '待处理', dim: 'activate', explainL2: '客户出差导致IP与手机归属不一致，属正常' },
         { id: 'EX2', time: '2026-07-28 11:02', type: 'SN激活异常', target: 'RL202607210001', detail: '跨区激活：IP 浙江 不在直销围栏', notify: '一级+原厂', status: '待处理', dim: 'activate', explainL2: '跨区激活已联系二级核对围栏' },
         { id: 'EX3', time: '2026-08-02 16:10', type: '销售库存异常', target: '广州天河渠道 · 锐涞运动款LL', detail: '本次新增 5 > 预警线（区间销量 × 倍数）', notify: '一级+原厂', status: '待处理', dim: 'stock' },
-        { id: 'EX4', time: '2026-07-22 10:40', type: '销售库存异常', target: '宁波海曙店 · 锐涞经典款L', detail: '本次新增 4 > 预警线', notify: '一级+原厂', status: '已完成', dim: 'stock', explain: '已按周转调整进货节奏' },
-        { id: 'EX5', time: '2026-08-05 09:20', type: '超量下单预警', target: '杭州城西专营', detail: '2级库存充足仍大量申请下单，需一级填写说明', notify: '一级+原厂', status: '会签中', dim: 'stock', explain: '', cosign: { admin1: true, admin2: false } },
+        { id: 'EX4', time: '2026-07-22 10:40', type: '销售库存异常', target: '宁波海曙店 · 锐涞经典款L', detail: '本次新增 4 > 预警线', notify: '一级+原厂', status: '已处理', dim: 'stock', explain: '已按周转调整进货节奏' },
+        { id: 'EX5', time: '2026-08-05 09:20', type: '超量下单预警', target: '杭州城西专营', detail: '2级库存充足仍大量申请下单', notify: '一级+原厂', status: '待处理', dim: 'stock', explain: '' },
         { id: 'EX6', time: '2026-08-06 14:00', type: '扫码尺码不匹配', target: 'RL202608010001', detail: '出货计划 M，实扫 SN 为 L', notify: '原厂', status: '待处理', dim: 'scan' },
         { id: 'EX7', time: '2026-08-07 10:10', type: '客户信息重复', target: 'RL202607200003', detail: '手机号 13800001003 已激活 1 次 · 可查看历史绑定', notify: '一级+原厂', status: '待处理', dim: 'activate', dupPhone: '13800001003', explainL2: '重复手机号为同一家庭成员共用' },
         { id: 'EX8', time: '2026-08-07 15:20', type: '扫码不在库', target: 'RL202607200003', detail: '扫出的 SN 不在本一级仓库（当前 已销售）', notify: '原厂', status: '待处理', dim: 'scan' },
@@ -1105,12 +1112,13 @@
             (p.lines || []).forEach((l, i) => { obj[`${l.productId}_${l.size}_${l.belt || DEFAULT_BELT[l.size]}`] = [p.segments[i]].filter(Boolean); });
             p.segments = obj;
           }
-          // 会签完成后立即生效：旧「待生效」迁移为已生效
+          // 会签完成后立即生效：旧「待生效」迁移为已完成
           if (p.status === 'approvedPending') {
             p.status = 'approved';
             if (!p.approvedAt) p.approvedAt = nowStr();
           }
         });
+        parsed.purchases = (parsed.purchases || []).filter((p) => p.status !== 'rejected');
         (parsed.sales || []).forEach((s) => {
           if (!s.channel) s.channel = s.l2Id ? 'distribute' : 'direct';
           if (s.customer) {
@@ -1177,11 +1185,16 @@
           else {
             if (!existing.explain && row.explain) existing.explain = row.explain;
             if (!existing.explainL2 && row.explainL2) existing.explainL2 = row.explainL2;
-            if (!existing.cosign && row.cosign) {
+            if (exceptionDim(row) !== 'stock' && !existing.cosign && row.cosign) {
               existing.cosign = JSON.parse(JSON.stringify(row.cosign));
               if (row.status === '会签中' && isExOpen(existing)) existing.status = '会签中';
             }
           }
+        });
+        parsed.exceptions.forEach((e) => {
+          if (exceptionDim(e) !== 'stock') return;
+          if (e.status === '会签中') e.status = '待处理';
+          else if (e.status === '已完成') e.status = '已处理';
         });
         (parsed.accounts || []).forEach((a) => {
           if (a.password === '******') a.password = 'demo';
@@ -1551,6 +1564,8 @@
     return t.length <= 8 ? t : t.slice(0, 8);
   }
   function isExOpen(e) {
+    if (!e) return false;
+    if (exceptionDim(e) === 'stock') return e.status === '待处理';
     return e.status === '待处理' || e.status === '会签中';
   }
   function normalizeExStatus(e) {
@@ -1558,6 +1573,21 @@
     if (e.status === '未处理' || e.status === 'pending') e.status = '待处理';
     else if (e.status === '会签中' || e.status === 'cosigning') e.status = '会签中';
     else if (e.status === '已处理' || e.status === '仅记录' || e.status === '已关闭' || e.status === '已完成') e.status = '已完成';
+    if (exceptionDim(e) === 'stock') {
+      if (e.status === '会签中') e.status = '待处理';
+      else if (e.status === '已完成') e.status = '已处理';
+    }
+  }
+  function displayExStatus(e) {
+    if (!e) return '—';
+    if (exceptionDim(e) === 'stock') {
+      if (e.status === '已处理' || e.status === '已完成') return '已处理';
+      return '待处理';
+    }
+    return e.status || '—';
+  }
+  function exClosedStatus(e) {
+    return exceptionDim(e) === 'stock' ? '已处理' : '已完成';
   }
   function exStatusTone(st) {
     if (st === '待处理') return 'orange';
@@ -2157,8 +2187,10 @@
     let mode = opts.mode || 'strict';
     const l2Id = resolveL2IdForException(target, opts);
     if (mode !== 'off' && agentExNoAlarm(l2Id)) mode = 'off';
-    // off=异常不报警：只落库，默认已完成，不推送待处理预警
-    const status = mode === 'off' || mode === 'soft' ? '已完成' : '待处理';
+    // off=异常不报警：只落库，默认已完成/已处理，不推送待处理预警
+    const status = (mode === 'off' || mode === 'soft')
+      ? (d === 'stock' ? '已处理' : '已完成')
+      : '待处理';
     const row = {
       id: uid('EX'), time: nowStr(), type, target, detail,
       notify: (mode === 'off' || mode === 'soft') ? '仅记录' : '一级+原厂',
@@ -2173,7 +2205,15 @@
   }
 
   function signExceptionProcess(e) {
-    if (!e || e.status === '已完成') return false;
+    if (!e) return false;
+    if (exceptionDim(e) === 'stock') {
+      if (e.status === '已处理' || e.status === '已完成') return false;
+      e.status = '已处理';
+      toast('已处理该销售库存异常');
+      addLog(`处理异常 ${e.type} · 已处理`, 'exception');
+      return true;
+    }
+    if (e.status === '已完成' || e.status === '已处理') return false;
     e.cosign = e.cosign || { admin1: false, admin2: false };
     const slot = adminCosignSlot();
     if (e.cosign[slot]) {
@@ -2182,7 +2222,7 @@
     }
     e.cosign[slot] = true;
     if (e.cosign.admin1 && e.cosign.admin2) {
-      e.status = '已完成';
+          e.status = exClosedStatus(e);
       toast('会签完成，异常已标记为已完成');
     } else {
       e.status = '会签中';
@@ -2347,7 +2387,7 @@
     return db.exceptions.filter((e) => {
       if (!isExOpen(e)) return false;
       if (exceptionTab(e) !== tab) return false;
-      if (f.status && e.status !== f.status) return false;
+      if (f.status && displayExStatus(e) !== f.status) return false;
       if (!matchExceptionType(e, f.type)) return false;
       if (f.from || f.to) {
         if (!inDateRange(e.time, f.from, f.to)) return false;
@@ -2713,9 +2753,10 @@
     if (r === 'agent-l2-detail' || r === 'l2-return-detail') return 'agent-l2';
     return r;
   }
-  function metricCard(label, value, go, setFilter = '', extra = '') {
+  function metricCard(label, value, go, setFilter = '', tone = '') {
     const attr = go ? ` data-go="${go}"${setFilter ? ` data-set-filter="${setFilter}"` : ''} style="cursor:pointer"` : '';
-    return `<div class="metric-card"${attr}><div class="metric-label">${escapeHtml(label)}</div><div class="metric-value num">${value}</div>${extra}</div>`;
+    const cls = tone ? ` metric-card--${tone}` : '';
+    return `<div class="metric-card${cls}"${attr}><div class="metric-label">${escapeHtml(label)}</div><div class="metric-value num">${value}</div></div>`;
   }
   function emptyHint(text = '暂无数据') {
     return `<div class="empty-hint">${escapeHtml(text)}</div>`;
@@ -2734,6 +2775,7 @@
   const ENABLE_STATUS_OPTS = [{ id: '启用', label: '启用' }, { id: '停用', label: '停用' }];
   const L2_KIND_OPTS = [{ id: '法人', label: '法人' }, { id: '个人', label: '个人' }];
   const EX_STATUS_OPTS = [{ id: '待处理', label: '待处理' }, { id: '会签中', label: '会签中' }, { id: '已完成', label: '已完成' }];
+  const EX_STOCK_STATUS_OPTS = [{ id: '待处理', label: '待处理' }, { id: '已处理', label: '已处理' }];
   const SO_STATUS_OPTS = [{ id: 'scanning', label: '扫码中' }, { id: 'done', label: '已完成' }];
   const RT_STATUS_OPTS = Object.entries(RT_STATUS).map(([id, label]) => ({ id, label }));
   const SN_STATUS_OPTS = Object.entries(SN_STATUS_LABEL).map(([id, label]) => ({ id, label }));
@@ -2902,19 +2944,19 @@
     const snBound = db.sns.filter((s) => s.status === 'bound').length;
     return `${pageHeader('工作台', '平台运营总览与待办')}
       <div class="metric-grid">
-        ${metricCard('一级代理', db.agentsL1.filter((a) => a.status === '启用').length, 'agent-l1')}
-        ${metricCard('二级代理', db.agentsL2.filter((a) => a.auditStatus === 'approved' && !a.pending).length, 'agent-l2')}
-        ${metricCard('筛选区间销量', monthSales, 'sales')}
-        ${metricCard('已销售SN', snBound, 'sn')}
-        ${metricCard('待审采购', pendingPo, 'purchase')}
-        ${metricCard('待处理异常', openEx, 'exception')}
+        ${metricCard('一级代理', db.agentsL1.filter((a) => a.status === '启用').length, 'agent-l1', '', 'info')}
+        ${metricCard('二级代理', db.agentsL2.filter((a) => a.auditStatus === 'approved' && !a.pending).length, 'agent-l2', '', 'dist')}
+        ${metricCard('筛选区间销量', monthSales, 'sales', '', 'range')}
+        ${metricCard('已销售SN', snBound, 'sn', '', 'hist')}
+        ${metricCard('待处理采购', pendingPo, 'purchase', '', 'pending')}
+        ${metricCard('待处理异常', openEx, 'exception', '', 'warn')}
       </div>
       <div class="page-card" style="margin-top:12px">
         <h3 class="section-title">待办事项</h3>
         <div>
           <button class="todo-row" data-go="agent-pending"><span>待分配二级（法人）</span><span class="todo-count ${pendingL2 ? 'hot' : ''}">${pendingL2}</span></button>
           <button class="todo-row" data-go="agent-l2-audit"><span>二级审核待处理</span><span class="todo-count">${pendingL2Audit}</span></button>
-          <button class="todo-row" data-go="purchase"><span>采购单待审核/会签</span><span class="todo-count">${pendingPo}</span></button>
+          <button class="todo-row" data-go="purchase"><span>采购待处理/会签</span><span class="todo-count">${pendingPo}</span></button>
           <button class="todo-row" data-go="exception"><span>待处理异常</span><span class="todo-count ${openEx ? 'hot' : ''}">${openEx}</span></button>
           <button class="todo-row" data-go="return"><span>退货待审批</span><span class="todo-count">${pendingReturn}</span></button>
         </div>
@@ -2952,7 +2994,7 @@
             ${l1StatusHtml(a)}
             <div class="status-metrics">
               <span class="${exN ? 'hot' : ''}">异常数 ${exN}</span>
-              <span class="${poN ? 'hot' : ''}">采购待审核 ${poN}</span>
+              <span class="${poN ? 'hot' : ''}">采购待处理 ${poN}</span>
               <span class="${rtN ? 'hot' : ''}">售后待处理 ${rtN}</span>
             </div>
           </div>
@@ -3043,7 +3085,7 @@
           <button class="btn btn-primary" ${jump.ret}>退货</button>
           <button class="btn btn-primary" ${jump.stock}>库存</button>
           <button class="btn ${exN ? 'btn-danger' : ''}" ${jump.ex}>异常${exN ? ` ${exN}` : ''}</button>
-          <button class="btn" ${jump.poPending}>采购待审核${poN ? ` ${poN}` : ''}</button>
+          <button class="btn" ${jump.poPending}>采购待处理${poN ? ` ${poN}` : ''}</button>
           <button class="btn" ${jump.aftersale}>售后待处理${rtN ? ` ${rtN}` : ''}</button>
           ${l1DisableBtnHtml(a)}
         </div>
@@ -3126,7 +3168,7 @@
         <input type="date" class="field-input" data-filter="l1-return:from" value="${from}" />
         <input type="date" class="field-input" data-filter="l1-return:to" value="${to}" />
       `)}
-      <div class="metric-grid">${metricCard('筛选区间退货', monthQty)}${metricCard('历史总量', histQty)}</div>
+      <div class="metric-grid metric-grid-2">${metricCard('筛选区间退货', monthQty, '', '', 'range')}${metricCard('历史总量', histQty, '', '', 'hist')}</div>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>类型</th>${showCust ? '<th>姓名</th><th>手机号</th><th>地区</th>' : ''}<th>理由</th><th>商品明细</th>${noAudit ? '' : thFilterHtml('状态', 'l1-return', 'status', RT_STATUS_OPTS)}<th>时间</th></tr></thead>
         <tbody>${list.map((r)=>{
@@ -3161,7 +3203,7 @@
         <input type="date" class="field-input" data-filter="l2-return:from" value="${from}" />
         <input type="date" class="field-input" data-filter="l2-return:to" value="${to}" />
       `)}
-      <div class="metric-grid">${metricCard('筛选区间退货', monthQty)}${metricCard('历史总量', histQty)}</div>
+      <div class="metric-grid metric-grid-2">${metricCard('筛选区间退货', monthQty, '', '', 'range')}${metricCard('历史总量', histQty, '', '', 'hist')}</div>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th>${thFilterHtml('类型', 'l2-return', 'type', RETURN_TYPES)}<th>理由</th><th>SN</th>${thFilterHtml('状态', 'l2-return', 'status', RT_STATUS_OPTS)}<th>时间</th></tr></thead>
         <tbody>${list.map((r)=>`<tr class="row-clickable" data-row-action="view-return" data-id="${r.id}">
@@ -3407,25 +3449,26 @@
       </table></div>`;
   }
   function pagePurchase() {
+    if (ui.tabs.purchase === 'rejected') ui.tabs.purchase = 'all';
     const tab = ui.tabs.purchase || 'all';
     const f = applyListDates(ui.filters.purchase || (ui.filters.purchase = {}));
-    let rows = db.purchases.slice();
+    const livePos = db.purchases.filter((p) => p.status !== 'rejected');
+    let rows = livePos.slice();
     if (tab !== 'all') rows = rows.filter((p) => p.status === tab);
     if (f.l1) rows = rows.filter((p) => p.l1Id === f.l1);
     if (f.from || f.to) rows = rows.filter((p) => inDateRange(p.createdAt, f.from, f.to));
     rows = sortByCreated(rows);
-    const poScope = db.purchases.filter((p) => (!f.l1 || p.l1Id === f.l1) && p.status !== 'rejected');
+    const poScope = livePos.filter((p) => !f.l1 || p.l1Id === f.l1);
     const monthQty = poScope.filter((p) => inDateRange(p.createdAt, f.from, f.to)).reduce((n, p) => n + purchaseNeedQty(p), 0);
     const histQty = poScope.reduce((n, p) => n + purchaseNeedQty(p), 0);
-    const poN = (st) => db.purchases.filter((p) => p.status === st).length;
+    const poN = (st) => livePos.filter((p) => p.status === st).length;
     const tabItems = [
-      { id: 'all', title: '全部', badge: db.purchases.length || null },
-      { id: 'pending', title: '待审核', badge: poN('pending') || null },
+      { id: 'all', title: '全部', badge: livePos.length || null },
+      { id: 'pending', title: '待处理', badge: poN('pending') || null },
       { id: 'cosigning', title: '会签中', badge: poN('cosigning') || null },
-      { id: 'approved', title: '已生效', badge: poN('approved') || null },
-      { id: 'rejected', title: '已驳回', badge: poN('rejected') || null },
+      { id: 'approved', title: '已完成', badge: poN('approved') || null },
     ];
-    return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即生效（下单仅一级小程序）', backToL1DetailAction())}
+    return `${pageHeader('采购单管理', '一站式审核：标准/非标/配件 + 段号起止 + 双人会签即完成（下单仅一级小程序）', backToL1DetailAction())}
       ${tabsHtml('purchase', tabItems)}
       ${filterBar(`
         <select class="field-input" data-filter="purchase:l1"><option value="">全部一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.l1===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -3433,7 +3476,7 @@
         <input type="date" class="field-input" data-filter="purchase:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="purchase:to" value="${escapeHtml(f.to||'')}" />
       `)}
-      <div class="metric-grid metric-grid-2">${metricCard('筛选区间采购量', monthQty)}${metricCard('历史采购量', histQty)}</div>
+      <div class="metric-grid metric-grid-2">${metricCard('筛选区间采购量', monthQty, '', '', 'po')}${metricCard('历史采购量', histQty, '', '', 'hist')}</div>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>时间</th></tr></thead>
         <tbody>${rows.map((p)=>{
@@ -3443,7 +3486,7 @@
             <td>${(p.lines||[]).map((l)=>`${l.size}×${l.qty}`).join('，')||'—'}</td>
             <td>${(p.customLines||[]).map((l)=>`${l.size}+${l.belt}×${l.qty}`).join('，')||'—'}</td>
             <td>${(p.parts||[]).map((x)=>`${productName(x.partId)}/${x.spec}×${x.qty}`).join('，')||'—'}</td>
-            <td>${tag(PO_STATUS[p.status]||p.status)}</td>
+            <td>${poStatusTag(p.status)}</td>
             <td>${cos.admin1?'✓':'-'}/${cos.admin2?'✓':'-'}</td>
             <td>${escapeHtml(p.createdAt)}</td>
           </tr>`;
@@ -3489,7 +3532,7 @@
         <input type="date" class="field-input" data-filter="sales:from" value="${escapeHtml(f.from)}" />
         <input type="date" class="field-input" data-filter="sales:to" value="${escapeHtml(f.to)}" />
       `)}
-      <div class="metric-grid metric-grid-2">${metricCard('筛选区间销量', monthQty)}${metricCard('历史销量', histQty)}</div>
+      <div class="metric-grid metric-grid-2">${metricCard('筛选区间销量', monthQty, '', '', 'range')}${metricCard('历史销量', histQty, '', '', 'hist')}</div>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr>${headCols}</tr></thead>
         <tbody>${rows.map((s)=>{
@@ -3585,7 +3628,7 @@
         <select class="field-input" data-filter="stock:belt"><option value="">腰带尺码</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
         ${tab==='sn'?`<input class="field-input" placeholder="SN" data-filter="stock:sn" value="${escapeHtml(f.sn||'')}" />`:''}
       `)}
-      <div class="metric-grid">${metricCard('库存总量', stockTotal)}${metricCard('规格行数', summaryRows.length)}</div>
+      <div class="metric-grid metric-grid-2">${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('规格行数', summaryRows.length, '', '', 'hist')}</div>
       ${table}`;
   }
 
@@ -3638,7 +3681,7 @@
         { id: 'done', title: '已处理', badge: rtN('done') || null },
         { id: 'rejected', title: '已驳回', badge: rtN('rejected') || null },
       ])}`;
-    const pendingCard = noAuditKind ? '' : metricCard('待审单', rtN('pending'), 'return', 'tab:return:pending');
+    const pendingCard = noAuditKind ? '' : metricCard('待审单', rtN('pending'), 'return', 'tab:return:pending', 'pending');
     return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', `${backToL1DetailAction()}<button class="btn" data-go="stats">数据统计</button>`)}
       ${tabsHtml('return-kind', returnKindTabItems(countKind, inRangeAll.length))}
       ${statusTabs}
@@ -3650,9 +3693,9 @@
         <input type="date" class="field-input" data-filter="return:from" value="${escapeHtml(f.from)}" />
         <input type="date" class="field-input" data-filter="return:to" value="${escapeHtml(f.to)}" />
       `)}
-      <div class="metric-grid" style="margin-bottom:10px">
-        ${metricCard('本月退货件数', monthQty, 'return')}
-        ${metricCard('历史退货件数', histQty, 'return')}
+      <div class="metric-grid${noAuditKind ? ' metric-grid-2' : ' metric-grid-3'}">
+        ${metricCard('筛选区间退货件数', monthQty, 'return', '', 'range')}
+        ${metricCard('历史退货件数', histQty, 'return', '', 'hist')}
         ${pendingCard}
       </div>
       <div class="page-card table-wrap"><table class="data">
@@ -3676,9 +3719,15 @@
   function pageException() {
     const tab = exceptionPageTab();
     if (ui.tabs.exception !== tab) ui.tabs.exception = tab;
-    const f = ui.filters.exception || {};
+    const f = ui.filters.exception || (ui.filters.exception = {});
+    if (tab === 'stock') {
+      if (f.status === '会签中') f.status = '待处理';
+      if (f.status === '已完成') f.status = '已处理';
+    } else if (f.status === '已处理') {
+      f.status = '已完成';
+    }
     let rows = db.exceptions.filter((e) => exceptionTab(e) === tab);
-    if (f.status) rows = rows.filter((e) => e.status === f.status);
+    if (f.status) rows = rows.filter((e) => displayExStatus(e) === f.status);
     if (f.from || f.to) rows = rows.filter((e) => inDateRange(e.time, f.from, f.to));
     if (f.type) rows = rows.filter((e) => matchExceptionType(e, f.type));
     if (f.l1) rows = rows.filter((e) => exceptionAgentInfo(e).l1Id === f.l1);
@@ -3692,11 +3741,12 @@
     const openN = getOpenExceptionIdsInFilter().length;
     const typeOpts = exceptionTypeOptions(tab);
     const explainLabel = exceptionExplainLabel(tab);
+    const statusOpts = tab === 'stock' ? EX_STOCK_STATUS_OPTS : EX_STATUS_OPTS;
     rows = sortByCreated(rows);
     const hideL2 = tab === 'activate-direct';
     const l2Placeholder = tab === 'activate-dist' ? '全部' : '关联二级';
     const warnCard = tab === 'stock'
-      ? `<div class="metric-card"><div class="metric-label">预警倍数</div><div class="metric-value num">${db.exceptionMultiplier}×</div></div>`
+      ? metricCard('预警倍数', `${db.exceptionMultiplier}×`, '', '', 'warn')
       : '';
     const l2Select = hideL2 ? '' : `<select class="field-input" data-filter="exception:l2"><option value="">${l2Placeholder}</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     return `${pageHeader('异常管理', '直售激活 / 分销激活 / 销售库存 · 待处理加粗', `${backToL1DetailAction()}<button class="btn" data-action="open-ex-rules">异常标准配置</button>`)}
@@ -3711,24 +3761,25 @@
         <input type="date" class="field-input" data-filter="exception:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="exception:to" value="${escapeHtml(f.to||'')}" />
       `)}
-      <div class="metric-grid" style="margin-bottom:10px">
-        <div class="metric-card"><div class="metric-label">当前筛选</div><div class="metric-value num">${rows.length}</div></div>
-        <div class="metric-card"><div class="metric-label">本维历史总量</div><div class="metric-value num">${histTotal}</div></div>
-        <div class="metric-card"><div class="metric-label">待处理(当前筛)</div><div class="metric-value num">${openN}</div></div>
+      <div class="metric-grid${tab === 'stock' ? '' : ' metric-grid-3'}">
+        ${metricCard('当前筛选', rows.length, '', '', 'info')}
+        ${metricCard('本维历史总量', histTotal, '', '', 'hist')}
+        ${metricCard('待处理(当前筛)', openN, '', '', 'pending')}
         ${warnCard}
       </div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>时间</th>${thFilterHtml('类型', 'exception', 'type', typeOpts)}<th>一级代理</th><th>二级代理</th><th>对象</th><th>详情</th><th>${escapeHtml(explainLabel)}</th>${thFilterHtml('状态', 'exception', 'status', EX_STATUS_OPTS)}</tr></thead>
+        <thead><tr><th>时间</th>${thFilterHtml('类型', 'exception', 'type', typeOpts)}<th>一级代理</th><th>二级代理</th><th>对象</th><th>详情</th><th>${escapeHtml(explainLabel)}</th>${thFilterHtml('状态', 'exception', 'status', statusOpts)}</tr></thead>
         <tbody>${rows.map((e)=>{
           const info = exceptionAgentInfo(e);
           const bold = isExOpen(e) ? 'ex-bold' : '';
+          const st = displayExStatus(e);
           return `<tr class="${bold} row-clickable" data-row-action="view-exception" data-id="${e.id}">
             <td>${escapeHtml(e.time)}</td><td>${escapeHtml(e.type)}${e.warnMode==='off'?tag('不报警','gray'):(e.warnMode==='soft'?tag('软','gray'):'')}</td>
             <td>${escapeHtml(info.l1Name)}</td>
             <td>${escapeHtml(tab === 'activate-direct' ? '—' : info.l2Name)}</td>
             <td>${escapeHtml(e.target)}</td><td>${escapeHtml(e.detail)}</td>
             <td title="${escapeHtml(exceptionExplainText(e, tab) || '')}">${escapeHtml(clip8(exceptionExplainText(e, tab)))}</td>
-            <td>${tag(e.status, exStatusTone(e.status))}</td>
+            <td>${tag(st, exStatusTone(st))}</td>
           </tr>`;
         }).join('') || `<tr><td colspan="8">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
@@ -3912,11 +3963,10 @@
     if (f.l2 && !l2Opts.some((a) => a.id === f.l2)) f.l2 = '';
     const l2Id = f.l2 || '';
     const st = bizStats({ l1Id, l2Id, from: f.from, to: f.to });
-    const kpi = (label, value, go, filter, setTab, extra) =>
-      `<button type="button" class="dash-kpi" ${go ? `data-go="${go}"` : ''}${filter ? ` data-set-filter="${filter}"` : ''}${setTab ? ` data-set-tab="${setTab}"` : ''}>
+    const kpi = (label, value, go, filter, setTab, tone) =>
+      `<button type="button" class="dash-kpi${tone ? ` dash-kpi--${tone}` : ''}" ${go ? `data-go="${go}"` : ''}${filter ? ` data-set-filter="${filter}"` : ''}${setTab ? ` data-set-tab="${setTab}"` : ''}>
         <span class="dash-kpi-label">${escapeHtml(label)}</span>
         <strong class="dash-kpi-value num">${value}</strong>
-        ${extra || ''}
       </button>`;
     const poAgent = l1Id ? `purchase:l1=${l1Id}` : 'purchase:l1=';
     const soAgent = `${l1Id ? `sales:l1=${l1Id}` : 'sales:l1='};${l2Id ? `sales:l2=${l2Id}` : 'sales:l2='}`;
@@ -3927,15 +3977,6 @@
     const stockFilter = l2Id
       ? `stock:type=l2;stock:agent=${l2Id}`
       : (l1Id ? `stock:type=l1;stock:agent=${l1Id}` : 'stock:type=;stock:agent=');
-    const soSub = (hist) => {
-      const filter = hist ? soAll : soRange;
-      const dist = hist ? st.distAll : st.distRange;
-      const direct = hist ? st.directAll : st.directRange;
-      return `<span class="dash-kpi-extra">
-        <span class="dash-kpi-link" data-go="sales" data-set-filter="${filter}" data-set-tab="sales:direct">直售 ${direct}</span>
-        <span class="dash-kpi-link" data-go="sales" data-set-filter="${filter}" data-set-tab="sales:distribute">分销 ${dist}</span>
-      </span>`;
-    };
     const l1Rank = (!l1Id && !l2Id) ? db.agentsL1.map((a) => {
       const q = bizStats({ l1Id: a.id, from: f.from, to: f.to }).salesRange;
       return { label: a.name.replace(/锐涞|总代|代理/g, '').slice(0, 8) || a.name, value: q };
@@ -3957,12 +3998,14 @@
       `)}
       <p class="muted" style="margin:0 0 10px">${escapeHtml(scopeHint)} · 所选日期为统计区间；历史为累计；在库为当前快照</p>
       <div class="dash">
-        <div class="dash-kpis dash-kpis-5">
-          ${kpi('区间采购数', st.purchaseRange, 'purchase', poRange, 'purchase:all')}
-          ${kpi('累计采购数', st.purchaseAll, 'purchase', poAll, 'purchase:all')}
-          ${kpi('区间销售数', st.salesRange, 'sales', soRange, 'sales:all', soSub(false))}
-          ${kpi('累计销售数', st.salesAll, 'sales', soAll, 'sales:all', soSub(true))}
-          ${kpi('当前在库数量', st.stock, 'stock', stockFilter, 'stock:summary')}
+        <div class="dash-kpis dash-kpis-7">
+          ${kpi('区间采购数', st.purchaseRange, 'purchase', poRange, 'purchase:all', 'po')}
+          ${kpi('累计采购数', st.purchaseAll, 'purchase', poAll, 'purchase:all', 'po-all')}
+          ${kpi('区间直售数', st.directRange, 'sales', soRange, 'sales:direct', 'direct')}
+          ${kpi('累计直售数', st.directAll, 'sales', soAll, 'sales:direct', 'direct-all')}
+          ${kpi('区间分销数', st.distRange, 'sales', soRange, 'sales:distribute', 'dist')}
+          ${kpi('累计分销数', st.distAll, 'sales', soAll, 'sales:distribute', 'dist-all')}
+          ${kpi('当前在库数量', st.stock, 'stock', stockFilter, 'stock:summary', 'stock')}
         </div>
         <div class="dash-grid">
           <section class="dash-panel dash-panel--wide">
@@ -4408,7 +4451,7 @@
       <button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="purchase">新建采购申请</button>
       ${miniTimeSnFilters('miniPo')}
       <div class="mini-list" style="margin-top:8px">${list.map((p)=>`<button type="button" class="mini-list-item" data-action="open-view-purchase" data-id="${p.id}">
-        <strong class="rt-row-hd"><span>${escapeHtml(p.no)}</span>${tag(PO_STATUS[p.status]||p.status)}</strong>
+        <strong class="rt-row-hd"><span>${escapeHtml(p.no)}</span>${poStatusTag(p.status)}</strong>
         <span>${escapeHtml(p.createdAt)}</span>
         <span>${escapeHtml((p.lines||[]).map((l)=>`${productName(l.productId)}/${l.size}×${l.qty}`).join('，') || '—')}</span>
         <span class="muted">${escapeHtml(purchaseSnHaystack(p).filter((x)=>x!==p.no).join(' ')||'暂无号段')}</span>
@@ -4541,7 +4584,7 @@
         <span>${tag(exceptionTabLabel(exceptionTab(e)))}</span>
         <span>${escapeHtml(e.target)}</span>
         <span>${escapeHtml(e.detail)}</span>
-        <span>${tag(e.status, exStatusTone(e.status))}</span>
+        <span>${tag(displayExStatus(e), exStatusTone(displayExStatus(e)))}</span>
       </button>`).join('') || emptyHint()}</div>`;
   }
 
@@ -4957,6 +5000,7 @@
         <input class="field-input" placeholder="地址" data-filter="customers:addr" value="${escapeHtml(f.addr||'')}" />
         <select class="field-input" data-filter="customers:mark"><option value="">标记</option><option value="1" ${f.mark==='1'?'selected':''}>仅重复</option></select>
       `)}
+      <div class="metric-grid metric-grid-2">${metricCard('筛选区间销量', rows.reduce((n, r) => n + customerSalesQty(r, f.from, f.to).range, 0), '', '', 'range')}${metricCard('历史销量', rows.reduce((n, r) => n + customerSalesQty(r, f.from, f.to).hist, 0), '', '', 'hist')}</div>
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>姓名</th><th>一级代理</th>${directOnly ? '' : '<th>二级代理</th>'}<th>性别</th><th>年龄</th><th>手机</th><th>归属地</th><th>地址</th><th>商品</th><th>SN</th><th>筛选区间销量</th><th>历史销量</th><th>标记</th></tr></thead>
         <tbody>${rows.map((r)=>{
@@ -5361,7 +5405,7 @@
 
     return {
       title: `审核采购单 ${p.no}`,
-      body: `<div class="alert alert-info">段号数量须等于标准+非标总数；配件不计 SN，可单独成单。两位管理员会签通过后立即生效。</div>
+      body: `<div class="alert alert-info">段号数量须等于标准+非标总数；配件不计 SN，可单独成单。两位管理员会签通过后立即完成。</div>
         <h4>标准品</h4>${auditLinesTable(lines, 'lines', segs)}
         <h4>非标品（个性化） <button class="btn btn-sm" data-action="po-add-custom">+ 加行</button></h4>
         ${auditLinesTable(customs, 'customLines', segs)}
@@ -5374,7 +5418,7 @@
         <div style="margin-top:10px" class="audit-match-live">需求 SN：<strong class="num" id="audit-need">${need}</strong>　已填段号：<strong class="num" id="audit-got">${got}</strong>　${match?tag('数量匹配','green'):tag('数量不匹配','orange')}</div>
         <div style="margin-top:8px">会签：管理员1 ${cos.admin1?'✓':'○'}　管理员2 ${cos.admin2?'✓':'○'}</div>`,
       foot: `<button class="btn" data-action="close-modal">取消</button>
-        <button class="btn btn-danger" data-action="po-reject">驳回</button>
+        <button class="btn btn-danger" data-action="po-delete">删除</button>
         <button class="btn btn-primary" data-action="po-confirm" ${match?'':'disabled'}>确认（会签）</button>`,
     };
   }
@@ -5592,7 +5636,7 @@
         };
         body = `<div class="detail-grid">
           <div><span>一级</span>${escapeHtml(l1Name(p.l1Id))}</div>
-          <div><span>状态</span>${tag(PO_STATUS[p.status]||p.status)}</div>
+          <div><span>状态</span>${poStatusTag(p.status)}</div>
           <div><span>会签</span>${(p.cosign?.admin1?'✓':'-')}/${(p.cosign?.admin2?'✓':'-')}</div>
           <div><span>时间</span>${escapeHtml(p.createdAt)}</div>
         </div>
@@ -5704,7 +5748,7 @@
         <div><span>一级代理</span>${escapeHtml(info.l1Name)}</div>
         <div><span>二级代理</span>${escapeHtml(tab === 'activate-direct' ? '—' : info.l2Name)}</div>
         <div><span>对象</span>${escapeHtml(e.target)}</div>
-        <div><span>状态</span>${tag(e.status, exStatusTone(e.status))}</div>
+        <div><span>状态</span>${tag(displayExStatus(e), exStatusTone(displayExStatus(e)))}</div>
         <div class="span-2"><span>详情</span>${escapeHtml(e.detail)}</div>
         <div class="span-2"><span>${escapeHtml(explainLabel)}</span>${escapeHtml(explainFull || '—')}</div>
       </div>
@@ -5728,7 +5772,6 @@
       foot = `<button class="btn" data-action="close-modal">关闭</button>
         ${isSn ? `<button class="btn" data-action="open-view-sn" data-id="${escapeHtml(e.target)}">看SN</button>` : ''}
         ${/客户信息重复/.test(e.type) ? `<button class="btn" data-action="view-dup-customer" data-id="${e.id}">查看重复</button>` : ''}
-        ${e.type.includes('超量') ? `<button class="btn" data-action="edit-ex-explain" data-id="${e.id}">填解释</button>` : ''}
         ${isExOpen(e) ? `<button class="btn btn-primary" data-action="close-exception" data-id="${e.id}">处理</button>
         <button class="btn btn-danger" data-action="delete-exception" data-id="${e.id}">删除</button>` : ''}`;
     } else if (type === 'view-l2-audit') {
@@ -6912,9 +6955,15 @@
             saveStore();
           }
           render();
-        } else if (act === 'po-reject-ok') {
-          const p = db.purchases.find((x)=>x.id===pid);
-          if (p) { p.status = 'rejected'; addLog(`驳回采购 ${p.no}`); saveStore(); toast('已驳回'); }
+        } else if (act === 'po-delete-ok') {
+          const idx = db.purchases.findIndex((x)=>x.id===pid);
+          if (idx >= 0) {
+            const p = db.purchases[idx];
+            db.purchases.splice(idx, 1);
+            addLog(`删除采购 ${p.no}`);
+            saveStore();
+            toast('已删除采购单');
+          }
           ui.modal = null; render();
         } else if (act === 'po-confirm-ok') {
           finishPoConfirm(pid);
@@ -7213,16 +7262,16 @@
         ui.modal.draft.segments[key].push('');
         render(); break;
       }
-      case 'po-reject':
+      case 'po-delete':
         syncDraftFromAuditDom();
         ui.form._poDraft = JSON.parse(JSON.stringify(ui.modal.draft));
-        confirmDialog(`确认驳回采购单 ${ui.modal.draft?.no || ''}？`, 'po-reject-ok', { id: ui.modal.draft.id }, { title: '采购单驳回', danger: true });
+        confirmDialog(`确认删除采购单 ${ui.modal.draft?.no || ''}？删除后不可恢复。`, 'po-delete-ok', { id: ui.modal.draft.id }, { title: '删除采购单', danger: true, okText: '确认删除' });
         break;
       case 'po-confirm':
         syncDraftFromAuditDom();
         if (!segmentsMatch(ui.modal.draft)) return toast('段号数量不匹配', 'err');
         ui.form._poDraft = JSON.parse(JSON.stringify(ui.modal.draft));
-        confirmDialog(`确认对采购单 ${ui.modal.draft?.no || ''} 提交会签？两位管理员均确认后立即生效。`, 'po-confirm-ok', { id: ui.modal.draft.id }, { title: '采购会签确认', okText: '确认会签' });
+        confirmDialog(`确认对采购单 ${ui.modal.draft?.no || ''} 提交会签？两位管理员均确认后立即完成。`, 'po-confirm-ok', { id: ui.modal.draft.id }, { title: '采购会签确认', okText: '确认会签' });
         break;
       case 'revoke-po':
         confirmDialog('确认撤销审核？将回到会签中。', 'revoke-po-ok', { id }, { title: '撤销采购审核', danger: true });
@@ -7281,7 +7330,7 @@
         const ids = ui.modal?.payload?.ids || getOpenExceptionIdsInFilter();
         ids.forEach((eid) => {
           const e = db.exceptions.find((x) => x.id === eid);
-          if (e && isExOpen(e)) e.status = '已完成';
+          if (e && isExOpen(e)) e.status = exClosedStatus(e);
         });
         addLog(`离开异常页：批量标记已处理 ${ids.length} 条`, 'exception');
         saveStore();
@@ -7320,9 +7369,15 @@
         confirmDialog(`确认驳回退货单 ${r?.no || ''}？`, 'reject-return-ok', { id }, { title: '退货驳回', danger: true });
         break;
       }
-      case 'close-exception':
-        confirmDialog('确认处理该异常？需两名管理员会签后标记为已完成。', 'close-ex-ok', { id }, { title: '异常处理确认', okText: '确认处理' });
+      case 'close-exception': {
+        const e = db.exceptions.find((x)=>x.id===id);
+        const stock = e && exceptionDim(e) === 'stock';
+        confirmDialog(
+          stock ? '确认处理该异常？处理后标记为已处理，无需会签。' : '确认处理该异常？需两名管理员会签后标记为已完成。',
+          'close-ex-ok', { id }, { title: '异常处理确认', okText: '确认处理' },
+        );
         break;
+      }
       case 'delete-exception':
         confirmDialog('确认删除该异常？删除后不可恢复。', 'delete-exception-ok', { id }, { title: '删除异常', danger: true, okText: '确认删除' });
         break;
@@ -8167,7 +8222,7 @@
     if (p.cosign.admin1 && p.cosign.admin2) {
       addLog(`采购双人会签完成 ${p.no}`);
       applyPurchaseApprove(p);
-      toast('会签完成，采购单已生效');
+      toast('会签完成，采购单已完成');
     } else {
       p.status = 'cosigning';
       addLog(`采购会签签字 ${p.no} by ${ui.account}`);
@@ -8245,7 +8300,7 @@
           || String(e.target || '').includes(a.name)
           || (!!db.sns.find((s) => s.sn === e.target && s.l2Id === lid));
         if (hit && isExOpen(e)) {
-          e.status = '已完成';
+          e.status = exClosedStatus(e);
           e.warnMode = 'off';
           e.notify = '仅记录';
           closed += 1;
