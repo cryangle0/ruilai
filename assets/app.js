@@ -3016,6 +3016,7 @@
       danger: !!opts.danger,
       okText: opts.okText || (opts.danger ? '确认驳回' : '确定'),
       cancelText: opts.cancelText || '取消',
+      input: opts.input || null,
     };
     render();
   }
@@ -3954,9 +3955,6 @@
     const l2Placeholder = tab === 'activate-dist' ? '全部' : '关联二级';
     const curMult = currentAgentWarnMultiplier(f);
     const curMultText = curMult === '-' ? '-' : `${curMult}×`;
-    const warnCards = tab === 'stock'
-      ? `<div class="warn-mult-row">${metricCard('标准预警倍数', `${db.exceptionMultiplier}×`, '', '', 'hist')}${metricCard('当前预警倍数', curMultText, '', '', 'warn')}</div>`
-      : '';
     const l2Select = hideL2 ? '' : `<select class="field-input" data-filter="exception:l2"><option value="">${l2Placeholder}</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     return `${pageHeader('异常管理', '直售激活 / 分销激活 / 销售库存 · 待处理加粗', `${backToL1DetailAction()}<button class="btn" data-action="open-ex-rules">异常标准配置</button>`)}
       ${tabsHtml('exception', [
@@ -3970,12 +3968,12 @@
         <input type="date" class="field-input" data-filter="exception:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="exception:to" value="${escapeHtml(f.to||'')}" />
       `)}
-      <div class="metric-grid metric-grid-3">
+      <div class="metric-grid${tab === 'stock' ? ' metric-grid-5' : ' metric-grid-3'}">
         ${metricCard('当前筛选', rows.length, '', '', 'info')}
         ${metricCard('本维历史总量', histTotal, '', '', 'hist')}
         ${metricCard('待处理(当前筛)', openN, '', '', 'pending')}
+        ${tab === 'stock' ? `${metricCard('标准预警倍数', `${db.exceptionMultiplier}×`, '', '', 'hist')}${metricCard('当前预警倍数', curMultText, '', '', 'warn')}` : ''}
       </div>
-      ${warnCards}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>时间</th>${thFilterHtml('类型', 'exception', 'type', typeOpts)}<th>一级代理</th><th>二级代理</th><th>对象</th><th>详情</th><th>${escapeHtml(explainLabel)}</th>${thFilterHtml('状态', 'exception', 'status', statusOpts)}</tr></thead>
         <tbody>${rows.map((e)=>{
