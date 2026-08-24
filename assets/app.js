@@ -964,19 +964,19 @@
           sns: ['RL202608060001'], status: 'done', createdAt: '2026-08-07 11:05', reason: '客诉升级，直售客户退货', reasonType: '投诉',
           customer: { name: '赵磊', gender: '男', age: '42', phone: '13600003321', addr: '北京市朝阳区建国路88号', phoneLoc: '北京' } },
         { id: 'RT14', no: `RT${todayCompact()}14`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
-          sns: ['RL202608010044'], status: 'pending', createdAt: '2026-08-11 09:20', reason: '弹力带开裂，申请退原厂', reasonType: '质量',
+          sns: ['RL202608010044'], status: 'pending', createdAt: '2026-08-07 09:20', reason: '弹力带开裂，申请退原厂', reasonType: '质量',
           processNote: '' },
         { id: 'RT15', no: `RT${todayCompact()}15`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1B', fromName: '华南渠道中心',
-          sns: ['RL202608020022'], status: 'pending', createdAt: '2026-08-11 14:40', reason: '批量色差，集中退原厂', reasonType: '批次',
+          sns: ['RL202608020022'], status: 'pending', createdAt: '2026-08-06 14:40', reason: '批量色差，集中退原厂', reasonType: '批次',
           processNote: '' },
         { id: 'RT16', no: `RT${todayCompact()}16`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
-          sns: ['RL202608010046'], status: 'done', createdAt: '2026-08-10 16:15', reason: '客诉升级已现场核对', reasonType: '投诉',
+          sns: ['RL202608010046'], status: 'done', createdAt: '2026-08-05 16:15', reason: '客诉升级已现场核对', reasonType: '投诉',
           processNote: '已现场核对包装与 SN，同意退原厂质检；无需再跟进。' },
         { id: 'RT17', no: `RT${todayCompact()}17`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1C', fromName: '华北联合代理',
-          sns: ['RL202608010047'], status: 'pending', createdAt: '2026-08-12 10:05', reason: '运输挤压变形', reasonType: '批次',
+          sns: ['RL202608010047'], status: 'pending', createdAt: '2026-08-07 10:05', reason: '运输挤压变形', reasonType: '批次',
           processNote: '' },
         { id: 'RT18', no: `RT${todayCompact()}18`, type: 'l2_to_l1', typeLabel: '二级退一级', fromId: 'L2A', fromName: '杭州城西专营', approverId: 'L1A',
-          sns: ['RL202608010048'], status: 'done', createdAt: '2026-08-09 11:30', reason: '门店试穿后外观瑕疵', reasonType: '质量',
+          sns: ['RL202608010048'], status: 'done', createdAt: '2026-08-06 11:30', reason: '门店试穿后外观瑕疵', reasonType: '质量',
           processNote: '一级已收货入库，瑕疵件单独隔离。' },
       ],
       exceptions: [
@@ -1172,6 +1172,9 @@
           else if (row.typeLabel && existing.typeLabel !== row.typeLabel && existing.id === 'RT10') {
             existing.typeLabel = row.typeLabel;
             if (row.customer) existing.customer = JSON.parse(JSON.stringify(row.customer));
+          } else if (['RT14', 'RT15', 'RT16', 'RT17', 'RT18'].includes(row.id) && row.createdAt) {
+            existing.createdAt = row.createdAt;
+            if (row.processNote && !existing.processNote) existing.processNote = row.processNote;
           }
         });
         if (parsed.seq && Number(parsed.seq.rt) < 18) parsed.seq.rt = 18;
