@@ -946,11 +946,11 @@
         { id: 'RT6', no: `RT${todayCompact()}06`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
           sns: ['RL202606150001', 'RL202606150002'], status: 'approved', createdAt: '2026-07-10 10:00', reason: '质量退货回原厂（已冻结）', reasonType: '质量' },
         { id: 'RT7', no: `RT${todayCompact()}07`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
-          sns: ['RL202608010042', 'RL202608010043'], status: 'pending', createdAt: '2026-08-08 10:20', reason: '包装破损，申请退原厂', reasonType: '批次' },
+          sns: ['RL202608010042', 'RL202608010043'], status: 'pending', createdAt: '2026-08-07 08:20', reason: '包装破损，申请退原厂', reasonType: '批次' },
         { id: 'RT8', no: `RT${todayCompact()}08`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
-          sns: ['RL202608010055'], status: 'pending', createdAt: '2026-08-09 14:05', reason: '客诉升级，一级集中退原厂', reasonType: '投诉' },
+          sns: ['RL202608010055'], status: 'pending', createdAt: '2026-08-06 14:05', reason: '客诉升级，一级集中退原厂', reasonType: '投诉' },
         { id: 'RT9', no: `RT${todayCompact()}09`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1B', fromName: '华南渠道中心',
-          sns: ['RL202608020020', 'RL202608020021'], status: 'pending', createdAt: '2026-08-10 09:40', reason: '质量问题：弹力带老化', reasonType: '质量' },
+          sns: ['RL202608020020', 'RL202608020021'], status: 'pending', createdAt: '2026-08-05 09:40', reason: '质量问题：弹力带老化', reasonType: '质量' },
         { id: 'RT10', no: `RTU${todayCompact()}10`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1A', fromName: '华东锐涞总代',
           sns: ['RL202608010025'], status: 'done', createdAt: '2026-08-06 10:15', reason: '尺码不合适', reasonType: '尺码',
           customer: { name: '陈默', phone: '13800001006', addr: '杭州市西湖区文一路88号', phoneLoc: '浙江' } },
@@ -1172,8 +1172,9 @@
           else if (row.typeLabel && existing.typeLabel !== row.typeLabel && existing.id === 'RT10') {
             existing.typeLabel = row.typeLabel;
             if (row.customer) existing.customer = JSON.parse(JSON.stringify(row.customer));
-          } else if (['RT14', 'RT15', 'RT16', 'RT17', 'RT18'].includes(row.id) && row.createdAt) {
+          } else if (['RT7', 'RT8', 'RT9', 'RT14', 'RT15', 'RT16', 'RT17', 'RT18'].includes(row.id) && row.createdAt) {
             existing.createdAt = row.createdAt;
+            if (row.status === 'pending') existing.status = 'pending';
             if (row.processNote && !existing.processNote) existing.processNote = row.processNote;
           }
         });
@@ -1186,7 +1187,7 @@
           if (!Array.isArray(r.photos)) r.photos = [];
           if (r.processNote === undefined) r.processNote = '';
           if (r.status === 'rejected') r.status = 'done';
-          if (!r.photos.length && ['RT1', 'RT3', 'RT7', 'RT14', 'RT15', 'RT16', 'RT17', 'RT18'].includes(r.id)) {
+          if (!r.photos.length && ['RT1', 'RT3', 'RT7', 'RT8', 'RT9', 'RT14', 'RT15', 'RT16', 'RT17', 'RT18'].includes(r.id)) {
             r.photos = [
               demoReturnPhoto(`${r.no}-1.jpg`, '包装/瑕疵'),
               demoReturnPhoto(`${r.no}-2.jpg`, 'SN 特写'),
@@ -1441,9 +1442,9 @@
 
   function returnKindTabItems(countKind, allN) {
     return [
+      { id: 'factory', title: '一级代理退原厂', badge: countKind('factory') || null },
       { id: 'l2', title: '二级代理退货', badge: countKind('l2') || null },
       { id: 'user', title: '直售客户退货', badge: countKind('user') || null },
-      { id: 'factory', title: '一级代理退原厂', badge: countKind('factory') || null },
       { id: 'all', title: '全部类型', badge: allN || null },
     ];
   }
@@ -3839,7 +3840,7 @@
 
   function pageReturn() {
     const f = applyListDates(ui.filters.return || (ui.filters.return = {}));
-    if (!ui.tabs['return-kind']) ui.tabs['return-kind'] = 'all';
+    if (!ui.tabs['return-kind']) ui.tabs['return-kind'] = 'factory';
     const kind = ui.tabs['return-kind'] || 'all';
     const tab = ui.tabs.return || (f.status || 'all');
     if (f.status && !ui.tabs.return) ui.tabs.return = f.status;
