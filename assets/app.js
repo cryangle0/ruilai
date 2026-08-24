@@ -5788,8 +5788,11 @@
         <div class="mini-timeline" style="max-height:360px;overflow:auto">${life.map((e)=>`<div class="mini-tl-item type-${e.type||''}"><div class="mini-tl-dot"></div><div><div class="mini-tl-title">${escapeHtml(e.title)}</div><div class="mini-tl-desc">${escapeHtml(e.desc||'')}</div><div class="mini-tl-time">${escapeHtml(e.time)}</div></div></div>`).join('')}</div>`;
       const snNote = `<aside class="side-note-panel">
           <h4>情况说明</h4>
-          <textarea class="field-input" id="f-sn-note" rows="8" placeholder="可手填，售后详情单独展示，与「处理说明」区分">${escapeHtml(row.situationNote || '')}</textarea>
-          <p class="muted" style="margin-top:8px">与退货「处理说明」区分</p>
+          ${editing
+            ? `<textarea class="field-input" id="f-sn-note" rows="8" placeholder="可手填，售后详情单独展示，与「处理说明」区分">${escapeHtml(row.situationNote || '')}</textarea>
+          <p class="muted" style="margin-top:8px">与退货「处理说明」区分，随「保存修改」一起提交</p>`
+            : `<div class="side-note-body">${row.situationNote ? escapeHtml(row.situationNote) : '<span class="muted">暂无情况说明</span>'}</div>
+          <p class="muted" style="margin-top:8px">${ui.mode === 'mini' ? '与退货「处理说明」区分' : '点「修改」后可填写，与退货「处理说明」区分'}</p>`}
         </aside>`;
       body = ui.mode === 'mini'
         ? `${snFields}${snNote}`
@@ -5798,7 +5801,6 @@
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-sn" data-id="${row.sn}">保存修改</button>`
         : `<button class="btn" data-action="close-modal">关闭</button>
            ${ui.mode === 'mini' ? '' : `<button class="btn btn-primary" data-action="open-edit-sn" data-id="${row.sn}">修改</button>`}
-           <button class="btn" data-action="save-sn-note" data-id="${row.sn}">保存情况说明</button>
            ${(row.frozen||(row.tags||[]).includes('已冻结')) && ui.mode !== 'mini' ? `<button class="btn" data-action="reassign-frozen" data-id="${row.sn}">原厂在库重分配</button>`:''}`;
     } else if (type === 'reassign-frozen') {
       title = '已冻结 SN 重新分配';
@@ -7524,13 +7526,15 @@
         const belt = normalizeBelt($('#f-belt')?.value);
         const l1Id = $('#f-l1')?.value || null;
         const l2Id = $('#f-l2')?.value || null;
+        const situationNote = $('#f-sn-note')?.value ?? row.situationNote ?? '';
         const changes = [];
         if (size && size !== row.size) changes.push(`弹力带 ${row.size}→${size}`);
         if (belt && belt !== row.belt) changes.push(`腰带 ${row.belt}→${belt}`);
         if (l1Id !== (row.l1Id || null)) changes.push(`一级 ${l1Name(row.l1Id)}→${l1Name(l1Id)}`);
         if (l2Id !== (row.l2Id || null)) changes.push(`二级调库 ${l2Name(row.l2Id)}→${l2Name(l2Id)}`);
+        if (situationNote !== (row.situationNote || '')) changes.push(situationNote ? '更新情况说明' : '清空情况说明');
         if (!changes.length) { toast('未修改任何字段', 'warn'); break; }
-        confirmDialog(`确认保存 SN「${row.sn}」修改？${changes.join('；')}`, 'save-sn-ok', { id, size, belt, l1Id, l2Id, changes }, { title: '保存 SN 修改', okText: '确认保存' });
+        confirmDialog(`确认保存 SN「${row.sn}」修改？${changes.join('；')}`, 'save-sn-ok', { id, size, belt, l1Id, l2Id, situationNote, changes }, { title: '保存 SN 修改', okText: '确认保存' });
         break;
       }
       case 'open-import-sn-seg':
@@ -7612,15 +7616,6 @@
           okText: '确认处理',
           input: { label: '处理说明', placeholder: '必填，与 SN 情况说明区分', field: 'processNote', required: true, emptyMsg: '请填写处理说明' },
         });
-        break;
-      }
-      case 'save-sn-note': {
-        const row = db.sns.find((s) => s.sn === id);
-        if (!row) { toast('找不到该 SN', 'err'); break; }
-        row.situationNote = $('#f-sn-note')?.value || '';
-        saveStore();
-        toast('情况说明已保存');
-        render();
         break;
       }
       case 'remove-return-photo': {
@@ -8608,7 +8603,7 @@
   function finishSaveSn(payload) {
     const row = db.sns.find((s) => s.sn === payload.id);
     if (!row) { toast('找不到该 SN', 'err'); render(); return; }
-    const { size, belt, l1Id, l2Id, changes } = payload;
+    const { size, belt, l1Id, l2Id, situationNote, changes } = payload;
     if (size && size !== row.size) row.size = size;
     if (belt && belt !== row.belt) row.belt = belt;
     if (l1Id !== undefined && l1Id !== (row.l1Id || null)) row.l1Id = l1Id;
@@ -8617,6 +8612,7 @@
       if (l2Id && ['l1', 'warehouse'].includes(row.status)) row.status = 'l2';
       if (!l2Id && row.status === 'l2') row.status = 'l1';
     }
+    if (situationNote !== undefined) row.situationNote = situationNote;
     const who = (ROLES[ui.role]?.account || ui.account || 'admin');
     const when = nowStr();
     row.tags = [...new Set([...(row.tags || []), '修改过'])];
