@@ -1164,6 +1164,14 @@
           if (!r.reasonType) r.reasonType = '其他';
           if (!Array.isArray(r.photos)) r.photos = [];
           if (r.processNote === undefined) r.processNote = '';
+          if (r.status === 'rejected') r.status = 'done';
+          if (!r.photos.length && ['RT1', 'RT3', 'RT7'].includes(r.id)) {
+            r.photos = [
+              demoReturnPhoto(`${r.no}-1.jpg`, '包装/瑕疵'),
+              demoReturnPhoto(`${r.no}-2.jpg`, 'SN 特写'),
+            ];
+          }
+          r.photos.forEach(attachOssMeta);
           normalizeReturnAuditStatus(r);
         });
         if (!Array.isArray(parsed.exceptions)) parsed.exceptions = [];
@@ -2537,7 +2545,24 @@
       const a = db.agentsL1.find((x) => x.id === f.l1);
       return Number(a?.warnMultiplier || DEFAULT_WARN_MULT);
     }
-    return null;
+    return Number(db.exceptionMultiplier || DEFAULT_WARN_MULT);
+  }
+  function fakeOssUrl(name) {
+    const safe = String(name || `img-${Date.now()}`).replace(/[^\w.\-]+/g, '_');
+    return `https://oss.ruilai.demo/returns/${safe}`;
+  }
+  function demoReturnPhoto(name, title) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180"><rect width="240" height="180" fill="#f3f4f6"/><rect x="12" y="12" width="216" height="156" rx="10" fill="#fff" stroke="#d4d4d8"/><text x="120" y="86" text-anchor="middle" fill="#374151" font-size="16" font-family="sans-serif">${title || '退货凭证'}</text><text x="120" y="112" text-anchor="middle" fill="#9ca3af" font-size="12" font-family="sans-serif">${name}</text></svg>`;
+    return attachOssMeta({
+      name,
+      dataUrl: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    });
+  }
+  function attachOssMeta(photo) {
+    if (!photo) return photo;
+    if (!photo.ossUrl) photo.ossUrl = fakeOssUrl(photo.name || `photo-${Date.now()}.jpg`);
+    if (!photo.uploadedAt) photo.uploadedAt = typeof nowStr === 'function' ? nowStr() : '2026-08-07 10:20';
+    return photo;
   }
   function stockWarnExMeta(l1Id, l2Id) {
     const list = (db.exceptions || []).filter((e) => {
@@ -2561,7 +2586,8 @@
     return `<div class="upload-thumbs">${list.map((p, i) => `<div class="upload-thumb">
       <img src="${p.dataUrl || ''}" alt="${escapeHtml(p.name || '图片')}" />
       ${editing ? `<button type="button" class="btn btn-sm" data-action="remove-return-photo" data-idx="${i}">删</button>` : ''}
-      <span class="muted">${escapeHtml(p.name || '图片')}</span>
+      <span>${escapeHtml(p.name || '图片')}</span>
+      <span class="muted" title="${escapeHtml(p.ossUrl || '')}">${p.ossUrl ? '已上传 · 演示OSS' : '待上传'}</span>
     </div>`).join('')}</div>`;
   }
 
@@ -3357,7 +3383,6 @@
     const f = ui.filters['agent-l2'] || {};
     const sortKey = ui.sort['agent-l2'] || '';
     const sortDir = ui.sort['agent-l2-dir'] || 'asc';
-    const sel = ui.selected['agent-l2'] || (ui.selected['agent-l2'] = {});
     let rows = db.agentsL2.filter((a) => !a.pending && a.auditStatus === 'approved');
     if (f.q) {
       const q = f.q.toLowerCase();
@@ -3378,18 +3403,14 @@
       rows = sortAgentsExFirst(rows, (a) => l2ExCount(a.id));
     }
     const sortMark = (k) => sortKey === k ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
-    const allOn = rows.length > 0 && rows.every((a) => !!sel[a.id]);
-    const selN = rows.filter((a) => sel[a.id]).length;
-    return `${pageHeader('二级代理商', '点击行进入详情（含解绑/改绑/围栏）；勾选后可设异常不报警')}
+    return `${pageHeader('二级代理商', '点击行进入详情（含解绑/改绑/围栏）；报警倍数与粒度在详情/编辑中单独设置，不继承一级')}
       ${filterBar(`
         <input class="field-input" placeholder="搜索" data-filter="agent-l2:q" value="${escapeHtml(f.q||'')}" />
         <select class="field-input" data-filter="agent-l2:parent"><option value="">所属一级</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${f.parent===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
         <input class="field-input" placeholder="所属地域/城市" data-filter="agent-l2:region" value="${escapeHtml(f.region||'')}" />
-        <button type="button" class="btn btn-sm btn-primary" data-action="l2-ex-no-alarm" ${selN ? '' : 'disabled'} title="所选二级出现异常时只记录且默认已处理">异常不报警${selN ? ` (${selN})` : ''}</button>
       `)}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr>
-          <th class="col-check"><input type="checkbox" data-action="toggle-l2-sel-all" ${allOn ? 'checked' : ''} title="全选当前列表" /></th>
           <th>编码</th><th>名称</th>${thFilterHtml('类型', 'agent-l2', 'type', L2_KIND_OPTS)}
           <th class="sortable" data-action="sort-col" data-sort-key="parent" data-sort-scope="agent-l2">所属一级${sortMark('parent')}</th>
           <th>授权城市</th>${thFilterHtml('状态', 'agent-l2', 'status', ENABLE_STATUS_OPTS)}<th>本月采购量</th><th>本月销售量</th><th>当前库存总数</th><th>自定义倍数</th>
@@ -3400,9 +3421,8 @@
           const rtN = l2PendingAftersaleCount(a.id);
           const customMult = l2CustomMultText(a);
           return `<tr class="row-clickable" data-row-action="view-agent-l2" data-id="${a.id}">
-          <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" data-action="toggle-l2-sel" data-id="${a.id}" ${sel[a.id] ? 'checked' : ''} /></td>
           <td>${escapeHtml(a.code)}</td>
-          <td>${escapeHtml(a.name)}${a.exNoAlarm ? ` ${tag('不报警', 'gray')}` : ''}</td>
+          <td>${escapeHtml(a.name)}</td>
           <td>${tag(a.type, a.type==='法人'?'blue':'gray')}</td>
           <td>${escapeHtml(l1Name(a.parentId))}</td><td>${escapeHtml((a.areas||[]).join('、')||'—')}</td>
           <td>
@@ -3420,7 +3440,7 @@
           <td class="num">${l2StockCount(a.id)}</td>
           <td>${customMult === '—' ? '—' : tag(customMult, 'orange')}</td>
         </tr>`;
-        }).join('') || `<tr><td colspan="11">${emptyHint()}</td></tr>`}</tbody>
+        }).join('') || `<tr><td colspan="10">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -3616,10 +3636,11 @@
       `)}
       <div class="metric-grid metric-grid-2">${metricCard('筛选区间采购量', monthQty, '', '', 'po')}${metricCard('历史采购量', histQty, '', '', 'hist')}</div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>预警倍数异常</th><th>时间</th></tr></thead>
+        <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>预警倍数异常</th><th>时间</th><th>操作</th></tr></thead>
         <tbody>${rows.map((p)=>{
           const cos = p.cosign || {};
           const warnEx = stockWarnExMeta(p.l1Id, '');
+          const canAudit = ['pending', 'cosigning'].includes(p.status);
           return `<tr class="row-clickable" data-row-action="view-purchase" data-id="${p.id}">
             <td>${escapeHtml(p.no)}</td><td>${escapeHtml(l1Name(p.l1Id))}</td>
             <td>${(p.lines||[]).map((l)=>`${l.size}×${l.qty}`).join('，')||'—'}</td>
@@ -3629,8 +3650,11 @@
             <td>${cos.admin1?'✓':'-'}/${cos.admin2?'✓':'-'}</td>
             <td>${warnEx.html}</td>
             <td>${escapeHtml(p.createdAt)}</td>
+            <td class="ops" onclick="event.stopPropagation()">${canAudit
+              ? `<button class="btn btn-sm btn-primary" data-action="open-audit-po" data-id="${p.id}">审核</button>`
+              : `<button class="btn btn-sm" data-action="open-view-purchase" data-id="${p.id}">详情</button>`}</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="9">${emptyHint()}</td></tr>`}</tbody>
+        }).join('') || `<tr><td colspan="10">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -3892,7 +3916,7 @@
     const l2Placeholder = tab === 'activate-dist' ? '全部' : '关联二级';
     const curMult = currentAgentWarnMultiplier(f);
     const warnCards = tab === 'stock'
-      ? `${metricCard('标准预警倍数', `${db.exceptionMultiplier}×`, '', '', 'hist')}${metricCard('当前预警倍数', curMult == null ? '—' : `${curMult}×`, '', '', 'warn')}`
+      ? `${metricCard('标准预警倍数', `${db.exceptionMultiplier}×`, '', '', 'hist')}${metricCard('当前预警倍数', `${curMult}×`, '', '', 'warn')}`
       : '';
     const l2Select = hideL2 ? '' : `<select class="field-input" data-filter="exception:l2"><option value="">${l2Placeholder}</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     return `${pageHeader('异常管理', '直售激活 / 分销激活 / 销售库存 · 待处理加粗', `${backToL1DetailAction()}<button class="btn" data-action="open-ex-rules">异常标准配置</button>`)}
@@ -5837,7 +5861,7 @@
           <thead><tr><th>配件</th><th>规格</th><th>数量</th></tr></thead>
           <tbody>${(p.parts||[]).map((x)=>`<tr><td>${escapeHtml(productName(x.partId))}</td><td>${escapeHtml(x.spec||'—')}</td><td class="num">${x.qty||0}</td></tr>`).join('') || `<tr><td colspan="3">${emptyHint('无配件')}</td></tr>`}</tbody>
         </table></div>`;
-        foot = `<button class="btn" data-action="close-modal">关闭</button>${ui.mode !== 'mini' && ['pending','cosigning'].includes(p.status)?`<button class="btn btn-primary" data-action="open-audit-po" data-id="${p.id}">去审核</button>`:''}`;
+        foot = `<button class="btn" data-action="close-modal">关闭</button>`;
       }
     } else if (type === 'view-stock') {
       const row = getStockSummaryRows({}).find((r) => r.id === payload.id)
@@ -6332,7 +6356,7 @@
         <div class="form-field"><label>上传图片</label>
           <input type="file" id="f-return-photos" accept="image/*" multiple />
           ${returnPhotosHtml(draft.photos, true)}
-          <p class="muted" style="margin-top:6px">原型本地预览，最多 4 张</p>
+          <p class="muted" style="margin-top:6px">模拟上传对象存储，最多 4 张；提交后详情可回看</p>
         </div>
         ${returnSnDetailHtml(snsText)}
         <div class="form-field"><label>扫描 SN（逗号分隔）</label><input class="field-input" id="f-sns" placeholder="RL..." value="${escapeHtml(snsText)}" /></div>
@@ -7221,7 +7245,7 @@
         } else if (act === 'reject-return-ok') {
           const r = db.returns.find((x)=>x.id===pid);
           if (r) {
-            r.status = 'rejected';
+            r.status = 'done';
             r.processNote = conf.payload?.processNote || '';
             addLog(`处理退货 ${r.no}`);
             saveStore();
@@ -8695,7 +8719,7 @@
       fromId: payload.fromId, fromRole: payload.fromRole || ui.role, fromName: payload.fromName, approverId: payload.approverId,
       sns: payload.sns || [], status: payload.immediate ? 'done' : 'pending', createdAt: nowStr(),
       reason: payload.reason || '', reasonType: payload.reasonType,
-      photos: payload.photos || [],
+      photos: (payload.photos || []).map((p) => attachOssMeta({ ...p })),
       processNote: '',
       returnedTagN: payload.returnedTagN || 0,
     };
@@ -8875,7 +8899,9 @@
         files.slice(0, remain).forEach((file) => {
           const reader = new FileReader();
           reader.onload = () => {
-            ui.modal.draft.photos = [...(ui.modal.draft.photos || []), { name: file.name, dataUrl: String(reader.result || '') }].slice(0, 4);
+            const photo = attachOssMeta({ name: file.name, dataUrl: String(reader.result || '') });
+            ui.modal.draft.photos = [...(ui.modal.draft.photos || []), photo].slice(0, 4);
+            toast(`已上传 ${file.name}（演示OSS）`);
             render();
           };
           reader.readAsDataURL(file);

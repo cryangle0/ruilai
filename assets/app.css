@@ -786,8 +786,9 @@ table.data .col-check input[type="checkbox"] {
 th.sortable { cursor: pointer; user-select: none; }
 .col-mark { min-width: 148px; }
 .upload-thumbs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-.upload-thumb { width: 92px; text-align: center; }
-.upload-thumb img { width: 92px; height: 92px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-2); display: block; }
+.upload-thumb { width: 108px; text-align: center; }
+.upload-thumb img { width: 108px; height: 108px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-2); display: block; }
+.upload-thumb span { display: block; font-size: 11px; margin-top: 4px; word-break: break-all; }
 .audit-sn-issues { margin-top: 8px; }
 
 .empty-hint {
