@@ -447,7 +447,7 @@
     scanning: '扫码中', done: '已完成', cancelled: '已取消',
   };
   const RT_STATUS = {
-    pending: '待审核', approved: '已通过', done: '已处理', rejected: '已驳回',
+    pending: '待审核', approved: '已通过', done: '已处理', rejected: '已处理',
   };
   function returnStatusLabel(status) {
     return RT_STATUS[status] || status || '—';
@@ -455,7 +455,6 @@
   function returnStatusTag(status) {
     const tone = status === 'pending' ? 'orange'
       : status === 'approved' ? 'green'
-      : status === 'rejected' ? 'red'
       : 'gray';
     return tag(returnStatusLabel(status), tone);
   }
@@ -1463,13 +1462,12 @@
         statusTone: row ? st.tone : 'gray',
       };
     });
-    return `<div class="detail-grid">
+    const main = `<div class="detail-grid">
         <div><span>类型</span>${escapeHtml(r.typeLabel || r.type)}</div>
         <div><span>理由</span>${tag(r.reasonType || '')} ${escapeHtml(r.reason || '')}</div>
         <div><span>来源</span>${escapeHtml(r.fromName || '—')}</div>
         <div><span>状态</span>${returnStatusTag(r.status)}</div>
         <div><span>时间</span>${escapeHtml(r.createdAt || '—')}</div>
-        <div class="span-2"><span>处理说明</span>${escapeHtml(r.processNote || '—')}</div>
       </div>
       <h4 style="margin-top:12px">情况说明（来自 SN，与处理说明区分）</h4>
       <div class="page-card table-wrap"><table class="data">
@@ -1506,6 +1504,11 @@
           <td>${tag(row.statusLabel, row.statusTone)}</td>
         </tr>`).join('') || `<tr><td colspan="4">${emptyHint('暂无 SN')}</td></tr>`}</tbody>
       </table></div>`;
+    const side = `<aside class="side-note-panel">
+        <h4>处理说明</h4>
+        <div class="side-note-body">${r.processNote ? escapeHtml(r.processNote) : '<span class="muted">暂无处理说明</span>'}</div>
+      </aside>`;
+    return `<div class="detail-split"><div>${main}</div>${side}</div>`;
   }
 
   function exceptionDim(e) {
@@ -2900,7 +2903,14 @@
   const EX_STATUS_OPTS = [{ id: '待处理', label: '待处理' }, { id: '会签中', label: '会签中' }, { id: '已完成', label: '已完成' }];
   const EX_STOCK_STATUS_OPTS = [{ id: '待处理', label: '待处理' }, { id: '已处理', label: '已处理' }];
   const SO_STATUS_OPTS = [{ id: 'scanning', label: '扫码中' }, { id: 'done', label: '已完成' }];
-  const RT_STATUS_OPTS = Object.entries(RT_STATUS).map(([id, label]) => ({ id, label }));
+  const RT_STATUS_OPTS = Object.entries(RT_STATUS)
+    .filter(([id]) => id !== 'rejected')
+    .map(([id, label]) => ({ id, label }));
+  function matchReturnStatus(row, status) {
+    if (!status) return true;
+    if (status === 'done') return row.status === 'done' || row.status === 'rejected';
+    return row.status === status;
+  }
   const SN_STATUS_OPTS = Object.entries(SN_STATUS_LABEL).map(([id, label]) => ({ id, label }));
   function thFilterHtml(label, scope, field, options) {
     const f = ui.filters[scope] || {};
@@ -3247,7 +3257,6 @@
           <div><span>当前库存总数</span><strong class="num">${l2StockCount(a.id)}</strong></div>
         </div>
         ${a.ent ? `<h4 style="margin-top:16px">企业信息</h4><div class="detail-grid"><div class="span-2"><span>公司</span>${escapeHtml(a.ent.company || '—')}</div></div>` : ''}
-        ${a.exNoAlarm ? '<p class="muted" style="margin-top:8px">该二级已设「异常不报警」：新异常只记录且默认已处理，不推送未处理预警。</p>' : ''}
       </div>
       <div class="page-card" style="margin-top:12px">
         <div class="page-actions">
@@ -3284,7 +3293,7 @@
       list = list.filter((r) => r.fromId === l2Id || (r.sns || []).some((sn) => db.sns.find((s) => s.sn === sn && s.l2Id === l2Id)));
     }
     const noAudit = tab === 'user' || tab === 'l2';
-    if (f.status && !noAudit) list = list.filter((r) => r.status === f.status);
+    if (f.status && !noAudit) list = list.filter((r) => matchReturnStatus(r, f.status));
     const l2Select = tab === 'user' ? '' : `<select class="field-input" data-filter="l1-return:l2"><option value="">全部二级代理</option>${l2Opts.map((a)=>`<option value="${a.id}" ${a.id===l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     const showCust = tab === 'user' || tab === 'all';
     return `${pageHeader('一级退货详情', `${l1Name(l1Id)} · 可改筛选区间`, backToL1DetailAction('agent-l1'))}
@@ -3324,7 +3333,7 @@
     const histQty = all.reduce((n, r) => n + (r.sns || []).length, 0);
     let list = all.filter((r) => inDateRange(r.createdAt, from, to));
     if (f.type) list = list.filter((r) => r.type === f.type);
-    if (f.status) list = list.filter((r) => r.status === f.status);
+    if (f.status) list = list.filter((r) => matchReturnStatus(r, f.status));
     return `${pageHeader('二级退货详情', `${l2Name(l2Id)} · 可改筛选区间`, backToL1DetailAction('agent-l2'))}
       ${filterBar(`
         <select class="field-input" data-filter="l2-return:l2Id">${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${a.id===l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
@@ -3543,8 +3552,9 @@
     if ((f.from || f.to) && !(f.factoryFrom || f.soldFrom || f.returnFrom)) {
       rows = rows.filter((s) => inDateRange(s.soldAt || s.factoryAt || s.returnAt || s.bindAt || '', f.from, f.to));
     }
+    const pin = openActivateSnSet();
     rows = pinOpenActivateSns(sortByCreated(rows)).slice(0, 200);
-    return `${pageHeader('SN码库', '多维筛选 · 点击行查看生命周期/编辑', '<button class="btn btn-primary" data-action="open-gen-sn">系统生成SN</button><button class="btn" data-action="open-import-sn-seg">Excel导入段号</button>')}
+    return `${pageHeader('SN码库', '未处理激活异常的 SN 置顶 · 点击行查看生命周期/编辑', '<button class="btn btn-primary" data-action="open-gen-sn">系统生成SN</button><button class="btn" data-action="open-import-sn-seg">Excel导入段号</button>')}
       ${filterBar(`
         <input class="field-input" placeholder="SN" data-filter="sn:sn" value="${escapeHtml(f.sn||'')}" />
         <input class="field-input" placeholder="商品名称" data-filter="sn:productName" value="${escapeHtml(f.productName||'')}" />
@@ -3570,7 +3580,7 @@
             <td>${escapeHtml(s.size)}</td><td>${escapeHtml(s.belt||'—')}</td>
             <td>${ch.id ? tag(ch.label, ch.tone) : '—'}</td>
             <td>${escapeHtml(l1Name(s.l1Id))}</td><td>${escapeHtml(l2Name(s.l2Id))}</td>
-            <td>${tag(st.label, st.tone)}</td>
+            <td>${tag(st.label, st.tone)}${pin.has(String(s.sn).toUpperCase()) ? ` ${tag('异常未处理', 'red')}` : ''}</td>
             <td>${hist.map((t)=>tag(t,'orange')).join(' ')||'—'}</td>
           </tr>`;
         }).join('') || `<tr><td colspan="9">${emptyHint()}</td></tr>`}</tbody>
@@ -3793,8 +3803,9 @@
     const statusRows = rows.slice();
     const noAuditKind = kind === 'user' || kind === 'l2';
     if (noAuditKind && tab !== 'all' && tab !== 'done') ui.tabs.return = 'all';
+    if (ui.tabs.return === 'rejected') ui.tabs.return = 'done';
     const statusTab = noAuditKind ? 'all' : (ui.tabs.return || tab);
-    if (statusTab && statusTab !== 'all') rows = rows.filter((r) => r.status === statusTab);
+    if (statusTab && statusTab !== 'all') rows = rows.filter((r) => matchReturnStatus(r, statusTab));
     rows.sort((a, b) => {
       if (!noAuditKind) {
         const pa = a.status === 'pending' ? 0 : 1;
@@ -3812,8 +3823,7 @@
         { id: 'all', title: '全部', badge: statusRows.length || null },
         { id: 'pending', title: '待审核', badge: rtN('pending') || null },
         { id: 'approved', title: '已通过', badge: rtN('approved') || null },
-        { id: 'done', title: '已处理', badge: rtN('done') || null },
-        { id: 'rejected', title: '已驳回', badge: rtN('rejected') || null },
+        { id: 'done', title: '已处理', badge: (rtN('done') + rtN('rejected')) || null },
       ])}`;
     const pendingCard = noAuditKind ? '' : metricCard('待审单', rtN('pending'), 'return', 'tab:return:pending', 'pending');
     return `${pageHeader('返货管理', '列表含 SN · 统计可点进详情', `${backToL1DetailAction()}<button class="btn" data-go="stats">数据统计</button>`)}
@@ -3882,7 +3892,7 @@
     const l2Placeholder = tab === 'activate-dist' ? '全部' : '关联二级';
     const curMult = currentAgentWarnMultiplier(f);
     const warnCards = tab === 'stock'
-      ? `${metricCard('标准预警倍数', `${db.exceptionMultiplier}×`, '', '', 'hist')}${metricCard('当前预警倍数', curMult == null ? '请选代理' : `${curMult}×`, '', '', 'warn')}`
+      ? `${metricCard('标准预警倍数', `${db.exceptionMultiplier}×`, '', '', 'hist')}${metricCard('当前预警倍数', curMult == null ? '—' : `${curMult}×`, '', '', 'warn')}`
       : '';
     const l2Select = hideL2 ? '' : `<select class="field-input" data-filter="exception:l2"><option value="">${l2Placeholder}</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     return `${pageHeader('异常管理', '直售激活 / 分销激活 / 销售库存 · 待处理加粗', `${backToL1DetailAction()}<button class="btn" data-action="open-ex-rules">异常标准配置</button>`)}
@@ -4809,6 +4819,7 @@
     });
     const snAll = pinOpenActivateSns(getStockSns(type, id, f));
     const sns = snAll.slice(0, 80);
+    const pin = openActivateSnSet();
     const panel = tab === 'sn'
       ? `<div class="form-field"><input class="field-input" placeholder="搜 SN" data-filter="miniStock:sn" value="${escapeHtml(f.sn||'')}" /></div>
         <div style="display:flex;gap:6px;margin:8px 0">
@@ -4816,7 +4827,7 @@
           <select class="field-input" data-filter="miniStock:belt"><option value="">腰带</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
         </div>
         <div class="mini-list">${sns.map((s)=>`<button type="button" class="mini-list-item" data-action="open-view-sn" data-id="${s.sn}">
-          <strong>${escapeHtml(s.sn)}</strong>
+          <strong>${escapeHtml(s.sn)}${pin.has(String(s.sn).toUpperCase()) ? ` ${tag('异常未处理', 'red')}` : ''}</strong>
           <span>${escapeHtml(productName(s.productId))} · ${escapeHtml(s.size)}+${escapeHtml(s.belt||'—')}</span>
           <span>${snTagsHtml(s)}</span>
         </button>`).join('')||emptyHint('无 SN')}</div>`
@@ -5717,7 +5728,7 @@
       const life = getSnLifecycle(row);
       const editing = type === 'edit-sn';
       title = `${editing ? '编辑 SN' : 'SN 详情'} · ${row.sn}`;
-      body = `<div class="detail-grid">
+      const snFields = `<div class="detail-grid">
           <div><span>SN</span>${escapeHtml(row.sn)}</div>
           <div><span>状态</span>${tag(st.label, st.tone)}<div class="muted" style="margin-top:4px;font-size:12px">仅四种：一级在库 / 二级在库 / 已销售 / 原厂在库</div></div>
           <div><span>商品</span>${escapeHtml(productName(row.productId))}</div>
@@ -5726,9 +5737,6 @@
           <div><span>一级</span>${escapeHtml(l1Name(row.l1Id))}</div>
           <div><span>二级</span>${escapeHtml(l2Name(row.l2Id))}</div>
           <div><span>标签</span>${snDisplayTags(row).map((t)=>tag(t,'orange')).join(' ')||'—'}</div>
-          <div class="span-2"><span>情况说明</span>
-            <textarea class="field-input" id="f-sn-note" rows="2" placeholder="可手填，售后详情单独展示，与「处理说明」区分">${escapeHtml(row.situationNote || '')}</textarea>
-          </div>
         </div>
         ${(() => {
           const cu = row.user || row.prevUser;
@@ -5751,9 +5759,17 @@
           <div class="form-field"><label>所属一级</label><select class="field-input" id="f-l1"><option value="">—</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${a.id===row.l1Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select></div>
           <div class="form-field"><label>所属二级（调库）</label><select class="field-input" id="f-l2"><option value="">—</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${a.id===row.l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select></div>
         </div>
-        <p class="muted">保存后自动记录：谁、什么时间、改了什么（无需手动打维修勾）。</p>` : `<p class="muted" style="margin-top:8px">详情只读；点击「修改」后可编辑。</p>`}
+        <p class="muted">保存后自动记录：谁、什么时间、改了什么（无需手动打维修勾）。</p>` : (ui.mode === 'mini' ? '' : `<p class="muted" style="margin-top:8px">详情只读；点击「修改」后可编辑。</p>`)}
         <div class="mini-section-title">完整流转（${life.length}）</div>
         <div class="mini-timeline" style="max-height:360px;overflow:auto">${life.map((e)=>`<div class="mini-tl-item type-${e.type||''}"><div class="mini-tl-dot"></div><div><div class="mini-tl-title">${escapeHtml(e.title)}</div><div class="mini-tl-desc">${escapeHtml(e.desc||'')}</div><div class="mini-tl-time">${escapeHtml(e.time)}</div></div></div>`).join('')}</div>`;
+      const snNote = `<aside class="side-note-panel">
+          <h4>情况说明</h4>
+          <textarea class="field-input" id="f-sn-note" rows="8" placeholder="可手填，售后详情单独展示，与「处理说明」区分">${escapeHtml(row.situationNote || '')}</textarea>
+          <p class="muted" style="margin-top:8px">与退货「处理说明」区分</p>
+        </aside>`;
+      body = ui.mode === 'mini'
+        ? `${snFields}${snNote}`
+        : `<div class="detail-split"><div>${snFields}</div>${snNote}</div>`;
       foot = editing
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-sn" data-id="${row.sn}">保存修改</button>`
         : `<button class="btn" data-action="close-modal">关闭</button>

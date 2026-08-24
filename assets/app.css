@@ -797,6 +797,37 @@ th.sortable { cursor: pointer; user-select: none; }
   font-size: 13px;
 }
 
+.detail-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 16px;
+  align-items: start;
+}
+.side-note-panel {
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 180px;
+  background: #fff;
+}
+.side-note-panel h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.side-note-body {
+  min-height: 120px;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.side-note-panel textarea.field-input {
+  min-height: 160px;
+  resize: vertical;
+}
+@media (max-width: 720px) {
+  .detail-split { grid-template-columns: 1fr; }
+}
+
 .alert {
   display: flex;
   gap: 8px;
