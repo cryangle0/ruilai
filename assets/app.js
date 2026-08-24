@@ -963,6 +963,21 @@
         { id: 'RT13', no: `RTU${todayCompact()}13`, type: 'user', typeLabel: '直售客户退货', fromId: 'L1C', fromName: '华北联合代理',
           sns: ['RL202608060001'], status: 'done', createdAt: '2026-08-07 11:05', reason: '客诉升级，直售客户退货', reasonType: '投诉',
           customer: { name: '赵磊', gender: '男', age: '42', phone: '13600003321', addr: '北京市朝阳区建国路88号', phoneLoc: '北京' } },
+        { id: 'RT14', no: `RT${todayCompact()}14`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
+          sns: ['RL202608010044'], status: 'pending', createdAt: '2026-08-11 09:20', reason: '弹力带开裂，申请退原厂', reasonType: '质量',
+          processNote: '' },
+        { id: 'RT15', no: `RT${todayCompact()}15`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1B', fromName: '华南渠道中心',
+          sns: ['RL202608020022'], status: 'pending', createdAt: '2026-08-11 14:40', reason: '批量色差，集中退原厂', reasonType: '批次',
+          processNote: '' },
+        { id: 'RT16', no: `RT${todayCompact()}16`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1A', fromName: '华东锐涞总代',
+          sns: ['RL202608010046'], status: 'done', createdAt: '2026-08-10 16:15', reason: '客诉升级已现场核对', reasonType: '投诉',
+          processNote: '已现场核对包装与 SN，同意退原厂质检；无需再跟进。' },
+        { id: 'RT17', no: `RT${todayCompact()}17`, type: 'l1_to_factory', typeLabel: '一级退原厂', fromId: 'L1C', fromName: '华北联合代理',
+          sns: ['RL202608010047'], status: 'pending', createdAt: '2026-08-12 10:05', reason: '运输挤压变形', reasonType: '批次',
+          processNote: '' },
+        { id: 'RT18', no: `RT${todayCompact()}18`, type: 'l2_to_l1', typeLabel: '二级退一级', fromId: 'L2A', fromName: '杭州城西专营', approverId: 'L1A',
+          sns: ['RL202608010048'], status: 'done', createdAt: '2026-08-09 11:30', reason: '门店试穿后外观瑕疵', reasonType: '质量',
+          processNote: '一级已收货入库，瑕疵件单独隔离。' },
       ],
       exceptions: [
         { id: 'EX1', time: '2026-07-25 12:05', type: '归属地异常', target: 'RL202607200004', detail: '手机归属广东 · IP地区浙江不一致', notify: '一级+原厂', status: '待处理', dim: 'activate', explainL2: '客户出差导致IP与手机归属不一致，属正常' },
@@ -1062,6 +1077,9 @@
           }
           if (!s.events) s.events = [];
           if (s.situationNote === undefined) s.situationNote = '';
+          if (!s.situationNote && s.sn === 'RL202608010041') s.situationNote = '包装破损，客户已拍照；建议原厂质检后报废或返修。';
+          if (!s.situationNote && s.sn === 'RL202607200007') s.situationNote = '尺码偏小，客户要求换货未果后走退货。';
+          if (!s.situationNote && s.sn === 'RL202608010044') s.situationNote = '弹力带使用两周后开裂，已留实物照片。';
           revealUserPhones(s.user);
           revealUserPhones(s.prevUser);
         });
@@ -1156,7 +1174,7 @@
             if (row.customer) existing.customer = JSON.parse(JSON.stringify(row.customer));
           }
         });
-        if (parsed.seq && Number(parsed.seq.rt) < 13) parsed.seq.rt = 13;
+        if (parsed.seq && Number(parsed.seq.rt) < 18) parsed.seq.rt = 18;
         (parsed.customers || []).forEach((c) => {
           if (c.phone) c.phone = revealMaskedPhone(c.phone);
         });
@@ -1165,7 +1183,7 @@
           if (!Array.isArray(r.photos)) r.photos = [];
           if (r.processNote === undefined) r.processNote = '';
           if (r.status === 'rejected') r.status = 'done';
-          if (!r.photos.length && ['RT1', 'RT3', 'RT7'].includes(r.id)) {
+          if (!r.photos.length && ['RT1', 'RT3', 'RT7', 'RT14', 'RT15', 'RT16', 'RT17', 'RT18'].includes(r.id)) {
             r.photos = [
               demoReturnPhoto(`${r.no}-1.jpg`, '包装/瑕疵'),
               demoReturnPhoto(`${r.no}-2.jpg`, 'SN 特写'),
@@ -2536,16 +2554,35 @@
       return pa - pb;
     });
   }
+  function warnMultipliersInScope(f) {
+    const vals = [];
+    const add = (a) => {
+      if (!a) return;
+      const n = Number(a.warnMultiplier || DEFAULT_WARN_MULT);
+      if (n) vals.push(n);
+    };
+    if (f?.l2) add(db.agentsL2.find((x) => x.id === f.l2));
+    else if (f?.l1) {
+      add(db.agentsL1.find((x) => x.id === f.l1));
+      db.agentsL2.filter((a) => a.parentId === f.l1 && !a.pending).forEach(add);
+    } else {
+      (db.agentsL1 || []).forEach(add);
+      (db.agentsL2 || []).filter((a) => !a.pending).forEach(add);
+    }
+    return [...new Set(vals)];
+  }
   function currentAgentWarnMultiplier(f) {
-    if (f?.l2) {
-      const a = db.agentsL2.find((x) => x.id === f.l2);
-      return Number(a?.warnMultiplier || DEFAULT_WARN_MULT);
-    }
-    if (f?.l1) {
-      const a = db.agentsL1.find((x) => x.id === f.l1);
-      return Number(a?.warnMultiplier || DEFAULT_WARN_MULT);
-    }
-    return Number(db.exceptionMultiplier || DEFAULT_WARN_MULT);
+    const uniq = warnMultipliersInScope(f);
+    if (uniq.length !== 1) return '-';
+    return uniq[0];
+  }
+  function sortWarnExThenNewest(rows, metaOf) {
+    return rows.slice().sort((a, b) => {
+      const ao = metaOf(a)?.open ? 0 : 1;
+      const bo = metaOf(b)?.open ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      return parseTime(b.createdAt) - parseTime(a.createdAt);
+    });
   }
   function fakeOssUrl(name) {
     const safe = String(name || `img-${Date.now()}`).replace(/[^\w.\-]+/g, '_');
@@ -3615,7 +3652,7 @@
     if (tab !== 'all') rows = rows.filter((p) => p.status === tab);
     if (f.l1) rows = rows.filter((p) => p.l1Id === f.l1);
     if (f.from || f.to) rows = rows.filter((p) => inDateRange(p.createdAt, f.from, f.to));
-    rows = sortByCreated(rows);
+    rows = sortWarnExThenNewest(rows, (p) => stockWarnExMeta(p.l1Id, ''));
     const poScope = livePos.filter((p) => !f.l1 || p.l1Id === f.l1);
     const monthQty = poScope.filter((p) => inDateRange(p.createdAt, f.from, f.to)).reduce((n, p) => n + purchaseNeedQty(p), 0);
     const histQty = poScope.reduce((n, p) => n + purchaseNeedQty(p), 0);
@@ -3636,11 +3673,10 @@
       `)}
       <div class="metric-grid metric-grid-2">${metricCard('筛选区间采购量', monthQty, '', '', 'po')}${metricCard('历史采购量', histQty, '', '', 'hist')}</div>
       <div class="page-card table-wrap"><table class="data">
-        <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>预警倍数异常</th><th>时间</th><th>操作</th></tr></thead>
+        <thead><tr><th>单号</th><th>一级</th><th>标准行</th><th>非标</th><th>配件</th><th>状态</th><th>会签</th><th>预警倍数异常</th><th>时间</th></tr></thead>
         <tbody>${rows.map((p)=>{
           const cos = p.cosign || {};
           const warnEx = stockWarnExMeta(p.l1Id, '');
-          const canAudit = ['pending', 'cosigning'].includes(p.status);
           return `<tr class="row-clickable" data-row-action="view-purchase" data-id="${p.id}">
             <td>${escapeHtml(p.no)}</td><td>${escapeHtml(l1Name(p.l1Id))}</td>
             <td>${(p.lines||[]).map((l)=>`${l.size}×${l.qty}`).join('，')||'—'}</td>
@@ -3650,11 +3686,8 @@
             <td>${cos.admin1?'✓':'-'}/${cos.admin2?'✓':'-'}</td>
             <td>${warnEx.html}</td>
             <td>${escapeHtml(p.createdAt)}</td>
-            <td class="ops" onclick="event.stopPropagation()">${canAudit
-              ? `<button class="btn btn-sm btn-primary" data-action="open-audit-po" data-id="${p.id}">审核</button>`
-              : `<button class="btn btn-sm" data-action="open-view-purchase" data-id="${p.id}">详情</button>`}</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="10">${emptyHint()}</td></tr>`}</tbody>
+        }).join('') || `<tr><td colspan="9">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
   }
 
@@ -3675,7 +3708,10 @@
     if (tab === 'direct') scoped = scoped.filter((s) => s.channel === 'direct');
     if (f.status) scoped = scoped.filter((s) => s.status === f.status);
     const histQty = scoped.reduce((n, s) => n + saleQty(s), 0);
-    const rows = sortByCreated(scoped.filter((s) => inDateRange(s.createdAt, f.from, f.to)));
+    const rows = sortWarnExThenNewest(
+      scoped.filter((s) => inDateRange(s.createdAt, f.from, f.to)),
+      (s) => stockWarnExMeta(s.l1Id, s.channel === 'direct' ? '' : s.l2Id),
+    );
     const monthQty = rows.reduce((n, s) => n + saleQty(s), 0);
     const showCust = tab === 'direct';
     const l2Select = tab === 'direct' ? '' : `<select class="field-input" data-filter="sales:l2"><option value="">所有</option>${l2Opts.map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
@@ -3770,16 +3806,14 @@
       </table></div>`;
     } else {
       table = `<div class="page-card table-wrap"><div class="table-caption">在库 SN 明细（${summaryRows.length}）</div><table class="data">
-        <thead><tr><th>商品</th><th>一级代理名称</th><th>二级代理名称</th><th>规格</th><th>数量</th><th>标签</th><th>操作</th></tr></thead>
+        <thead><tr><th>商品</th><th>一级代理名称</th><th>二级代理名称</th><th>规格</th><th>数量</th></tr></thead>
         <tbody>${summaryRows.map((r)=>`<tr class="row-clickable" data-row-action="view-stock" data-id="${escapeHtml(r.id)}">
           <td>${escapeHtml(productName(r.productId))}</td>
           <td>${escapeHtml(l1Name(r.l1Id))}</td>
           <td>${escapeHtml(r.l2Id ? l2Name(r.l2Id) : '—')}</td>
           <td>${escapeHtml(stockSpecText(r.size, r.belt))}</td>
           <td class="num">${r.qty}</td>
-          <td>${tagsListHtml(r.tags)}</td>
-          <td class="ops" onclick="event.stopPropagation()"><button class="btn btn-sm" data-action="open-view-stock" data-id="${escapeHtml(r.id)}">详情</button></td>
-        </tr>`).join('') || `<tr><td colspan="7">${emptyHint()}</td></tr>`}</tbody>
+        </tr>`).join('') || `<tr><td colspan="5">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
     }
     return `${pageHeader('库存管理', '按商品/代理/规格汇总；详情可看流水与 SN，SN 可跳转码库', backToL1DetailAction())}
@@ -3915,8 +3949,9 @@
     const hideL2 = tab === 'activate-direct';
     const l2Placeholder = tab === 'activate-dist' ? '全部' : '关联二级';
     const curMult = currentAgentWarnMultiplier(f);
+    const curMultText = curMult === '-' ? '-' : `${curMult}×`;
     const warnCards = tab === 'stock'
-      ? `${metricCard('标准预警倍数', `${db.exceptionMultiplier}×`, '', '', 'hist')}${metricCard('当前预警倍数', `${curMult}×`, '', '', 'warn')}`
+      ? `<div class="warn-mult-row">${metricCard('标准预警倍数', `${db.exceptionMultiplier}×`, '', '', 'hist')}${metricCard('当前预警倍数', curMultText, '', '', 'warn')}</div>`
       : '';
     const l2Select = hideL2 ? '' : `<select class="field-input" data-filter="exception:l2"><option value="">${l2Placeholder}</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${f.l2===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>`;
     return `${pageHeader('异常管理', '直售激活 / 分销激活 / 销售库存 · 待处理加粗', `${backToL1DetailAction()}<button class="btn" data-action="open-ex-rules">异常标准配置</button>`)}
@@ -3931,12 +3966,12 @@
         <input type="date" class="field-input" data-filter="exception:from" value="${escapeHtml(f.from||'')}" />
         <input type="date" class="field-input" data-filter="exception:to" value="${escapeHtml(f.to||'')}" />
       `)}
-      <div class="metric-grid${tab === 'stock' ? '' : ' metric-grid-3'}">
+      <div class="metric-grid metric-grid-3">
         ${metricCard('当前筛选', rows.length, '', '', 'info')}
         ${metricCard('本维历史总量', histTotal, '', '', 'hist')}
         ${metricCard('待处理(当前筛)', openN, '', '', 'pending')}
-        ${warnCards}
       </div>
+      ${warnCards}
       <div class="page-card table-wrap"><table class="data">
         <thead><tr><th>时间</th>${thFilterHtml('类型', 'exception', 'type', typeOpts)}<th>一级代理</th><th>二级代理</th><th>对象</th><th>详情</th><th>${escapeHtml(explainLabel)}</th>${thFilterHtml('状态', 'exception', 'status', statusOpts)}</tr></thead>
         <tbody>${rows.map((e)=>{
@@ -4620,7 +4655,7 @@
     const all = list.slice();
     if (tab !== 'all') list = list.filter((p) => p.status === tab);
     list = list.filter((p) => matchTimeSnFilter(p.createdAt, purchaseSnHaystack(p), f));
-    list = list.slice().sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
+    list = sortWarnExThenNewest(list, (p) => stockWarnExMeta(p.l1Id, ''));
     const poN = (st) => all.filter((p) => p.status === st).length;
     return `<p class="mini-page-desc">发起采购申请（标准/非标/配件）</p>
       <button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="purchase">新建采购申请</button>
@@ -4650,7 +4685,7 @@
       : db.sales.filter((s) => s.l1Id === currentL1Id() && s.channel !== 'direct');
     if (f.l2) list = list.filter((s) => s.l2Id === f.l2);
     list = list.filter((s) => matchTimeSnFilter(s.createdAt, s.scanned || [], f));
-    list = list.slice().sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt));
+    list = sortWarnExThenNewest(list, (s) => stockWarnExMeta(s.l1Id, s.channel === 'direct' ? '' : s.l2Id));
     const actions = ui.role === 'l2' ? '' : `<button class="btn btn-primary btn-block" data-action="open-order-cart" data-channel="sales" style="margin-bottom:10px">创建销售单</button>`;
     return `${actions}
       ${ui.role==='l2'?`<div class="alert alert-info">本级销售记录（点开详情看商品与 SN）</div>`:''}
@@ -4861,18 +4896,10 @@
         </div>
         <div class="mini-list">${rows.map((r)=>{
           const stockId = `${type}_${id}_${r.productId}_${r.size}_${r.belt || ''}`;
-          const tagSet = [];
-          db.sns.forEach((s) => {
-            if (s.productId !== r.productId || s.size !== r.size || (s.belt || '') !== (r.belt || '')) return;
-            if (type === 'l1' && !(s.l1Id === id && s.status === 'l1')) return;
-            if (type === 'l2' && !(s.l2Id === id && (s.status === 'l2' || s.reIn))) return;
-            snHistoryTags(s).forEach((t) => { if (!tagSet.includes(t)) tagSet.push(t); });
-          });
           return `<button type="button" class="mini-list-item" data-action="open-view-stock" data-id="${escapeHtml(stockId)}">
           <strong>${escapeHtml(productName(r.productId))}</strong>
           <span>${escapeHtml(r.size)} + ${escapeHtml(r.belt||'—')}</span>
           <span class="num">×${r.qty}</span>
-          <span>${tagsListHtml(tagSet)}</span>
         </button>`;
         }).join('')||emptyHint('暂无汇总')}</div>`;
     return `<div class="mini-page-title">库存</div>
@@ -5775,6 +5802,12 @@
             <div class="span-2"><span>地址</span>${escapeHtml(cu.addr || '—')}</div>
           </div>`;
         })()}
+        <h4 style="margin-top:12px">情况说明</h4>
+        ${editing && ui.mode !== 'mini'
+          ? `<textarea class="field-input" id="f-sn-note" rows="5" placeholder="可手填，售后详情单独展示，与「处理说明」区分">${escapeHtml(row.situationNote || '')}</textarea>
+        <p class="muted" style="margin-top:8px">与退货「处理说明」区分，随「保存修改」一起提交</p>`
+          : `<div class="side-note-body" style="min-height:72px">${row.situationNote ? escapeHtml(row.situationNote) : '<span class="muted">暂无情况说明</span>'}</div>
+        <p class="muted" style="margin-top:8px">${ui.mode === 'mini' ? '与退货「处理说明」区分' : '点「修改」后可填写，与退货「处理说明」区分'}</p>`}
         ${editing ? `<h4 style="margin-top:12px">修改字段</h4>
         <div class="form-grid">
           <div class="form-field"><label>SN</label><input class="field-input" id="f-sn" value="${escapeHtml(row.sn)}" disabled /></div>
@@ -5783,20 +5816,14 @@
           <div class="form-field"><label>所属一级</label><select class="field-input" id="f-l1"><option value="">—</option>${db.agentsL1.map((a)=>`<option value="${a.id}" ${a.id===row.l1Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select></div>
           <div class="form-field"><label>所属二级（调库）</label><select class="field-input" id="f-l2"><option value="">—</option>${db.agentsL2.filter((a)=>!a.pending).map((a)=>`<option value="${a.id}" ${a.id===row.l2Id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select></div>
         </div>
-        <p class="muted">保存后自动记录：谁、什么时间、改了什么（无需手动打维修勾）。</p>` : (ui.mode === 'mini' ? '' : `<p class="muted" style="margin-top:8px">详情只读；点击「修改」后可编辑。</p>`)}
-        <div class="mini-section-title">完整流转（${life.length}）</div>
-        <div class="mini-timeline" style="max-height:360px;overflow:auto">${life.map((e)=>`<div class="mini-tl-item type-${e.type||''}"><div class="mini-tl-dot"></div><div><div class="mini-tl-title">${escapeHtml(e.title)}</div><div class="mini-tl-desc">${escapeHtml(e.desc||'')}</div><div class="mini-tl-time">${escapeHtml(e.time)}</div></div></div>`).join('')}</div>`;
-      const snNote = `<aside class="side-note-panel">
-          <h4>情况说明</h4>
-          ${editing
-            ? `<textarea class="field-input" id="f-sn-note" rows="8" placeholder="可手填，售后详情单独展示，与「处理说明」区分">${escapeHtml(row.situationNote || '')}</textarea>
-          <p class="muted" style="margin-top:8px">与退货「处理说明」区分，随「保存修改」一起提交</p>`
-            : `<div class="side-note-body">${row.situationNote ? escapeHtml(row.situationNote) : '<span class="muted">暂无情况说明</span>'}</div>
-          <p class="muted" style="margin-top:8px">${ui.mode === 'mini' ? '与退货「处理说明」区分' : '点「修改」后可填写，与退货「处理说明」区分'}</p>`}
+        <p class="muted">保存后自动记录：谁、什么时间、改了什么（无需手动打维修勾）。</p>` : (ui.mode === 'mini' ? '' : `<p class="muted" style="margin-top:8px">详情只读；点击「修改」后可编辑。</p>`)}`;
+      const lifePanel = `<aside class="side-note-panel">
+          <h4>完整流转（${life.length}）</h4>
+          <div class="mini-timeline" style="max-height:420px;overflow:auto">${life.map((e)=>`<div class="mini-tl-item type-${e.type||''}"><div class="mini-tl-dot"></div><div><div class="mini-tl-title">${escapeHtml(e.title)}</div><div class="mini-tl-desc">${escapeHtml(e.desc||'')}</div><div class="mini-tl-time">${escapeHtml(e.time)}</div></div></div>`).join('')}</div>
         </aside>`;
       body = ui.mode === 'mini'
-        ? `${snFields}${snNote}`
-        : `<div class="detail-split"><div>${snFields}</div>${snNote}</div>`;
+        ? `${snFields}${lifePanel}`
+        : `<div class="detail-split"><div>${snFields}</div>${lifePanel}</div>`;
       foot = editing
         ? `<button class="btn" data-action="close-modal">取消</button><button class="btn btn-primary" data-action="save-sn" data-id="${row.sn}">保存修改</button>`
         : `<button class="btn" data-action="close-modal">关闭</button>
@@ -5863,7 +5890,10 @@
           <thead><tr><th>配件</th><th>规格</th><th>数量</th></tr></thead>
           <tbody>${(p.parts||[]).map((x)=>`<tr><td>${escapeHtml(productName(x.partId))}</td><td>${escapeHtml(x.spec||'—')}</td><td class="num">${x.qty||0}</td></tr>`).join('') || `<tr><td colspan="3">${emptyHint('无配件')}</td></tr>`}</tbody>
         </table></div>`;
-        foot = `<button class="btn" data-action="close-modal">关闭</button>`;
+        foot = `<button class="btn" data-action="close-modal">关闭</button>
+          ${ui.mode !== 'mini' && ['pending', 'cosigning'].includes(p.status)
+            ? `<button class="btn btn-primary" data-action="open-audit-po" data-id="${p.id}">去审核</button>`
+            : ''}`;
       }
     } else if (type === 'view-stock') {
       const row = getStockSummaryRows({}).find((r) => r.id === payload.id)

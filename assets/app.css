@@ -508,6 +508,16 @@ a { color: inherit; text-decoration: none; }
 .metric-grid-3 {
   grid-template-columns: repeat(3, 1fr);
 }
+.warn-mult-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  margin-bottom: 10px;
+}
+.warn-mult-row .metric-card {
+  flex: 1;
+  min-width: 0;
+}
 
 .metric-card {
   background: var(--bg-card);
@@ -800,7 +810,7 @@ th.sortable { cursor: pointer; user-select: none; }
 
 .detail-split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
   gap: 16px;
   align-items: start;
 }
