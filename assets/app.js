@@ -1082,6 +1082,7 @@
           if (!s.situationNote && s.sn === 'RL202608010041') s.situationNote = '包装破损，客户已拍照；建议原厂质检后报废或返修。';
           if (!s.situationNote && s.sn === 'RL202607200007') s.situationNote = '尺码偏小，客户要求换货未果后走退货。';
           if (!s.situationNote && s.sn === 'RL202608010044') s.situationNote = '弹力带使用两周后开裂，已留实物照片。';
+          migrateSituationNotes(s);
           revealUserPhones(s.user);
           revealUserPhones(s.prevUser);
         });
@@ -1523,7 +1524,7 @@
         <thead><tr><th>SN</th><th>情况说明</th></tr></thead>
         <tbody>${(r.sns || []).map((sn) => {
           const row = db.sns.find((x) => x.sn === sn);
-          return `<tr><td><code>${escapeHtml(sn)}</code></td><td>${escapeHtml(row?.situationNote || '—')}</td></tr>`;
+          return `<tr><td><code>${escapeHtml(sn)}</code></td><td>${escapeHtml(situationNotesPlain(row))}</td></tr>`;
         }).join('') || `<tr><td colspan="2">${emptyHint('暂无 SN')}</td></tr>`}</tbody>
       </table></div>
       <h4 style="margin-top:12px">凭证图片</h4>
@@ -2665,6 +2666,20 @@
     const dd = String(d || '').padStart(2, '0');
     return `${yy}-${mm}-${dd}`;
   }
+  function migrateSituationNotes(s) {
+    if (!s) return;
+    if (!Array.isArray(s.situationNotes)) s.situationNotes = [];
+    const text = String(s.situationNote || '').trim();
+    if (text && !s.situationNotes.length) {
+      s.situationNotes.push({
+        date: String(s.returnAt || s.soldAt || s.factoryAt || todayDate()).slice(0, 10) || todayDate(),
+        text,
+      });
+    }
+    if (!s.situationNote && s.situationNotes.length) {
+      s.situationNote = s.situationNotes.map((n) => n.text).filter(Boolean).join('\n');
+    }
+  }
   function collectReturnProcessNotes(sn) {
     const out = [];
     (db.returns || []).forEach((r) => {
@@ -2689,7 +2704,15 @@
     });
     return own.sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.text).localeCompare(String(b.text), 'zh'));
   }
-  function groupProcessNotesByDate(notes) {
+  function snSituationNotes(row) {
+    if (!row) return [];
+    migrateSituationNotes(row);
+    return (row.situationNotes || [])
+      .filter((n) => n && String(n.text || '').trim())
+      .map((n) => ({ date: String(n.date || '').slice(0, 10) || todayDate(), text: String(n.text || '').trim() }))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.text).localeCompare(String(b.text), 'zh'));
+  }
+  function groupNotesByDate(notes) {
     const map = new Map();
     (notes || []).forEach((n) => {
       const d = n.date || '—';
@@ -2698,44 +2721,90 @@
     });
     return [...map.entries()].sort((a, b) => String(b[0]).localeCompare(String(a[0])));
   }
-  function processNotesViewHtml(notes) {
-    const grouped = groupProcessNotesByDate(notes);
+  function datedNotesViewHtml(notes, emptyText, hint) {
+    const grouped = groupNotesByDate(notes);
     if (!grouped.length) {
-      return `<div class="side-note-body" style="min-height:48px"><span class="muted">暂无处理说明</span></div>
-        <p class="muted" style="margin-top:8px">来自返货审核「处理」；同一日期多条合并显示</p>`;
+      return `<div class="side-note-body" style="min-height:48px"><span class="muted">${escapeHtml(emptyText || '暂无说明')}</span></div>
+        ${hint ? `<p class="muted" style="margin-top:8px">${escapeHtml(hint)}</p>` : ''}`;
     }
     return grouped.map(([date, lines]) => `<div class="note-date-block">
         <div class="note-date">${escapeHtml(date)}</div>
         ${lines.map((t) => `<div class="note-line">${escapeHtml(t)}</div>`).join('')}
-      </div>`).join('') + `<p class="muted" style="margin-top:8px">同一日期多条合并显示 · 与「情况说明」区分</p>`;
+      </div>`).join('') + (hint ? `<p class="muted" style="margin-top:8px">${escapeHtml(hint)}</p>` : '');
   }
-  function processNotesEditHtml(notes) {
+  function situationNotesViewHtml(notes) {
+    return datedNotesViewHtml(notes, '暂无情况说明', '同一日期多条合并显示 · 与「处理说明」区分');
+  }
+  function processNotesViewHtml(notes) {
+    return datedNotesViewHtml(notes, '暂无处理说明', '来自返货审核「处理」；同一日期多条合并显示');
+  }
+  function situationNotesPlain(row) {
+    const notes = snSituationNotes(row);
+    if (!notes.length) return '—';
+    return notes.map((n) => `${n.date} ${n.text}`).join('；');
+  }
+  function datedNotesEditHtml(notes, kind) {
+    const isSit = kind === 'situation';
+    const prefix = isSit ? 'sit' : 'pn';
+    const addAct = isSit ? 'add-sn-situation-note' : 'add-sn-process-note';
+    const removeAct = isSit ? 'remove-sn-situation-note' : 'remove-sn-process-note';
+    const wrapId = isSit ? 'sn-situation-notes' : 'sn-process-notes';
+    const placeholder = isSit ? '情况说明' : '处理说明';
     const rows = (notes && notes.length) ? notes : [{ date: todayDate(), text: '' }];
-    return `<div id="sn-process-notes">${rows.map((n, i) => {
+    return `<div id="${wrapId}">${rows.map((n, i) => {
       const ymd = splitYmd(n.date);
-      return `<div class="pn-edit-row" data-pn-row data-pn-source="${escapeHtml(n.source || 'manual')}" data-pn-ref="${escapeHtml(n.ref || '')}">
+      return `<div class="pn-edit-row" data-${prefix}-row data-${prefix}-source="${escapeHtml(n.source || 'manual')}" data-${prefix}-ref="${escapeHtml(n.ref || '')}">
         <div class="pn-ymd">
-          <input class="field-input" data-pn-y type="number" min="2020" max="2035" value="${escapeHtml(ymd.y)}" title="年" />
+          <input class="field-input" data-${prefix}-y type="number" min="2020" max="2035" value="${escapeHtml(ymd.y)}" title="年" />
           <span>年</span>
-          <input class="field-input" data-pn-m type="number" min="1" max="12" value="${escapeHtml(ymd.m)}" title="月" />
+          <input class="field-input" data-${prefix}-m type="number" min="1" max="12" value="${escapeHtml(ymd.m)}" title="月" />
           <span>月</span>
-          <input class="field-input" data-pn-d type="number" min="1" max="31" value="${escapeHtml(ymd.d)}" title="日" />
+          <input class="field-input" data-${prefix}-d type="number" min="1" max="31" value="${escapeHtml(ymd.d)}" title="日" />
           <span>日</span>
         </div>
-        <textarea class="field-input" data-pn-text rows="2" placeholder="处理说明">${escapeHtml(n.text || '')}</textarea>
-        <button type="button" class="btn btn-sm" data-action="remove-sn-process-note" data-idx="${i}">删</button>
+        <textarea class="field-input" data-${prefix}-text rows="2" placeholder="${placeholder}">${escapeHtml(n.text || '')}</textarea>
+        <button type="button" class="btn btn-sm" data-action="${removeAct}" data-idx="${i}">删</button>
       </div>`;
     }).join('')}</div>
-      <button type="button" class="btn btn-sm" data-action="add-sn-process-note">+ 添加一条</button>
+      <button type="button" class="btn btn-sm" data-action="${addAct}">+ 添加一条</button>
       <p class="muted" style="margin-top:8px">逐条填写年月日和说明；展示时按同一日期合并</p>`;
   }
-  function collectProcessNoteDraft() {
-    return [...document.querySelectorAll('[data-pn-row]')].map((row) => ({
-      date: joinYmd(row.querySelector('[data-pn-y]')?.value, row.querySelector('[data-pn-m]')?.value, row.querySelector('[data-pn-d]')?.value),
-      text: (row.querySelector('[data-pn-text]')?.value || '').trim(),
-      source: row.getAttribute('data-pn-source') || 'manual',
-      ref: row.getAttribute('data-pn-ref') || '',
+  function processNotesEditHtml(notes) {
+    return datedNotesEditHtml(notes, 'process');
+  }
+  function situationNotesEditHtml(notes) {
+    return datedNotesEditHtml(notes, 'situation');
+  }
+  function collectDatedNoteDraft(prefix) {
+    return [...document.querySelectorAll(`[data-${prefix}-row]`)].map((row) => ({
+      date: joinYmd(row.querySelector(`[data-${prefix}-y]`)?.value, row.querySelector(`[data-${prefix}-m]`)?.value, row.querySelector(`[data-${prefix}-d]`)?.value),
+      text: (row.querySelector(`[data-${prefix}-text]`)?.value || '').trim(),
+      source: row.getAttribute(`data-${prefix}-source`) || 'manual',
+      ref: row.getAttribute(`data-${prefix}-ref`) || '',
     }));
+  }
+  function collectProcessNoteDraft() {
+    return collectDatedNoteDraft('pn');
+  }
+  function collectSituationNoteDraft() {
+    return collectDatedNoteDraft('sit');
+  }
+  function snapshotSnNoteDraft() {
+    if (!ui.modal) return;
+    ui.modal.draft = {
+      ...(ui.modal.draft || {}),
+      processNotes: collectProcessNoteDraft(),
+      situationNotes: collectSituationNoteDraft(),
+    };
+  }
+  function persistSnSituationNotes(row, notes) {
+    if (!row) return;
+    const list = (notes || []).filter((n) => String(n.text || '').trim()).map((n) => ({
+      date: String(n.date || todayDate()).slice(0, 10),
+      text: String(n.text).trim(),
+    }));
+    row.situationNotes = list;
+    row.situationNote = list.map((n) => n.text).join('\n');
   }
   function persistSnProcessNotes(row, notes) {
     if (!row) return;
@@ -4002,6 +4071,9 @@
     const logs = stockLogsFiltered(f).slice(0, 80);
     const stockTotal = summaryRows.reduce((n, r) => n + (Number(r.qty) || 0), 0);
     const rangeQty = stockRangeQty(f);
+    const metrics = tab === 'flow'
+      ? `<div class="metric-grid metric-grid-2">${metricCard('当前筛选区间库存量', rangeQty, '', '', 'range')}${metricCard('库存总量', stockTotal, '', '', 'stock')}</div>`
+      : `<div class="metric-grid metric-grid-2">${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('规格行数', summaryRows.length, '', '', 'hist')}</div>`;
     let table = '';
     if (tab === 'sn') {
       table = `<div class="page-card table-wrap"><table class="data">
@@ -4057,7 +4129,7 @@
         ${tab==='sn'?`<input class="field-input" placeholder="SN" data-filter="stock:sn" value="${escapeHtml(f.sn||'')}" />`:''}
         ${tab==='flow' ? `<input type="date" class="field-input" data-filter="stock:from" value="${escapeHtml(f.from||'')}" title="开始日期" /><input type="date" class="field-input" data-filter="stock:to" value="${escapeHtml(f.to||'')}" title="结束日期" />` : ''}
       `)}
-      <div class="metric-grid metric-grid-3">${metricCard('当前筛选区间库存量', rangeQty, '', '', 'range')}${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('规格行数', summaryRows.length, '', '', 'hist')}</div>
+      ${metrics}
       ${table}`;
   }
 
@@ -5108,7 +5180,9 @@
     const stockTotal = rows.reduce((n, r) => n + (Number(r.qty) || 0), 0);
     const rangeQty = stockRangeQty({ type, agent: id, from: f.from, to: f.to, size: f.size, belt: f.belt });
     const logs = stockLogsFiltered({ type, agent: id, from: f.from, to: f.to, size: f.size, belt: f.belt }).slice(0, 40);
-    const cards = `<div class="metric-grid metric-grid-2" style="margin:8px 0">${metricCard('当前筛选区间库存量', rangeQty, '', '', 'range')}${metricCard('库存总量', stockTotal, '', '', 'stock')}</div>`;
+    const cards = tab === 'flow'
+      ? `<div class="metric-grid metric-grid-2" style="margin:8px 0">${metricCard('当前筛选区间库存量', rangeQty, '', '', 'range')}${metricCard('库存总量', stockTotal, '', '', 'stock')}</div>`
+      : `<div class="metric-grid metric-grid-2" style="margin:8px 0">${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('规格行数', rows.length, '', '', 'hist')}</div>`;
     const panel = tab === 'sn'
       ? `<div class="form-field"><input class="field-input" placeholder="搜 SN" data-filter="miniStock:sn" value="${escapeHtml(f.sn||'')}" /></div>
         <div style="display:flex;gap:6px;margin:8px 0">
@@ -5687,8 +5761,9 @@
         <div><span>一级</span>${escapeHtml(l1Name(row.l1Id))}</div>
         <div><span>二级</span>${escapeHtml(l2Name(row.l2Id))}</div>
         <div><span>标签</span>${snDisplayTags(row).map((t)=>tag(t,'orange')).join(' ')||'—'}</div>
-        <div><span>情况说明</span>${escapeHtml(row.situationNote || '—')}</div>
       </div>
+      <div class="mini-section-title">情况说明</div>
+      ${situationNotesViewHtml(snSituationNotes(row))}
       <div class="mini-section-title">处理说明</div>
       ${processNotesViewHtml(snProcessNotes(row))}
       <div class="mini-section-title">流转</div>
@@ -6000,7 +6075,7 @@
       const editing = type === 'edit-sn';
       if (editing) {
         if (!ui.modal.draft || ui.modal.draft.sn !== row.sn) {
-          ui.modal.draft = { sn: row.sn, processNotes: snProcessNotes(row) };
+          ui.modal.draft = { sn: row.sn, processNotes: snProcessNotes(row), situationNotes: snSituationNotes(row) };
         }
       }
       title = `${editing ? '编辑 SN' : 'SN 详情'} · ${row.sn}`;
@@ -6029,10 +6104,8 @@
         })()}
         <h4 style="margin-top:12px">情况说明</h4>
         ${editing && ui.mode !== 'mini'
-          ? `<textarea class="field-input" id="f-sn-note" rows="5" placeholder="可手填，售后详情单独展示，与「处理说明」区分">${escapeHtml(row.situationNote || '')}</textarea>
-        <p class="muted" style="margin-top:8px">与退货「处理说明」区分，随「保存修改」一起提交</p>`
-          : `<div class="side-note-body" style="min-height:72px">${row.situationNote ? escapeHtml(row.situationNote) : '<span class="muted">暂无情况说明</span>'}</div>
-        <p class="muted" style="margin-top:8px">${ui.mode === 'mini' ? '与退货「处理说明」区分' : '点「修改」后可填写，与退货「处理说明」区分'}</p>`}
+          ? situationNotesEditHtml(ui.modal.draft?.situationNotes || snSituationNotes(row))
+          : situationNotesViewHtml(snSituationNotes(row))}
         <h4 style="margin-top:12px">处理说明</h4>
         ${editing && ui.mode !== 'mini'
           ? processNotesEditHtml(ui.modal.draft?.processNotes || snProcessNotes(row))
@@ -7796,33 +7869,54 @@
         const belt = normalizeBelt($('#f-belt')?.value);
         const l1Id = $('#f-l1')?.value || null;
         const l2Id = $('#f-l2')?.value || null;
-        const situationNote = $('#f-sn-note')?.value ?? row.situationNote ?? '';
+        const situationNotes = collectSituationNoteDraft().filter((n) => n.text);
         const processNotes = collectProcessNoteDraft().filter((n) => n.text);
         const changes = [];
         if (size && size !== row.size) changes.push(`弹力带 ${row.size}→${size}`);
         if (belt && belt !== row.belt) changes.push(`腰带 ${row.belt}→${belt}`);
         if (l1Id !== (row.l1Id || null)) changes.push(`一级 ${l1Name(row.l1Id)}→${l1Name(l1Id)}`);
         if (l2Id !== (row.l2Id || null)) changes.push(`二级调库 ${l2Name(row.l2Id)}→${l2Name(l2Id)}`);
-        if (situationNote !== (row.situationNote || '')) changes.push(situationNote ? '更新情况说明' : '清空情况说明');
+        const prevSit = JSON.stringify(snSituationNotes(row).map((n) => `${n.date}|${n.text}`));
+        const nextSit = JSON.stringify(situationNotes.map((n) => `${n.date}|${n.text}`));
+        if (prevSit !== nextSit) changes.push('更新情况说明');
         const prevNotes = JSON.stringify(snProcessNotes(row).map((n) => `${n.date}|${n.text}`));
         const nextNotes = JSON.stringify(processNotes.map((n) => `${n.date}|${n.text}`));
         if (prevNotes !== nextNotes) changes.push('更新处理说明');
         if (!changes.length) { toast('未修改任何字段', 'warn'); break; }
-        confirmDialog(`确认保存 SN「${row.sn}」修改？${changes.join('；')}`, 'save-sn-ok', { id, size, belt, l1Id, l2Id, situationNote, processNotes, changes }, { title: '保存 SN 修改', okText: '确认保存' });
+        confirmDialog(`确认保存 SN「${row.sn}」修改？${changes.join('；')}`, 'save-sn-ok', { id, size, belt, l1Id, l2Id, situationNotes, processNotes, changes }, { title: '保存 SN 修改', okText: '确认保存' });
         break;
       }
       case 'add-sn-process-note': {
-        const notes = collectProcessNoteDraft();
+        snapshotSnNoteDraft();
+        const notes = [...(ui.modal.draft?.processNotes || [])];
         notes.push({ date: todayDate(), text: '', source: 'manual', ref: '' });
-        if (ui.modal) ui.modal.draft = { ...(ui.modal.draft || {}), processNotes: notes };
+        if (ui.modal) ui.modal.draft.processNotes = notes;
         render();
         break;
       }
       case 'remove-sn-process-note': {
-        const notes = collectProcessNoteDraft();
+        snapshotSnNoteDraft();
+        const notes = [...(ui.modal.draft?.processNotes || [])];
         const idx = Number(el.getAttribute('data-idx'));
         if (idx >= 0) notes.splice(idx, 1);
-        if (ui.modal) ui.modal.draft = { ...(ui.modal.draft || {}), processNotes: notes.length ? notes : [{ date: todayDate(), text: '', source: 'manual', ref: '' }] };
+        if (ui.modal) ui.modal.draft.processNotes = notes.length ? notes : [{ date: todayDate(), text: '', source: 'manual', ref: '' }];
+        render();
+        break;
+      }
+      case 'add-sn-situation-note': {
+        snapshotSnNoteDraft();
+        const notes = [...(ui.modal.draft?.situationNotes || [])];
+        notes.push({ date: todayDate(), text: '' });
+        if (ui.modal) ui.modal.draft.situationNotes = notes;
+        render();
+        break;
+      }
+      case 'remove-sn-situation-note': {
+        snapshotSnNoteDraft();
+        const notes = [...(ui.modal.draft?.situationNotes || [])];
+        const idx = Number(el.getAttribute('data-idx'));
+        if (idx >= 0) notes.splice(idx, 1);
+        if (ui.modal) ui.modal.draft.situationNotes = notes.length ? notes : [{ date: todayDate(), text: '' }];
         render();
         break;
       }
@@ -8892,7 +8986,7 @@
   function finishSaveSn(payload) {
     const row = db.sns.find((s) => s.sn === payload.id);
     if (!row) { toast('找不到该 SN', 'err'); render(); return; }
-    const { size, belt, l1Id, l2Id, situationNote, processNotes, changes } = payload;
+    const { size, belt, l1Id, l2Id, situationNotes, processNotes, changes } = payload;
     if (size && size !== row.size) row.size = size;
     if (belt && belt !== row.belt) row.belt = belt;
     if (l1Id !== undefined && l1Id !== (row.l1Id || null)) row.l1Id = l1Id;
@@ -8901,7 +8995,7 @@
       if (l2Id && ['l1', 'warehouse'].includes(row.status)) row.status = 'l2';
       if (!l2Id && row.status === 'l2') row.status = 'l1';
     }
-    if (situationNote !== undefined) row.situationNote = situationNote;
+    if (Array.isArray(situationNotes)) persistSnSituationNotes(row, situationNotes);
     if (Array.isArray(processNotes)) persistSnProcessNotes(row, processNotes);
     const who = (ROLES[ui.role]?.account || ui.account || 'admin');
     const when = nowStr();
