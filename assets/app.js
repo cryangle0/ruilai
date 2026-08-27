@@ -1077,6 +1077,8 @@
           }
           if (!s.events) s.events = [];
           if (s.situationNote === undefined) s.situationNote = '';
+          if (!Array.isArray(s.processNotes)) s.processNotes = [];
+          if (!Array.isArray(s.processNoteSkipRefs)) s.processNoteSkipRefs = [];
           if (!s.situationNote && s.sn === 'RL202608010041') s.situationNote = '包装破损，客户已拍照；建议原厂质检后报废或返修。';
           if (!s.situationNote && s.sn === 'RL202607200007') s.situationNote = '尺码偏小，客户要求换货未果后走退货。';
           if (!s.situationNote && s.sn === 'RL202608010044') s.situationNote = '弹力带使用两周后开裂，已留实物照片。';
@@ -1195,6 +1197,9 @@
           }
           r.photos.forEach(attachOssMeta);
           normalizeReturnAuditStatus(r);
+          if (r.processNote && r.status === 'done') {
+            (r.sns || []).forEach((sn) => appendSnProcessNote(sn, r.processNote, r.id, String(r.processedAt || r.createdAt || '').slice(0, 10), parsed.sns));
+          }
         });
         if (!Array.isArray(parsed.exceptions)) parsed.exceptions = [];
         parsed.exceptions.forEach((e) => {
@@ -1308,6 +1313,20 @@
   }
 
   function toast(msg, kind = 'ok') {
+    if (ui.mode === 'mini' && kind === 'err') {
+      ui.confirm = {
+        title: '提示',
+        message: String(msg || '操作失败'),
+        action: 'ack-alert',
+        payload: {},
+        danger: false,
+        okText: '知道了',
+        hideCancel: true,
+        input: null,
+      };
+      render();
+      return;
+    }
     ui.toast = { msg, kind, id: Date.now() };
     render();
     setTimeout(() => {
@@ -2632,6 +2651,206 @@
     </div>`).join('')}</div>`;
   }
 
+  function splitYmd(dateStr) {
+    const m = String(dateStr || todayDate()).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (!m) {
+      const d = DEMO_NOW;
+      return { y: String(d.getFullYear()), m: String(d.getMonth() + 1), d: String(d.getDate()) };
+    }
+    return { y: m[1], m: String(Number(m[2])), d: String(Number(m[3])) };
+  }
+  function joinYmd(y, m, d) {
+    const yy = String(y || '').padStart(4, '0');
+    const mm = String(m || '').padStart(2, '0');
+    const dd = String(d || '').padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  }
+  function collectReturnProcessNotes(sn) {
+    const out = [];
+    (db.returns || []).forEach((r) => {
+      const text = String(r.processNote || '').trim();
+      if (!text) return;
+      if (!(r.sns || []).includes(sn)) return;
+      const date = String(r.processedAt || r.createdAt || '').slice(0, 10) || todayDate();
+      out.push({ date, text, source: 'return', ref: r.id });
+    });
+    return out;
+  }
+  function snProcessNotes(row) {
+    if (!row) return [];
+    const skip = new Set(row.processNoteSkipRefs || []);
+    const own = (Array.isArray(row.processNotes) ? row.processNotes : [])
+      .filter((n) => n && String(n.text || '').trim())
+      .map((n) => ({ date: String(n.date || '').slice(0, 10) || todayDate(), text: String(n.text || '').trim(), source: n.source || 'manual', ref: n.ref || '' }));
+    const have = new Set(own.map((n) => n.ref).filter(Boolean));
+    collectReturnProcessNotes(row.sn).forEach((n) => {
+      if (!n.ref || skip.has(n.ref) || have.has(n.ref)) return;
+      own.push(n);
+    });
+    return own.sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.text).localeCompare(String(b.text), 'zh'));
+  }
+  function groupProcessNotesByDate(notes) {
+    const map = new Map();
+    (notes || []).forEach((n) => {
+      const d = n.date || '—';
+      if (!map.has(d)) map.set(d, []);
+      map.get(d).push(n.text);
+    });
+    return [...map.entries()].sort((a, b) => String(b[0]).localeCompare(String(a[0])));
+  }
+  function processNotesViewHtml(notes) {
+    const grouped = groupProcessNotesByDate(notes);
+    if (!grouped.length) {
+      return `<div class="side-note-body" style="min-height:48px"><span class="muted">暂无处理说明</span></div>
+        <p class="muted" style="margin-top:8px">来自返货审核「处理」；同一日期多条合并显示</p>`;
+    }
+    return grouped.map(([date, lines]) => `<div class="note-date-block">
+        <div class="note-date">${escapeHtml(date)}</div>
+        ${lines.map((t) => `<div class="note-line">${escapeHtml(t)}</div>`).join('')}
+      </div>`).join('') + `<p class="muted" style="margin-top:8px">同一日期多条合并显示 · 与「情况说明」区分</p>`;
+  }
+  function processNotesEditHtml(notes) {
+    const rows = (notes && notes.length) ? notes : [{ date: todayDate(), text: '' }];
+    return `<div id="sn-process-notes">${rows.map((n, i) => {
+      const ymd = splitYmd(n.date);
+      return `<div class="pn-edit-row" data-pn-row data-pn-source="${escapeHtml(n.source || 'manual')}" data-pn-ref="${escapeHtml(n.ref || '')}">
+        <div class="pn-ymd">
+          <input class="field-input" data-pn-y type="number" min="2020" max="2035" value="${escapeHtml(ymd.y)}" title="年" />
+          <span>年</span>
+          <input class="field-input" data-pn-m type="number" min="1" max="12" value="${escapeHtml(ymd.m)}" title="月" />
+          <span>月</span>
+          <input class="field-input" data-pn-d type="number" min="1" max="31" value="${escapeHtml(ymd.d)}" title="日" />
+          <span>日</span>
+        </div>
+        <textarea class="field-input" data-pn-text rows="2" placeholder="处理说明">${escapeHtml(n.text || '')}</textarea>
+        <button type="button" class="btn btn-sm" data-action="remove-sn-process-note" data-idx="${i}">删</button>
+      </div>`;
+    }).join('')}</div>
+      <button type="button" class="btn btn-sm" data-action="add-sn-process-note">+ 添加一条</button>
+      <p class="muted" style="margin-top:8px">逐条填写年月日和说明；展示时按同一日期合并</p>`;
+  }
+  function collectProcessNoteDraft() {
+    return [...document.querySelectorAll('[data-pn-row]')].map((row) => ({
+      date: joinYmd(row.querySelector('[data-pn-y]')?.value, row.querySelector('[data-pn-m]')?.value, row.querySelector('[data-pn-d]')?.value),
+      text: (row.querySelector('[data-pn-text]')?.value || '').trim(),
+      source: row.getAttribute('data-pn-source') || 'manual',
+      ref: row.getAttribute('data-pn-ref') || '',
+    }));
+  }
+  function persistSnProcessNotes(row, notes) {
+    if (!row) return;
+    const list = (notes || []).filter((n) => String(n.text || '').trim());
+    row.processNotes = list.map((n) => ({
+      date: String(n.date || todayDate()).slice(0, 10),
+      text: String(n.text).trim(),
+      source: n.source || (n.ref ? 'return' : 'manual'),
+      ref: n.ref || '',
+    }));
+    const kept = new Set(row.processNotes.map((n) => n.ref).filter(Boolean));
+    row.processNoteSkipRefs = collectReturnProcessNotes(row.sn)
+      .map((n) => n.ref)
+      .filter((ref) => ref && !kept.has(ref));
+  }
+  function appendSnProcessNote(sn, text, ref, date, snsList) {
+    const list = snsList || db.sns;
+    const row = (list || []).find((s) => s.sn === sn);
+    if (!row || !String(text || '').trim()) return;
+    if (!Array.isArray(row.processNotes)) row.processNotes = [];
+    if (ref && row.processNotes.some((n) => n.ref === ref)) return;
+    if (ref && (row.processNoteSkipRefs || []).includes(ref)) {
+      row.processNoteSkipRefs = (row.processNoteSkipRefs || []).filter((x) => x !== ref);
+    }
+    row.processNotes.push({ date: date || todayDate(), text: String(text).trim(), source: ref ? 'return' : 'manual', ref: ref || '' });
+  }
+  function CN_NUM_MAP() { return { 零: '0', 〇: '0', 一: '1', 二: '2', 两: '2', 三: '3', 四: '4', 五: '5', 六: '6', 七: '7', 八: '8', 九: '9' }; }
+  function foldCnDigits(s) {
+    const map = CN_NUM_MAP();
+    return String(s || '')
+      .replace(/([一二两三四五六七八九])十([一二三四五六七八九])/g, (_, a, b) => map[a] + map[b])
+      .replace(/([一二两三四五六七八九])十/g, (_, a) => `${map[a]}0`)
+      .replace(/十([一二三四五六七八九])/g, (_, b) => `1${map[b]}`)
+      .replace(/十/g, '10')
+      .replace(/[零〇一二两三四五六七八九]/g, (ch) => map[ch] || ch);
+  }
+  function stripAddrNoise(s) {
+    return foldCnDigits(s)
+      .replace(/[\s\u3000,，.。、;；#＃\-—_/\\()（）[\]【】]+/g, '')
+      .replace(/中国/g, '');
+  }
+  function stripAdminUnits(s) {
+    return String(s || '')
+      .replace(/维吾尔自治区|壮族自治区|回族自治区|自治区|特别行政区|地区|自治州/g, '')
+      .replace(/省|市|区|县|旗|盟|镇|乡|村|街道/g, '');
+  }
+  function addrHasStreet(s) {
+    return /[路街巷弄里号栋幢楼室]/.test(s || '');
+  }
+  function normalizeAddrCore(s) {
+    return stripAdminUnits(stripAddrNoise(s));
+  }
+  function addrCharGrams(s) {
+    const g = [];
+    for (let i = 0; i < s.length - 1; i += 1) g.push(s.slice(i, i + 2));
+    return g;
+  }
+  function addressesLikelySame(a, b) {
+    const na = normalizeAddrCore(a);
+    const nb = normalizeAddrCore(b);
+    if (!na || !nb || na.length < 4 || nb.length < 4) return false;
+    if (na === nb) return addrHasStreet(na);
+    if (!addrHasStreet(na) || !addrHasStreet(nb)) return false;
+    const shorter = na.length <= nb.length ? na : nb;
+    const longer = na.length <= nb.length ? nb : na;
+    if (longer.includes(shorter) && shorter.length >= 8) return true;
+    const ga = addrCharGrams(na);
+    const gb = addrCharGrams(nb);
+    if (!ga.length || !gb.length) return false;
+    const setB = new Set(gb);
+    const inter = ga.filter((x) => setB.has(x)).length;
+    const union = new Set([...ga, ...gb]).size;
+    return union > 0 && inter / union >= 0.72;
+  }
+  function findDupAddrSns(addr, phone, sn) {
+    const text = String(addr || '').trim();
+    if (!text || !addrHasStreet(normalizeAddrCore(text))) return [];
+    return (db.sns || []).filter((s) => {
+      if (!s.user || s.sn === sn) return false;
+      if (s.user.phone && phone && s.user.phone === phone) return false;
+      return addressesLikelySame(text, s.user.addr || '');
+    });
+  }
+  function markDupAddrOnRows(rows) {
+    (rows || []).forEach((r) => { r.dupAddr = false; });
+    for (let i = 0; i < (rows || []).length; i += 1) {
+      for (let j = i + 1; j < rows.length; j += 1) {
+        if (!addressesLikelySame(rows[i].addr, rows[j].addr)) continue;
+        const pi = rows[i].phone || '';
+        const pj = rows[j].phone || '';
+        if (pi && pj && pi === pj) continue;
+        rows[i].dupAddr = true;
+        rows[j].dupAddr = true;
+      }
+    }
+    return rows;
+  }
+  function stockLogsFiltered(f = {}) {
+    return (db.stockLogs || []).filter((h) => {
+      if ((f.from || f.to) && !inDateRange(h.time, f.from, f.to)) return false;
+      if (f.productId && h.productId !== f.productId) return false;
+      if (f.size && h.size !== f.size) return false;
+      if (f.belt && h.belt && h.belt !== f.belt) return false;
+      if (f.type && h.agentType !== f.type) return false;
+      if (f.agent && h.agentId !== f.agent) return false;
+      return true;
+    });
+  }
+  function stockRangeQty(f = {}) {
+    return stockLogsFiltered(f).reduce((n, h) => {
+      const d = Number(h.delta) || 0;
+      return n + (d > 0 ? d : 0);
+    }, 0);
+  }
+
   function l1Account(l1Id) {
     return (db.accounts || []).find((a) => a.roleId === 'R2' && a.agentId === l1Id) || null;
   }
@@ -3017,6 +3236,7 @@
       okText: opts.okText || (opts.danger ? '确认驳回' : '确定'),
       cancelText: opts.cancelText || '取消',
       input: opts.input || null,
+      hideCancel: !!opts.hideCancel,
     };
     render();
   }
@@ -3028,7 +3248,7 @@
     const c = ui.confirm;
     if (!c) return '';
     return `<div class="confirm-mask" id="confirm-mask">
-      <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <div class="confirm-box${c.hideCancel ? ' confirm-box--ack' : ''}" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
         <div class="confirm-hd"><strong id="confirm-title">${escapeHtml(c.title)}</strong></div>
         <div class="confirm-bd">
           <p style="white-space:pre-wrap;margin:0;line-height:1.55">${escapeHtml(c.message)}</p>
@@ -3036,9 +3256,9 @@
             <textarea class="field-input" id="confirm-input" rows="3" placeholder="${escapeHtml(c.input.placeholder || '')}">${escapeHtml(c.input.value || '')}</textarea>
           </div>` : ''}
         </div>
-        <div class="confirm-ft">
-          <button type="button" class="btn" data-action="confirm-cancel">${escapeHtml(c.cancelText || '取消')}</button>
-          <button type="button" class="btn ${c.danger ? 'btn-danger' : 'btn-primary'}" data-action="confirm-ok">${escapeHtml(c.okText || '确定')}</button>
+        <div class="confirm-ft${c.hideCancel ? ' confirm-ft--ack' : ''}">
+          ${c.hideCancel ? '' : `<button type="button" class="btn" data-action="confirm-cancel">${escapeHtml(c.cancelText || '取消')}</button>`}
+          <button type="button" class="btn ${c.danger ? 'btn-danger' : 'btn-primary'}${c.hideCancel ? ' btn-block' : ''}" data-action="confirm-ok">${escapeHtml(c.okText || '确定')}</button>
         </div>
       </div>
     </div>`;
@@ -3763,7 +3983,7 @@
   }
 
   function pageStock() {
-    const f = ui.filters.stock || {};
+    const f = applyListDates(ui.filters.stock || (ui.filters.stock = {}));
     const tab = ui.tabs.stock || 'summary';
     const agentType = f.type || '';
     const agentId = f.agent || '';
@@ -3779,8 +3999,9 @@
           ...db.agentsL1.map((a) => ({ id: a.id, label: `一级 · ${a.name}` })),
           ...db.agentsL2.filter((a) => !a.pending).map((a) => ({ id: a.id, label: `二级 · ${a.name}` })),
         ];
-    const logs = db.stockLogs.slice(0, 40);
+    const logs = stockLogsFiltered(f).slice(0, 80);
     const stockTotal = summaryRows.reduce((n, r) => n + (Number(r.qty) || 0), 0);
+    const rangeQty = stockRangeQty(f);
     let table = '';
     if (tab === 'sn') {
       table = `<div class="page-card table-wrap"><table class="data">
@@ -3834,8 +4055,9 @@
         <select class="field-input" data-filter="stock:size"><option value="">弹力带尺码</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
         <select class="field-input" data-filter="stock:belt"><option value="">腰带尺码</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
         ${tab==='sn'?`<input class="field-input" placeholder="SN" data-filter="stock:sn" value="${escapeHtml(f.sn||'')}" />`:''}
+        ${tab==='flow' ? `<input type="date" class="field-input" data-filter="stock:from" value="${escapeHtml(f.from||'')}" title="开始日期" /><input type="date" class="field-input" data-filter="stock:to" value="${escapeHtml(f.to||'')}" title="结束日期" />` : ''}
       `)}
-      <div class="metric-grid metric-grid-2">${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('规格行数', summaryRows.length, '', '', 'hist')}</div>
+      <div class="metric-grid metric-grid-3">${metricCard('当前筛选区间库存量', rangeQty, '', '', 'range')}${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('规格行数', summaryRows.length, '', '', 'hist')}</div>
       ${table}`;
   }
 
@@ -4630,7 +4852,9 @@
     }
     return `<div class="alert alert-info">步骤 2/2：填写客户 · SN ${escapeHtml(sn)} · ${escapeHtml(row ? productName(row.productId) + '/' + row.size : '')}</div>
       <div class="form-field"><label>客户手机</label><input class="field-input" id="direct-phone" placeholder="11位手机号" value="13800138000" /></div>
-      <div class="form-field"><label>地址</label><input class="field-input" id="direct-addr" value="杭州市西湖区文一路1号" /></div>
+      <div class="form-field"><label>地址</label><input class="field-input" id="direct-addr" value="杭州市西湖区文一路1号" placeholder="尽量写到路号，如 济南市历下区经十路88号" />
+        <p class="muted" style="margin-top:6px">仅到省/市（如「山东济南」）不判重复；路号写法不同但指向同一地点时会提示。地图精确同址需后续接地理编码。</p>
+      </div>
       <div class="form-field"><label>演示IP地区</label>
         <select class="field-input" id="demo-ip">${ALL_REGIONS.map((r)=>`<option value="${r}" ${db.demoIpRegion===r?'selected':''}>${r}</option>`).join('')}</select>
       </div>
@@ -4871,7 +5095,7 @@
   function pageMiniStock() {
     const type = ui.role === 'l2' ? 'l2' : 'l1';
     const id = type === 'l2' ? currentL2Id() : currentL1Id();
-    const f = ui.filters.miniStock || {};
+    const f = applyListDates(ui.filters.miniStock || (ui.filters.miniStock = {}));
     const tab = ui.tabs.miniStock || 'product';
     const rows = getStockRows(type, id).filter((r) => {
       if (f.size && r.size !== f.size) return false;
@@ -4881,6 +5105,10 @@
     const snAll = pinOpenActivateSns(getStockSns(type, id, f));
     const sns = snAll.slice(0, 80);
     const pin = openActivateSnSet();
+    const stockTotal = rows.reduce((n, r) => n + (Number(r.qty) || 0), 0);
+    const rangeQty = stockRangeQty({ type, agent: id, from: f.from, to: f.to, size: f.size, belt: f.belt });
+    const logs = stockLogsFiltered({ type, agent: id, from: f.from, to: f.to, size: f.size, belt: f.belt }).slice(0, 40);
+    const cards = `<div class="metric-grid metric-grid-2" style="margin:8px 0">${metricCard('当前筛选区间库存量', rangeQty, '', '', 'range')}${metricCard('库存总量', stockTotal, '', '', 'stock')}</div>`;
     const panel = tab === 'sn'
       ? `<div class="form-field"><input class="field-input" placeholder="搜 SN" data-filter="miniStock:sn" value="${escapeHtml(f.sn||'')}" /></div>
         <div style="display:flex;gap:6px;margin:8px 0">
@@ -4892,6 +5120,17 @@
           <span>${escapeHtml(productName(s.productId))} · ${escapeHtml(s.size)}+${escapeHtml(s.belt||'—')}</span>
           <span>${snTagsHtml(s)}</span>
         </button>`).join('')||emptyHint('无 SN')}</div>`
+      : tab === 'flow'
+      ? `${datePresetChipsHtml('miniStock')}
+        <div class="mini-filters" style="margin:8px 0 0">
+          <input type="date" class="field-input" data-filter="miniStock:from" value="${escapeHtml(f.from||'')}" title="开始日期" />
+          <input type="date" class="field-input" data-filter="miniStock:to" value="${escapeHtml(f.to||'')}" title="结束日期" />
+        </div>
+        <div class="mini-list">${logs.map((h)=>`<div class="mini-list-item">
+          <strong>${escapeHtml(h.time)}</strong>
+          <span>${escapeHtml(productName(h.productId))}/${escapeHtml(h.size)} ${h.delta>0?'+':''}${h.delta}</span>
+          <span class="muted">${escapeHtml(h.reason||'')} ${escapeHtml(h.ref||'')}</span>
+        </div>`).join('')||emptyHint('暂无流水')}</div>`
       : `<div style="display:flex;gap:6px;margin:8px 0">
           <select class="field-input" data-filter="miniStock:size"><option value="">弹力带</option>${BAND_SIZES.map((s)=>`<option value="${s}" ${f.size===s?'selected':''}>${s}</option>`).join('')}</select>
           <select class="field-input" data-filter="miniStock:belt"><option value="">腰带</option>${BELTS.map((s)=>`<option value="${s}" ${f.belt===s?'selected':''}>${s}</option>`).join('')}</select>
@@ -4909,7 +5148,9 @@
       ${miniSegHtml('miniStock', [
         { id: 'product', title: '商品', badge: rows.length || null, badgeTone: 'ok' },
         { id: 'sn', title: '在库SN', badge: snAll.length || null, badgeTone: 'ok' },
+        { id: 'flow', title: '库存流水', badge: logs.length || null, badgeTone: 'ok' },
       ])}
+      ${cards}
       <div class="mini-seg-panel">${panel}</div>`;
   }
 
@@ -5069,18 +5310,8 @@
   function listAdminCustomers() {
     ensureCustomersStore(db);
     const rows = (db.customers || []).map(enrichCustomer);
-    const addrPhones = {};
-    rows.forEach((r) => {
-      const a = (r.addr || '').replace(/\s+/g, '');
-      if (!a) return;
-      addrPhones[a] = addrPhones[a] || new Set();
-      if (r.phone) addrPhones[a].add(r.phone);
-    });
-    rows.forEach((r) => {
-      const a = (r.addr || '').replace(/\s+/g, '');
-      r.dupAddr = !!(a && addrPhones[a] && addrPhones[a].size > 1);
-      r.mark = r.dupPhone || r.dupAddr;
-    });
+    markDupAddrOnRows(rows);
+    rows.forEach((r) => { r.mark = r.dupPhone || r.dupAddr; });
     return rows;
   }
 
@@ -5140,15 +5371,8 @@
 
   function customerDetailHtml(c) {
     const row = enrichCustomer(c);
-    const addrPhones = {};
-    listAdminCustomers().forEach((r) => {
-      const a = (r.addr || '').replace(/\s+/g, '');
-      if (!a) return;
-      addrPhones[a] = addrPhones[a] || new Set();
-      if (r.phone) addrPhones[a].add(r.phone);
-    });
-    const a = (row.addr || '').replace(/\s+/g, '');
-    const dupAddr = !!(a && addrPhones[a] && addrPhones[a].size > 1);
+    const others = listAdminCustomers().filter((r) => r.id !== row.id);
+    const dupAddr = others.some((r) => addressesLikelySame(row.addr, r.addr) && !(row.phone && r.phone && row.phone === r.phone));
     return `<div class="detail-grid">
         <div><span>姓名</span>${escapeHtml(row.name || '—')}</div>
         <div><span>性别</span>${escapeHtml(row.gender || '—')}</div>
@@ -5357,17 +5581,9 @@
       row.products.push(`${productName(s.productId)}/${s.size}${s.belt ? '+' + s.belt : ''}`);
     });
     const rows = [...map.values()];
-    const addrPhones = {};
-    rows.forEach((r) => {
-      const a = (r.addr || '').replace(/\s+/g, '');
-      if (!a) return;
-      addrPhones[a] = addrPhones[a] || new Set();
-      if (r.phone) addrPhones[a].add(r.phone);
-    });
+    markDupAddrOnRows(rows);
     rows.forEach((r) => {
       r.dupPhone = (r.sns || []).length > 1;
-      const a = (r.addr || '').replace(/\s+/g, '');
-      r.dupAddr = !!(a && addrPhones[a] && addrPhones[a].size > 1);
       r.mark = r.dupPhone || r.dupAddr;
     });
     rows.sort((a, b) => (b.sns.length - a.sns.length) || String(a.phone).localeCompare(String(b.phone)));
@@ -5473,6 +5689,8 @@
         <div><span>标签</span>${snDisplayTags(row).map((t)=>tag(t,'orange')).join(' ')||'—'}</div>
         <div><span>情况说明</span>${escapeHtml(row.situationNote || '—')}</div>
       </div>
+      <div class="mini-section-title">处理说明</div>
+      ${processNotesViewHtml(snProcessNotes(row))}
       <div class="mini-section-title">流转</div>
       <div class="mini-timeline">${life.map((e)=>`<div class="mini-tl-item type-${e.type||''}">
         <div class="mini-tl-dot"></div>
@@ -5780,6 +5998,11 @@
       const st = snStatusMeta(row);
       const life = getSnLifecycle(row);
       const editing = type === 'edit-sn';
+      if (editing) {
+        if (!ui.modal.draft || ui.modal.draft.sn !== row.sn) {
+          ui.modal.draft = { sn: row.sn, processNotes: snProcessNotes(row) };
+        }
+      }
       title = `${editing ? '编辑 SN' : 'SN 详情'} · ${row.sn}`;
       const snFields = `<div class="detail-grid">
           <div><span>SN</span>${escapeHtml(row.sn)}</div>
@@ -5810,6 +6033,10 @@
         <p class="muted" style="margin-top:8px">与退货「处理说明」区分，随「保存修改」一起提交</p>`
           : `<div class="side-note-body" style="min-height:72px">${row.situationNote ? escapeHtml(row.situationNote) : '<span class="muted">暂无情况说明</span>'}</div>
         <p class="muted" style="margin-top:8px">${ui.mode === 'mini' ? '与退货「处理说明」区分' : '点「修改」后可填写，与退货「处理说明」区分'}</p>`}
+        <h4 style="margin-top:12px">处理说明</h4>
+        ${editing && ui.mode !== 'mini'
+          ? processNotesEditHtml(ui.modal.draft?.processNotes || snProcessNotes(row))
+          : processNotesViewHtml(snProcessNotes(row))}
         ${editing ? `<h4 style="margin-top:12px">修改字段</h4>
         <div class="form-grid">
           <div class="form-field"><label>SN</label><input class="field-input" id="f-sn" value="${escapeHtml(row.sn)}" disabled /></div>
@@ -6702,9 +6929,10 @@
     }
     const addrNorm = String(addr || '').replace(/\s+/g, '');
     if (addrNorm) {
-      const addrDup = db.sns.filter((s) => s.user && String(s.user.addr || '').replace(/\s+/g, '') === addrNorm && s.user.phone !== phone && s.sn !== sn);
+      const addrDup = findDupAddrSns(addr, phone, sn);
       if (addrDup.length) {
-        issues.push({ type: '客户信息重复', detail: `同地址多客户：${addr} 已关联其他手机号`, dim: 'activate', opts: { ...exOpts } });
+        const sample = addrDup.slice(0, 2).map((s) => s.user?.addr || s.sn).join('；');
+        issues.push({ type: '客户信息重复', detail: `地址疑似同一地点（已去省市区后缀并比对路号）：${addr} ≈ ${sample}`, dim: 'activate', opts: { ...exOpts } });
       }
     }
     return { row, l1, phoneLoc, issues };
@@ -6724,6 +6952,7 @@
     row.bindIpRegion = ipRegion;
     row.user = {
       phone, addr, phoneLoc,
+      addrKey: normalizeAddrCore(addr),
       name: extra.name || '',
       gender: extra.gender || '',
       age: extra.age || '',
@@ -7189,12 +7418,19 @@
         if (!conf?.action) { closeConfirm(); break; }
         if (conf.input) {
           const val = ($('#confirm-input')?.value || '').trim();
-          if (conf.input.required && !val) return toast(conf.input.emptyMsg || '请填写说明', 'err');
+          if (conf.input.required && !val) {
+            if (ui.mode === 'mini') return;
+            return toast(conf.input.emptyMsg || '请填写说明', 'err');
+          }
           conf.payload = { ...(conf.payload || {}), [conf.input.field || 'note']: val };
         }
         const act = conf.action;
         const pid = conf.payload?.id;
         ui.confirm = null;
+        if (act === 'ack-alert') {
+          render();
+          break;
+        }
         if (act === 'disable-l1-ok') {
           const a = db.agentsL1.find((x)=>x.id===pid);
           if (!a) { render(); break; }
@@ -7281,6 +7517,8 @@
           if (r) {
             r.status = 'done';
             r.processNote = conf.payload?.processNote || '';
+            r.processedAt = nowStr();
+            (r.sns || []).forEach((sn) => appendSnProcessNote(sn, r.processNote, r.id, todayDate()));
             addLog(`处理退货 ${r.no}`);
             saveStore();
             toast('已处理');
@@ -7559,14 +7797,33 @@
         const l1Id = $('#f-l1')?.value || null;
         const l2Id = $('#f-l2')?.value || null;
         const situationNote = $('#f-sn-note')?.value ?? row.situationNote ?? '';
+        const processNotes = collectProcessNoteDraft().filter((n) => n.text);
         const changes = [];
         if (size && size !== row.size) changes.push(`弹力带 ${row.size}→${size}`);
         if (belt && belt !== row.belt) changes.push(`腰带 ${row.belt}→${belt}`);
         if (l1Id !== (row.l1Id || null)) changes.push(`一级 ${l1Name(row.l1Id)}→${l1Name(l1Id)}`);
         if (l2Id !== (row.l2Id || null)) changes.push(`二级调库 ${l2Name(row.l2Id)}→${l2Name(l2Id)}`);
         if (situationNote !== (row.situationNote || '')) changes.push(situationNote ? '更新情况说明' : '清空情况说明');
+        const prevNotes = JSON.stringify(snProcessNotes(row).map((n) => `${n.date}|${n.text}`));
+        const nextNotes = JSON.stringify(processNotes.map((n) => `${n.date}|${n.text}`));
+        if (prevNotes !== nextNotes) changes.push('更新处理说明');
         if (!changes.length) { toast('未修改任何字段', 'warn'); break; }
-        confirmDialog(`确认保存 SN「${row.sn}」修改？${changes.join('；')}`, 'save-sn-ok', { id, size, belt, l1Id, l2Id, situationNote, changes }, { title: '保存 SN 修改', okText: '确认保存' });
+        confirmDialog(`确认保存 SN「${row.sn}」修改？${changes.join('；')}`, 'save-sn-ok', { id, size, belt, l1Id, l2Id, situationNote, processNotes, changes }, { title: '保存 SN 修改', okText: '确认保存' });
+        break;
+      }
+      case 'add-sn-process-note': {
+        const notes = collectProcessNoteDraft();
+        notes.push({ date: todayDate(), text: '', source: 'manual', ref: '' });
+        if (ui.modal) ui.modal.draft = { ...(ui.modal.draft || {}), processNotes: notes };
+        render();
+        break;
+      }
+      case 'remove-sn-process-note': {
+        const notes = collectProcessNoteDraft();
+        const idx = Number(el.getAttribute('data-idx'));
+        if (idx >= 0) notes.splice(idx, 1);
+        if (ui.modal) ui.modal.draft = { ...(ui.modal.draft || {}), processNotes: notes.length ? notes : [{ date: todayDate(), text: '', source: 'manual', ref: '' }] };
+        render();
         break;
       }
       case 'open-import-sn-seg':
@@ -8635,7 +8892,7 @@
   function finishSaveSn(payload) {
     const row = db.sns.find((s) => s.sn === payload.id);
     if (!row) { toast('找不到该 SN', 'err'); render(); return; }
-    const { size, belt, l1Id, l2Id, situationNote, changes } = payload;
+    const { size, belt, l1Id, l2Id, situationNote, processNotes, changes } = payload;
     if (size && size !== row.size) row.size = size;
     if (belt && belt !== row.belt) row.belt = belt;
     if (l1Id !== undefined && l1Id !== (row.l1Id || null)) row.l1Id = l1Id;
@@ -8645,6 +8902,7 @@
       if (!l2Id && row.status === 'l2') row.status = 'l1';
     }
     if (situationNote !== undefined) row.situationNote = situationNote;
+    if (Array.isArray(processNotes)) persistSnProcessNotes(row, processNotes);
     const who = (ROLES[ui.role]?.account || ui.account || 'admin');
     const when = nowStr();
     row.tags = [...new Set([...(row.tags || []), '修改过'])];
