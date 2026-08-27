@@ -4073,7 +4073,7 @@
     const rangeQty = stockRangeQty(f);
     const metrics = tab === 'flow'
       ? `<div class="metric-grid metric-grid-2">${metricCard('当前筛选区间库存量', rangeQty, '', '', 'range')}${metricCard('库存总量', stockTotal, '', '', 'stock')}</div>`
-      : `<div class="metric-grid metric-grid-2">${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('规格行数', summaryRows.length, '', '', 'hist')}</div>`;
+      : `<div class="metric-grid metric-grid-2">${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('产品种类数', summaryRows.length, '', '', 'hist')}</div>`;
     let table = '';
     if (tab === 'sn') {
       table = `<div class="page-card table-wrap"><table class="data">
@@ -4103,7 +4103,7 @@
         </tr>`).join('') || `<tr><td colspan="6">${emptyHint()}</td></tr>`}</tbody>
       </table></div>`;
     } else {
-      table = `<div class="page-card table-wrap"><div class="table-caption">在库 SN 明细（${summaryRows.length}）</div><table class="data">
+      table = `<div class="page-card table-wrap"><div class="table-caption">产品种类数（${summaryRows.length}）</div><table class="data">
         <thead><tr><th>商品</th><th>一级代理名称</th><th>二级代理名称</th><th>规格</th><th>数量</th></tr></thead>
         <tbody>${summaryRows.map((r)=>`<tr class="row-clickable" data-row-action="view-stock" data-id="${escapeHtml(r.id)}">
           <td>${escapeHtml(productName(r.productId))}</td>
@@ -4116,7 +4116,7 @@
     }
     return `${pageHeader('库存管理', '按商品/代理/规格汇总；详情可看流水与 SN，SN 可跳转码库', backToL1DetailAction())}
       ${tabsHtml('stock', [
-        { id: 'summary', title: '在库 SN 明细', badge: summaryRows.length || null, badgeTone: 'ok' },
+        { id: 'summary', title: '产品种类数', badge: summaryRows.length || null, badgeTone: 'ok' },
         { id: 'sn', title: 'SN 列表', badge: snRows.length || null, badgeTone: 'ok' },
         { id: 'flow', title: '库存流水', badge: logs.length || null, badgeTone: 'ok' },
       ])}
@@ -5182,7 +5182,7 @@
     const logs = stockLogsFiltered({ type, agent: id, from: f.from, to: f.to, size: f.size, belt: f.belt }).slice(0, 40);
     const cards = tab === 'flow'
       ? `<div class="metric-grid metric-grid-2" style="margin:8px 0">${metricCard('当前筛选区间库存量', rangeQty, '', '', 'range')}${metricCard('库存总量', stockTotal, '', '', 'stock')}</div>`
-      : `<div class="metric-grid metric-grid-2" style="margin:8px 0">${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('规格行数', rows.length, '', '', 'hist')}</div>`;
+      : `<div class="metric-grid metric-grid-2" style="margin:8px 0">${metricCard('库存总量', stockTotal, '', '', 'stock')}${metricCard('产品种类数', rows.length, '', '', 'hist')}</div>`;
     const panel = tab === 'sn'
       ? `<div class="form-field"><input class="field-input" placeholder="搜 SN" data-filter="miniStock:sn" value="${escapeHtml(f.sn||'')}" /></div>
         <div style="display:flex;gap:6px;margin:8px 0">
