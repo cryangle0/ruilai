@@ -1,5 +1,6 @@
 package com.ruilai.module.risk;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.ruilai.module.agent.entity.AgentL1;
 import com.ruilai.module.agent.entity.AgentL2;
 import com.ruilai.module.agent.mapper.AgentL1Mapper;
@@ -55,5 +56,17 @@ class ExceptionServiceTest {
                 .containsEntry("l1Id", "L1A")
                 .containsEntry("l1Name", "一级A")
                 .containsEntry("l2Name", "二级A");
+    }
+
+    @Test
+    void activationChannelUsesL2OwnershipInsteadOfDifferentDimensions() {
+        var direct = Wrappers.<ExceptionTicket>lambdaQuery();
+        var distributed = Wrappers.<ExceptionTicket>lambdaQuery();
+
+        ExceptionService.applyActivationChannel(direct, false);
+        ExceptionService.applyActivationChannel(distributed, true);
+
+        assertThat(direct.getSqlSegment()).contains("IS NULL");
+        assertThat(distributed.getSqlSegment()).contains("IS NOT NULL");
     }
 }

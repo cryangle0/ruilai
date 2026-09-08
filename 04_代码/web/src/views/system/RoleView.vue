@@ -74,8 +74,10 @@
       <div class="perm-check-grid">
         <label v-for="p in ALL_PERMS" :key="p" class="perm-check">
           <el-checkbox :model-value="permOn(p)" @change="(v:boolean)=>togglePerm(p,v)" />
-          <span>{{ permLabel(p) }}</span>
-          <code>{{ p }}</code>
+          <span class="perm-copy">
+            <strong>{{ permLabel(p) }}</strong>
+            <small>{{ permDesc(p) }}</small>
+          </span>
         </label>
       </div>
       <template #footer>
@@ -115,8 +117,22 @@ const PERM_LABELS: Record<string, string> = {
   aftersale: '售后', sub: '子账号', exception: '异常', sales_scan: '销售扫码',
   sales_view: '销售查看', stock_self: '本级库存',
 }
+const PERM_DESCS: Record<string, string> = {
+  all: '开放后台全部菜单和操作',
+  purchase: '查看并处理采购单、审核及入库',
+  sales: '查看销售单并进行销售业务操作',
+  stock: '查看各级库存、SN 和库存流水',
+  l2: '查看、创建和维护二级代理',
+  aftersale: '查看并处理返货与售后',
+  sub: '查看和维护一级子账号',
+  exception: '查看、说明及处理异常预警',
+  sales_scan: '仅执行销售出货扫码',
+  sales_view: '仅查看本人范围内销售记录',
+  stock_self: '仅查看本人所属层级库存',
+}
 const ALL_PERMS = Object.keys(PERM_LABELS)
 function permLabel(k: string) { return PERM_LABELS[k] || k }
+function permDesc(k: string) { return PERM_DESCS[k] || '控制对应功能的访问和操作权限' }
 
 const tab = ref('roles')
 const loading = ref(false)
@@ -235,4 +251,7 @@ onMounted(async () => {
 </script>
 <style scoped>
 .hint { color: var(--text-2); font-size: 13px; margin: 0 0 12px; }
+.perm-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.perm-copy strong { color: var(--text-strong); font-size: 13px; }
+.perm-copy small { color: var(--text-3); font-size: 11px; line-height: 1.35; }
 </style>

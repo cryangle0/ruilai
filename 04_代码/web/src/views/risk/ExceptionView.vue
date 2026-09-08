@@ -22,6 +22,7 @@
           <el-option v-for="a in l2s" :key="a.id" :label="a.name" :value="a.id" />
         </el-select>
       </el-form-item>
+      <el-form-item><span class="muted-label">报警时间</span></el-form-item>
       <el-form-item>
         <el-date-picker v-model="query.from" type="date" value-format="YYYY-MM-DD" placeholder="开始" style="width:140px" />
       </el-form-item>
@@ -160,8 +161,8 @@ const explainText = ref('')
 const l1s = ref<any[]>([])
 const l2s = ref<any[]>([])
 const tabItems = computed(() => [
-  { id: 'activate-direct', title: '直售激活异常', badge: counts['activate-direct'] || counts.activate || 0 },
-  { id: 'activate-dist', title: '分销激活异常', badge: counts['activate-dist'] || counts.scan || 0 },
+  { id: 'activate-direct', title: '直售激活异常', badge: counts['activate-direct'] || 0 },
+  { id: 'activate-dist', title: '分销激活异常', badge: counts['activate-dist'] || 0 },
   { id: 'stock', title: '销售库存异常', badge: counts.stock || 0 },
 ])
 const statusOpts = computed(() => dimTab.value === 'stock' ? ['待处理', '已处理'] : ['待处理', '已完成'])
@@ -347,6 +348,7 @@ onMounted(async () => {
 </script>
 <style scoped>
 .hint { color: var(--text-2); font-size: 13px; margin: 0 0 12px; line-height: 1.5; }
+.muted-label { font-size: 12px; color: var(--text-3); }
 .extra-tag { margin-left: 8px; color: var(--text-2); font-size: 12px; }
 h4 { margin: 14px 0 8px; font-size: 13px; }
 </style>

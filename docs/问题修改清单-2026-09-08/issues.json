@@ -661,8 +661,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "同一笔订单里两件商品不应该报重复异常",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：同一客户同一身份的多商品激活不再误报重复",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_430088_pG06-wCyo2uTG-oA_1788848931?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_937437_fpVnWwfd26zF3Tgg_1788848921?w=1920&h=953"
@@ -679,8 +679,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "分销激活异常和直售激活异常的功能是一样的，区别在于直售激活异常是一级代理销售给C端用户时的激活异常，分销激活异常是指二级代理销售给C端用户时的激活异常。异常类型为：归属地异常、客户信息重复、IP异常",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：直售/分销按SN二级归属区分，共用三类激活异常",
       "images": [],
       "files": []
     },
@@ -691,8 +691,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "时间筛选前面加文字报警时间",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：时间筛选前增加报警时间",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_556432_CJxqpWRrUMmDCJ2p_1788838779?w=1920&h=953"
       ],
@@ -707,8 +707,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "弹窗提示下面大片空白去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：异常详情沿用内容高度弹窗",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_220808_FXs18n6sCNNoPmYk_1788838630?w=1920&h=953"
       ],
@@ -723,8 +723,8 @@
       "platform": "管理端",
       "module": "销售客户",
       "description": "时间筛选未生效，只有第一条是9月的，其他都是8月的",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：客户列表按关联SN销售/激活日期过滤",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_111658_uhuixFcnbFikL-yB_1788849675?w=1920&h=953"
       ],
@@ -739,8 +739,8 @@
       "platform": "管理端",
       "module": "销售客户",
       "description": "1、筛选的标记下拉框应该是重复地址、重复手机号，去掉仅重复\n2、因为小程序上无法输入地址，暂时无法验证当手机号也重复时会怎么提示。需要系统自己验证下，正确效果是同时显示重复手机号和重复地址两个标签并列",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：重复手机号/重复地址独立筛选并可并列显示",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_693819_DnoIetHmXDRD9M2g_1788850323?w=1920&h=953"
       ],
@@ -755,8 +755,8 @@
       "platform": "管理端",
       "module": "数据统计",
       "description": "1、区间激活数换行放到累计激活数前面\n2、每个卡片宽度调整，平铺满",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：统计卡片分两行铺满，区间激活数在第二行首位",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_43853_3Asv2Uf9DFdEWB5I_1788851236?w=1920&h=953"
       ],
@@ -771,8 +771,8 @@
       "platform": "管理端",
       "module": "数据统计",
       "description": "二级代理应该不存在直售数，直售是指一级代理直接销售给C端用户",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：二级统计不再展示或计入一级直售数",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_570290_3REScbfAtivl8f7L_1788851533?w=1920&h=953"
       ],
@@ -787,8 +787,8 @@
       "platform": "管理端",
       "module": "数据统计",
       "description": "1、本级销售构成改成销售渠道\n2、缺少一级代理排行\n3、累计激活数这一排的卡片和下面的图表中间缺少间隔\n4、下面图表布局调整成和设计稿一样",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：销售渠道、一级代理排行、卡片间距及图表布局对齐",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_814026_QLzIEBknz4XYJj7t_1788851701?w=3770&h=953"
       ],
@@ -803,8 +803,8 @@
       "platform": "管理端",
       "module": "角色与权限",
       "description": "创建角色时选的这些是什么意思，没看懂",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：权限项增加中文功能说明并隐藏内部编码",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_174219_m7hXYmZP1fmtmgMi_1788851954?w=1920&h=953"
       ],

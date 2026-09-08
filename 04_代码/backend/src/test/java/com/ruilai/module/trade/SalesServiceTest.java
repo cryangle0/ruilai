@@ -5,6 +5,7 @@ import com.ruilai.common.web.BizException;
 import com.ruilai.module.agent.entity.AgentL2;
 import com.ruilai.module.agent.mapper.AgentL1Mapper;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
+import com.ruilai.module.customer.entity.Customer;
 import com.ruilai.module.customer.mapper.CustomerMapper;
 import com.ruilai.module.product.entity.Product;
 import com.ruilai.module.product.mapper.ProductMapper;
@@ -263,6 +264,19 @@ class SalesServiceTest {
     void directBindRejectsNullCustomerAsBusinessError() {
         assertThatThrownBy(() -> service.directBind("S1", null, "", "", null, null, false))
                 .isInstanceOf(BizException.class).hasMessageContaining("客户");
+    }
+
+    @Test
+    void sameCustomerAcrossMultipleProductsIsNotDuplicateIdentity() {
+        Customer existing = new Customer();
+        existing.setPhone("13800000000");
+        existing.setName("张三");
+        existing.setAddr("杭州市文一路1号");
+
+        assertThat(SalesService.sameCustomerIdentity(existing, Map.of(
+                "phone", "13800000000", "name", "张三", "addr", "杭州市文一路1号"))).isTrue();
+        assertThat(SalesService.sameCustomerIdentity(existing, Map.of(
+                "phone", "13800000000", "name", "李四", "addr", "杭州市文一路2号"))).isFalse();
     }
 
     private void login(String role, String agentId) {

@@ -171,3 +171,34 @@ test('issues 38 through 40 explain stock scans and fill parent agents', () => {
   assert.match(service, /l2\.getParentId\(\)/)
   assert.match(service, /extra\.put\("l1Id"/)
 })
+
+test('issues 41 through 46 separate activation channels and customer filters', () => {
+  const exceptions = source('src/views/risk/ExceptionView.vue')
+  const exceptionService = source('../backend/src/main/java/com/ruilai/module/risk/ExceptionService.java')
+  const customers = source('src/views/risk/CustomerView.vue')
+  const customerService = source('../backend/src/main/java/com/ruilai/module/customer/CustomerService.java')
+  const salesService = source('../backend/src/main/java/com/ruilai/module/trade/SalesService.java')
+
+  assert.match(exceptionService, /applyActivationChannel\(q,\s*distributed\)/)
+  assert.match(exceptions, /class="muted-label">报警时间/)
+  assert.doesNotMatch(exceptions, /counts\['activate-dist'\]\s*\|\|\s*counts\.scan/)
+  assert.match(salesService, /sameCustomerIdentity/)
+  assert.match(customers, /label="重复手机号"\s+value="phone"/)
+  assert.match(customers, /label="重复地址"\s+value="addr"/)
+  assert.match(customerService, /getRangeQty\(\)\s*<=\s*0/)
+})
+
+test('issues 47 through 50 align statistics and explain role permissions', () => {
+  const stats = source('src/views/risk/StatsView.vue')
+  const dashboard = source('../backend/src/main/java/com/ruilai/module/dashboard/DashboardService.java')
+  const roles = source('src/views/system/RoleView.vue')
+
+  assert.match(stats, /kpiPrimary/)
+  assert.match(stats, /kpiSecondary/)
+  assert.match(stats, /<h3>销售渠道<\/h3>/)
+  assert.match(stats, /一级代理排行/)
+  assert.match(stats, /dash-panel--half/)
+  assert.match(dashboard, /directAll\s*=\s*0;\s*directRange\s*=\s*0;/)
+  assert.match(roles, /PERM_DESCS/)
+  assert.doesNotMatch(roles, /<code>\{\{\s*p\s*\}\}<\/code>/)
+})

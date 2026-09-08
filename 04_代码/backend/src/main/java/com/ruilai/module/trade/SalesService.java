@@ -397,7 +397,7 @@ public class SalesService {
             String msg = "直售跨区激活：定位 " + loc.display() + " 不在授权围栏 " + String.join("、", fence);
             issues.add(msg);
             if (!dryRun) {
-                exceptionService.raise("SN激活异常", sn, msg, "activate", warnMode, row.getL2Id());
+                exceptionService.raise("IP异常", sn, msg, "activate", warnMode, row.getL2Id());
             }
         }
         if (phoneReg.ok() && fence != null && !fence.isEmpty() && !gateway.inFence(phoneReg, fence)
@@ -423,11 +423,11 @@ public class SalesService {
             }
         }
         if (StringUtils.hasText(phone)) {
-            long dup = snMapper.selectCount(Wrappers.<SnCode>lambdaQuery()
-                    .eq(SnCode::getStatus, "bound")
-                    .ne(SnCode::getSn, sn)
-                    .apply("JSON_UNQUOTE(JSON_EXTRACT(user_json,'$.phone')) = {0}", phone));
-            if (dup > 0) {
+            List<Customer> samePhone = customerMapper.selectList(
+                    Wrappers.<Customer>lambdaQuery().eq(Customer::getPhone, phone));
+            boolean duplicateCustomer = samePhone.stream()
+                    .anyMatch(existing -> !sameCustomerIdentity(existing, customer));
+            if (duplicateCustomer) {
                 String msg = "手机号 " + phone + " 已激活过";
                 issues.add("手机号重复激活");
                 if (!dryRun) {
@@ -753,6 +753,22 @@ public class SalesService {
             }
             customerMapper.updateById(c);
         }
+    }
+
+    static boolean sameCustomerIdentity(Customer existing, Map<String, Object> incoming) {
+        String incomingName = str(incoming.get("name")).replaceAll("\\s+", "");
+        String incomingAddr = str(incoming.get("addr")).replaceAll("\\s+", "");
+        String existingName = str(existing.getName()).replaceAll("\\s+", "");
+        String existingAddr = str(existing.getAddr()).replaceAll("\\s+", "");
+        boolean nameKnown = StringUtils.hasText(incomingName) && StringUtils.hasText(existingName);
+        boolean addrKnown = StringUtils.hasText(incomingAddr) && StringUtils.hasText(existingAddr);
+        if (nameKnown && !incomingName.equals(existingName)) {
+            return false;
+        }
+        if (addrKnown && !incomingAddr.equals(existingAddr)) {
+            return false;
+        }
+        return nameKnown || addrKnown;
     }
 
     private void writeStockLog(SnCode row, String agentType, String agentId, int delta, String reason, String refNo) {

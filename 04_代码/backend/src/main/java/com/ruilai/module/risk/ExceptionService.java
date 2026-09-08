@@ -55,8 +55,15 @@ public class ExceptionService {
             }
         }
         String dimKey = dim;
-        if ("activate-direct".equals(dimKey)) dimKey = "activate";
-        if ("activate-dist".equals(dimKey)) dimKey = "scan";
+        Boolean distributed = null;
+        if ("activate-direct".equals(dimKey)) {
+            dimKey = "activate";
+            distributed = false;
+        }
+        if ("activate-dist".equals(dimKey)) {
+            dimKey = "activate";
+            distributed = true;
+        }
         if (StringUtils.hasText(dimKey)) {
             q.eq(ExceptionTicket::getDim, dimKey);
         }
@@ -72,6 +79,7 @@ public class ExceptionService {
         if (StringUtils.hasText(sn)) {
             q.eq(ExceptionTicket::getTarget, sn.trim());
         }
+        applyActivationChannel(q, distributed);
         applyAgentScope(q, l1Id, l2Id);
         q.orderByDesc(ExceptionTicket::getOccurredAt);
         PageResult<ExceptionTicket> result = PageResult.of(mapper.selectPage(Page.of(page, size), q));
@@ -122,6 +130,13 @@ public class ExceptionService {
         if (StringUtils.hasText(to)) {
             try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
         }
+        applyActivationChannel(q, distributed);
+        return mapper.selectCount(q);
+    }
+
+    static void applyActivationChannel(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExceptionTicket> q,
+            Boolean distributed) {
         if (Boolean.TRUE.equals(distributed)) {
             q.and(w -> w.apply("NULLIF(JSON_UNQUOTE(JSON_EXTRACT(extra,'$.l2Id')), '') IS NOT NULL")
                     .or().apply("target IN (SELECT sn FROM sn_code WHERE deleted = 0 AND l2_id IS NOT NULL AND l2_id <> '')"));
@@ -129,7 +144,6 @@ public class ExceptionService {
             q.apply("(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(extra,'$.l2Id')), '') IS NULL "
                     + "AND target NOT IN (SELECT sn FROM sn_code WHERE deleted = 0 AND l2_id IS NOT NULL AND l2_id <> ''))");
         }
-        return mapper.selectCount(q);
     }
 
     private void applyCurrentScope(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExceptionTicket> q) {

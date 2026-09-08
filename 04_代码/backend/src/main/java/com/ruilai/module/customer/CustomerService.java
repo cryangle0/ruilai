@@ -113,11 +113,19 @@ public class CustomerService {
             c.setDupPhone(StringUtils.hasText(c.getPhone()) && phoneCnt.getOrDefault(c.getPhone(), 0L) > 1);
             c.setDupAddr(StringUtils.hasText(c.getAddr()) && addrCnt.getOrDefault(c.getAddr(), 0L) > 1);
         }
-        if ("1".equals(mark)) {
+        if ("phone".equals(mark)) {
+            all.removeIf(c -> !Boolean.TRUE.equals(c.getDupPhone()));
+        } else if ("addr".equals(mark)) {
+            all.removeIf(c -> !Boolean.TRUE.equals(c.getDupAddr()));
+        } else if ("1".equals(mark)) {
+            // 兼容旧链接中的“仅重复”筛选值。
             all.removeIf(c -> !Boolean.TRUE.equals(c.getDupPhone()) && !Boolean.TRUE.equals(c.getDupAddr()));
         }
-        int rangeSum = all.stream().mapToInt(c -> c.getRangeQty() == null ? 0 : c.getRangeQty()).sum();
         int histSum = all.stream().mapToInt(c -> c.getHistQty() == null ? 0 : c.getHistQty()).sum();
+        if (StringUtils.hasText(from) || StringUtils.hasText(to)) {
+            all.removeIf(c -> c.getRangeQty() == null || c.getRangeQty() <= 0);
+        }
+        int rangeSum = all.stream().mapToInt(c -> c.getRangeQty() == null ? 0 : c.getRangeQty()).sum();
         long total = all.size();
         long p = Math.max(1, page);
         long s = Math.max(1, size);
