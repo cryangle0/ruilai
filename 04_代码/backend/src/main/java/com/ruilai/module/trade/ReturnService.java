@@ -157,6 +157,12 @@ public class ReturnService {
             } else {
                 Product p = productMapper.selectById(row.getProductId());
                 String pname = p == null ? row.getProductId() : p.getName();
+                if ((r.getCustomer() == null || r.getCustomer().isEmpty())) {
+                    Map<String, Object> customer = row.getUserJson() != null ? row.getUserJson() : row.getPrevUserJson();
+                    if (customer != null && !customer.isEmpty()) {
+                        r.setCustomer(new LinkedHashMap<>(customer));
+                    }
+                }
                 String spec = specText(row.getSizeCode(), row.getBelt());
                 String key = pname + "/" + spec;
                 counts.merge(key, 1, Integer::sum);

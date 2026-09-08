@@ -135,6 +135,7 @@ const fields = computed(() => {
   if (kind.value === 'return') {
     return [
       { k: '类型', v: d.typeLabel || d.type },
+      { k: '来源', v: d.fromName || d.fromId || '—' },
       { k: '状态', v: RT_STATUS[d.status] || d.status },
       { k: '原因', v: `${d.reasonType || ''} ${d.reason || ''}` },
       { k: '商品明细', v: d.productDetail || '—' },

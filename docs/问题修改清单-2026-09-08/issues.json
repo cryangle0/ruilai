@@ -110,7 +110,7 @@
       "module": "二级审核/待分配/采购单管理",
       "description": "待审核、已通过、已驳回、全部必须要右上角的数字",
       "status": "已验证",
-      "note": "批次1：审核/采购页签显示数字含0，采购补已驳回页签；Web契约与构建通过",
+      "note": "复核补正：审核/采购页签显示数字含0，数字使用右上角上标样式；待分配页按原型仅有待分配池，无状态页签",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_341846_CYtuZemE4UX8n-U4_1788775937?w=1920&h=953"
       ],
@@ -594,7 +594,7 @@
       "module": "返货管理/SN码库",
       "description": "RL202608010041 该SN商品已发生售后，但SN码库里没有状态流转；且驳回时候填写的处理说明未在SN码库中同步显示；\n在SN码库中编辑的情况说明在返货管理里也没有同步显示；",
       "status": "已验证",
-      "note": "批次4：返货事件、处理说明和SN情况说明双向同步",
+      "note": "复核补正：新旧返货均回显SN流转和处理说明，SN情况说明同步显示在返货详情",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_555035_Zyh20LdyDnWUw6Uq_1788848398?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_438102_mnMQT8t0GmTZ20kS_1788848474?w=1920&h=953",
@@ -1148,7 +1148,7 @@
       "module": "售后",
       "description": "1、详情信息和原型不匹配\n2、样式调整成设计稿那样",
       "status": "已验证",
-      "note": "退货详情按处理说明、情况说明、凭证、客户、商品和SN分区展示。",
+      "note": "复核补正：退货详情按处理说明、情况说明、凭证、客户、商品和SN分区展示，并从关联SN补齐历史客户快照。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_935092_KQfw1fX-_ma4RO20_1788857293?w=1478&h=957"
       ],

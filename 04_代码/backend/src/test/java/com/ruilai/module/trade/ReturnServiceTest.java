@@ -86,6 +86,25 @@ class ReturnServiceTest {
         verify(snWriter).update(sn);
     }
 
+    @Test
+    void detailDerivesCustomerSnapshotFromReturnedSn() {
+        login("ADMIN", null);
+        ReturnOrder row = new ReturnOrder();
+        row.setId("RT1");
+        row.setSns(List.of("SN1"));
+        when(rtMapper.selectById("RT1")).thenReturn(row);
+
+        com.ruilai.module.sn.entity.SnCode sn = new com.ruilai.module.sn.entity.SnCode();
+        sn.setSn("SN1");
+        sn.setProductId("P1");
+        sn.setUserJson(Map.of("name", "张三", "phone", "13800000000", "addr", "杭州"));
+        when(snMapper.selectById("SN1")).thenReturn(sn);
+
+        ReturnOrder detail = service.get("RT1");
+
+        assertThat(detail.getCustomer()).containsEntry("phone", "13800000000");
+    }
+
     private void login(String role, String agent) {
         LoginUser user = new LoginUser();
         user.setRoleCode(role);

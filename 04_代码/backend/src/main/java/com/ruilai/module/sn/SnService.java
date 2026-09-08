@@ -16,6 +16,8 @@ import com.ruilai.module.risk.mapper.ExceptionTicketMapper;
 import com.ruilai.module.sn.entity.SnCode;
 import com.ruilai.module.sn.mapper.SnCodeMapper;
 import com.ruilai.module.system.LogService;
+import com.ruilai.module.trade.entity.ReturnOrder;
+import com.ruilai.module.trade.mapper.ReturnOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -42,6 +44,7 @@ public class SnService {
     private final SnWriter snWriter;
     private final LogService logService;
     private final ExceptionTicketMapper exMapper;
+    private final ReturnOrderMapper returnMapper;
 
     public PageResult<SnCode> page(long page, long size, String sn, String status, String l1Id, String l2Id,
                                    String productName, String productId, String sizeCode, String belt,
@@ -376,6 +379,33 @@ public class SnService {
                 events.add(0, event(soldAt, "销售到C端", phone + (addr.isBlank() ? "" : " · " + addr), "bind"));
             }
         }
+        List<ReturnOrder> returns = returnMapper.selectList(Wrappers.<ReturnOrder>lambdaQuery()
+                .apply("JSON_SEARCH(sns, 'one', {0}) IS NOT NULL", row.getSn())
+                .orderByAsc(ReturnOrder::getCreatedAt));
+        Map<String, Object> extra = row.getExtra() == null ? new HashMap<>() : new HashMap<>(row.getExtra());
+        List<Object> processNotes = extra.get("processNotes") instanceof List<?> list
+                ? new ArrayList<>(list) : new ArrayList<>();
+        for (ReturnOrder rt : returns) {
+            String no = nz(rt.getNo());
+            boolean exists = events.stream().anyMatch(e -> String.valueOf(e.getOrDefault("desc", "")).contains(no));
+            if (!exists && rt.getCreatedAt() != null) {
+                String title = switch (String.valueOf(rt.getStatus())) {
+                    case "rejected" -> "退货申请已驳回";
+                    case "done", "approved" -> "退货申请已通过";
+                    default -> "提交退货申请";
+                };
+                String desc = no + (StringUtils.hasText(rt.getProcessNote()) ? " · " + rt.getProcessNote() : "");
+                events.add(0, event(rt.getUpdatedAt() != null ? rt.getUpdatedAt() : rt.getCreatedAt(), title, desc, "return"));
+            }
+            if (StringUtils.hasText(rt.getProcessNote())
+                    && processNotes.stream().noneMatch(note -> String.valueOf(note).contains(rt.getProcessNote()))) {
+                processNotes.add(Map.of(
+                        "date", (rt.getUpdatedAt() != null ? rt.getUpdatedAt() : rt.getCreatedAt()).toLocalDate().toString(),
+                        "text", rt.getProcessNote()));
+            }
+        }
+        extra.put("processNotes", processNotes);
+        row.setExtra(extra);
         row.setEvents(events);
     }
 

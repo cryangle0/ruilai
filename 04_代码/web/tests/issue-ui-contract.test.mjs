@@ -33,6 +33,7 @@ test('issues 6 through 10 use content-height dialogs and live badges', () => {
   const audit = source('src/views/agent/AgentAuditView.vue')
   const pending = source('src/views/agent/AgentPendingView.vue')
   const tabs = source('src/components/common/PageTabs.vue')
+  const styles = source('src/styles/index.css')
   const sidebar = source('src/layouts/components/Sidebar.vue')
   const purchase = source('src/views/trade/PurchaseView.vue')
 
@@ -42,6 +43,7 @@ test('issues 6 through 10 use content-height dialogs and live badges', () => {
   assert.match(tabs, /item\.showZero/)
   assert.match(audit, /showZero:\s*true/)
   assert.match(purchase, /id:\s*'rejected'.*showZero:\s*true/)
+  assert.match(styles, /\.tab \.menu-badge\s*\{[\s\S]*?translateY\(-7px\)/)
   assert.match(sidebar, /v-if="badgeOf\(item\)"/)
   assert.match(sidebar, /ruilai:badges-changed/)
 })
