@@ -15,6 +15,39 @@
           <FieldRow v-model="explain" placeholder="填写情况说明" />
           <button class="ok" @click="saveExplain">提交说明</button>
         </view>
+        <view v-if="kind==='return'" class="return-sections">
+          <view class="detail-section">
+            <text class="h2">处理说明</text>
+            <text class="section-copy">{{ data.processNote || (data.status === 'rejected' ? '退货申请已驳回' : data.status === 'done' ? '退货申请已通过并完成入库' : '等待审核处理') }}</text>
+          </view>
+          <view class="detail-section">
+            <text class="h2">情况说明</text>
+            <view v-for="row in (data.snDetail||[])" :key="row.sn" class="detail-line detail-line-stack">
+              <text>{{ row.sn }}</text><text>{{ row.situation || '—' }}</text>
+            </view>
+          </view>
+          <view class="detail-section">
+            <text class="h2">凭证图片</text>
+            <view v-if="(data.photos||[]).length" class="photo-grid">
+              <image v-for="photo in data.photos" :key="photo" :src="photo" class="proof-photo" mode="aspectFill" />
+            </view>
+            <text v-else class="section-copy">未上传</text>
+          </view>
+          <view class="detail-section">
+            <text class="h2">客户信息</text>
+            <text class="section-copy">{{ customerText(data.customer) }}</text>
+          </view>
+          <view class="detail-section">
+            <text class="h2">商品明细</text>
+            <text class="section-copy">{{ data.productDetail || '—' }}</text>
+          </view>
+          <view class="detail-section">
+            <text class="h2">SN码（{{ (data.snDetail||[]).length }}）</text>
+            <view v-for="row in (data.snDetail||[])" :key="row.sn" class="detail-line detail-line-stack">
+              <text>{{ row.sn }}</text><text>{{ row.productName || '—' }} · {{ row.spec || '—' }} · {{ SN_STATUS[row.status] || row.status }}</text>
+            </view>
+          </view>
+        </view>
         <button v-if="kind==='sales' && data.status==='scanning' && user.role!=='SUB'" class="ok" @click="goScan">继续扫码</button>
         <view v-if="kind==='stock'" class="detail-section">
           <text class="h2">在库 SN（{{ (data.snRows||[]).length }}）</text>
@@ -111,11 +144,17 @@ const fields = computed(() => {
     ]
   }
   if (kind.value === 'exception') {
+    const customer = d.extra?.customer || {}
     return [
       { k: '类型', v: d.type },
       { k: '对象', v: d.target },
       { k: '详情', v: d.detail },
       { k: '状态', v: d.status },
+      { k: '一级代理', v: d.extra?.l1Name || d.extra?.l1Id || '—' },
+      { k: '二级代理', v: d.extra?.l2Name || d.extra?.l2Id || '—' },
+      { k: '客户姓名', v: customer.name || '—' },
+      { k: '客户电话', v: customer.phone || d.dupPhone || '—' },
+      { k: '客户地址', v: customer.addr || customer.address || '—' },
       { k: '一级说明', v: d.explainTxt || '—' },
       { k: '二级说明', v: d.explainL2 || '—' },
       { k: '时间', v: formatDateTime(d.occurredAt || d.createdAt) },
@@ -138,6 +177,11 @@ function lineSummary(lines: any) {
   return lines.map((line: any) =>
     `${line.productName || line.name || line.productId || line.partId || '商品'}`
     + `${line.size ? `/${line.size}` : ''}×${line.qty || 0}`).join('，')
+}
+
+function customerText(customer: any) {
+  if (!customer || typeof customer !== 'object') return '—'
+  return [customer.name, customer.phone, customer.addr || customer.address].filter(Boolean).join(' · ') || '—'
 }
 
 function snCustomer(d: any) {
@@ -252,5 +296,9 @@ function openSn(sn: string) { uni.navigateTo({ url: `/pkg/detail/index?kind=sn&i
 .ed { display: block; font-size: 24rpx; color: #636366; }
 .detail-section { margin-top: 28rpx; }
 .detail-line { display: flex; justify-content: space-between; gap: 18rpx; padding: 18rpx 0; border-bottom: 1rpx solid #EEF1F6; color: #5B6472; font-size: 22rpx; }
+.detail-line-stack { align-items: flex-start; flex-direction: column; gap: 7rpx; }
+.section-copy { display: block; color: #5B6472; font-size: 23rpx; line-height: 1.6; }
+.photo-grid { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.proof-photo { width: 180rpx; height: 150rpx; border-radius: 12rpx; background: #F4F6FA; }
 .flow-title { margin-top: 26rpx; }
 </style>

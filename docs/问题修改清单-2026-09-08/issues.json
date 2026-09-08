@@ -1147,8 +1147,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "1、详情信息和原型不匹配\n2、样式调整成设计稿那样",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "退货详情按处理说明、情况说明、凭证、客户、商品和SN分区展示。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_935092_KQfw1fX-_ma4RO20_1788857293?w=1478&h=957"
       ],
@@ -1163,8 +1163,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "列表上标签没有加样式",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "退货类型、原因及状态均使用语义化标签样式。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_230965_3SUKgmvJbO9TNa-f_1788857381?w=1376&h=775"
       ],
@@ -1179,8 +1179,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "去掉标签上的数字，仅显示待处理的数字",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "退货类型及非待审核状态移除角标，仅待审核保留数字。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_930371_vigSSOUrWvSz5mhI_1788857423?w=414&h=887"
       ],
@@ -1195,8 +1195,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "输入不进去，填写没反应",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "SN输入改为原生多行受控输入，并实时解析显示。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_953342_Dp7Pq3l3vr4gwPII_1788847591?w=414&h=780"
       ],
@@ -1211,8 +1211,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "填写二级退一级/填写终端退货单/申请退原厂的SN都只能填一个，应该要可以填写多个或者扫描多个",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "三种退货均支持批量输入、连续扫码、去重和单项移除。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_91989_YZP5HXCGZqmcd9L2_1788857782?w=414&h=887"
       ],
@@ -1227,8 +1227,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "列表上的状态和标签切换的状态对不上，标签上已处理改成已驳回；列表上的已处理改成已通过",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "状态标签统一为待审核、已通过、已驳回，done列表状态显示已通过。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_294393_58sTrSfRK4QpTuN7_1788857977?w=414&h=887"
       ],
@@ -1243,8 +1243,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "去掉标签上的数字，仅显示待审核的数字",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "退原厂状态筛选仅待审核显示数字角标。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_956384_wBBrYloBfao-iUla_1788858033?w=414&h=887"
       ],
@@ -1259,8 +1259,8 @@
       "platform": "小程序",
       "module": "异常",
       "description": "缺少客户信息",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "异常详情展示客户姓名、电话和地址，并兼容重复手机号。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_809604_AvxKCQaj72fTDpz8_1788859113?w=1016&h=591"
       ],
@@ -1275,8 +1275,8 @@
       "platform": "小程序",
       "module": "异常",
       "description": "分销激活异常和直售激活异常的功能是一样的，区别在于直售激活异常是一级代理销售给C端用户时的激活异常，分销激活异常是指二级代理销售给C端用户时的激活异常。异常类型为：归属地异常、客户信息重复、IP异常",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "两类激活异常共用处理流程，按SN二级归属分流，类型限定为既有三类业务异常。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_342213_LZiYNu1eRsInrQ0A_1788859138?w=894&h=674"
       ],
@@ -1291,8 +1291,8 @@
       "platform": "小程序",
       "module": "异常",
       "description": "筛选项增加二级代理下拉框",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "一级账号异常筛选新增已审核二级代理下拉框。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_626898_mX-qCsemsd9FgRke_1788859215?w=414&h=887"
       ],

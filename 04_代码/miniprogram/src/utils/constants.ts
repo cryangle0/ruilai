@@ -27,7 +27,7 @@ export const SO_STATUS: Record<string, string> = {
 export const RT_STATUS: Record<string, string> = {
   pending: '待审核',
   approved: '已通过',
-  done: '已处理',
+  done: '已通过',
   rejected: '已驳回',
 }
 

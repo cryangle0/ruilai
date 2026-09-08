@@ -101,6 +101,22 @@ test('batch seven pages keep redesigned order and stock detail contracts', () =>
   assert.match(purchase, /lines: saleLines\.value/)
 })
 
+test('batch eight after-sales pages keep status, multi-SN and customer contracts', () => {
+  const service = readFileSync(new URL('../src/pages/service/index.vue', import.meta.url), 'utf8')
+  const form = readFileSync(new URL('../src/pkg/return-form/index.vue', import.meta.url), 'utf8')
+  const detail = readFileSync(new URL('../src/pkg/detail/index.vue', import.meta.url), 'utf8')
+  const constants = readFileSync(new URL('../src/utils/constants.ts', import.meta.url), 'utf8')
+  assert.doesNotMatch(service, /title: '二级退一级', badge:/)
+  assert.match(service, /id: 'pending', title: '待审核', badge:/)
+  assert.match(service, /id: 'rejected', title: '已驳回'/)
+  assert.match(service, /label="二级代理"/)
+  assert.match(form, /v-model="snsText" class="sn-textarea"/)
+  assert.match(form, /v-for="sn in sns"/)
+  assert.match(detail, /客户姓名/)
+  assert.match(detail, /data\.snDetail/)
+  assert.match(constants, /done: '已通过'/)
+})
+
 test('complete paging keeps page size stable and removes repeated rows', async () => {
   const calls: Array<{ page: number; pageSize: number }> = []
   const result = await collectAllPages(async (page, pageSize) => {
