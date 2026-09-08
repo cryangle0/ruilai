@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>业务 · 锐涞小程序</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:750px;height:1790px;overflow:hidden;}
+body{font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;background:#F3F5F9;color:#1A2B4A;-webkit-font-smoothing:antialiased;}
+.app{position:relative;width:750px;height:1790px;display:flex;flex-direction:column;background:#F3F5F9;}
+
+/* ===== 状态栏 ===== */
+.statusbar{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;font-size:24px;font-weight:600;color:#1A2B4A;}
+.sb-right{display:flex;align-items:center;gap:10px;}
+
+/* ===== 顶部品牌栏 ===== */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 32px 0;}
+.brand{display:flex;align-items:center;gap:14px;}
+.brand-logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#2B7BF0,#1A68D7);color:#fff;font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(26,104,215,.32);}
+.brand-name{font-size:30px;font-weight:700;color:#1A2B4A;line-height:1;}
+.brand-sub{font-size:17px;color:#9AA6BA;letter-spacing:1.6px;margin-top:6px;}
+.role-sw{display:flex;background:#E8EDF5;border-radius:11px;padding:5px;gap:2px;}
+.role-sw span{padding:9px 22px;font-size:22px;color:#7A879C;border-radius:8px;line-height:1;}
+.role-sw span.on{background:#fff;color:#1A68D7;font-weight:600;box-shadow:0 2px 8px rgba(22,32,64,.10);}
+
+/* ===== 页头 ===== */
+.pagehead{padding:22px 32px 0;}
+.page-title{font-size:36px;font-weight:700;color:#1A2B4A;line-height:1;}
+.page-sub{font-size:19px;color:#8A97AD;margin-top:8px;}
+.tabs{display:flex;gap:8px;padding:20px 36px 0;border-bottom:1px solid #E6EAF2;margin:0 32px;}
+.tab{padding:12px 14px 16px;font-size:27px;color:#7A879C;position:relative;font-weight:500;}
+.tab.on{color:#1A68D7;font-weight:700;}
+.tab.on::after{content:"";position:absolute;left:16px;right:16px;bottom:-1px;height:6px;border-radius:3px;background:linear-gradient(90deg,#1A68D7,#2B7BF0);box-shadow:0 3px 8px rgba(26,104,215,.35);}
+
+/* ===== 发起采购申请 ===== */
+.action-row{display:flex;align-items:center;justify-content:space-between;margin:20px 32px 0;}
+.action-tip{font-size:21px;color:#7A879C;}
+.btn-primary{background:linear-gradient(135deg,#2B7BF0,#1A68D7);color:#fff;font-size:23px;font-weight:600;padding:14px 28px;border-radius:13px;box-shadow:0 8px 18px rgba(26,104,215,.30);}
+
+/* ===== 筛选面板 ===== */
+.filter-panel{margin:16px 32px 0;background:#fff;border:1px solid #E3E9F2;border-radius:20px;padding:18px 22px 20px;box-shadow:0 8px 22px rgba(22,32,64,.05);}
+.f-row{display:flex;align-items:center;gap:12px;}
+.f-label{font-size:21px;color:#7A879C;white-space:nowrap;}
+.seg{display:flex;background:#F1F4F9;border-radius:9px;padding:4px;flex:1;}
+.seg span{flex:1;text-align:center;padding:9px 0;font-size:21px;color:#7A879C;border-radius:7px;position:relative;white-space:nowrap;}
+.seg span.on{background:#fff;color:#1A68D7;font-weight:700;box-shadow:0 2px 6px rgba(22,32,64,.08);}
+.seg span .bd{position:absolute;top:2px;right:2px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#DE4B4B;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.f-row2{display:flex;align-items:center;gap:12px;margin-top:14px;}
+.date-box{flex:1;height:50px;border:1px solid #E3E9F2;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#B4BECD;background:#FBFCFE;}
+.sn-box{flex:1.4;height:50px;border:1px solid #E3E9F2;border-radius:12px;display:flex;align-items:center;padding:0 18px;font-size:22px;color:#B4BECD;background:#FBFCFE;}
+.sn-box svg{margin-left:auto;flex:0 0 auto;}
+
+/* ===== 单据列表 ===== */
+.orders{margin:16px 32px 0;display:flex;flex-direction:column;gap:16px;}
+.order{background:#fff;border:1px solid #E3E9F2;border-radius:20px;padding:20px 24px 18px;box-shadow:0 8px 22px rgba(22,32,64,.05);}
+.o-top{display:flex;align-items:center;justify-content:space-between;}
+.o-no{font-family:Consolas,"SFMono-Regular",monospace;font-size:25px;font-weight:600;color:#1A68D7;letter-spacing:.4px;}
+.o-time{font-size:20px;color:#8A97AD;margin-top:10px;}
+.o-goods{font-size:24px;color:#1A2B4A;margin-top:8px;line-height:1.5;}
+.o-warn{display:flex;align-items:center;gap:10px;margin-top:12px;}
+.warn-chip{font-size:19px;color:#DE4B4B;background:#FDEBEC;padding:5px 12px;border-radius:9px;font-weight:600;}
+.unhandled{font-size:19px;color:#DE4B4B;font-weight:600;}
+.o-sn{margin-top:12px;font-size:19px;color:#9AA6BA;font-family:Consolas,"SFMono-Regular",monospace;line-height:1.6;}
+
+/* 状态标签 */
+.st{font-size:19px;padding:5px 14px;border-radius:10px;font-weight:600;white-space:nowrap;}
+.st-amber{color:#E08A1E;background:#FFF4E5;}
+.st-blue{color:#1A68D7;background:#EAF2FE;}
+.st-green{color:#1B9E5A;background:#E7F7F0;}
+
+/* ===== 底部导航 ===== */
+.tabbar{margin-top:auto;background:#fff;border-top:1px solid #EDF1F7;display:flex;padding:14px 0 20px;}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:20px;color:#8A97AD;font-weight:500;}
+.tb .ico{width:46px;height:44px;display:flex;align-items:center;justify-content:center;}
+.tb.on{color:#1A68D7;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 状态栏 -->
+  <div class="statusbar">
+    <span>9:41</span>
+    <div class="sb-right">
+      <svg width="26" height="14" viewBox="0 0 26 14" fill="none"><rect x="0.5" y="0.5" width="19" height="13" rx="4" stroke="#1A2B4A"/><rect x="2.5" y="2.5" width="13" height="9" rx="2" fill="#1A2B4A"/><rect x="21.5" y="4" width="2.5" height="6" rx="1" fill="#1A2B4A"/></svg>
+      <svg width="24" height="14" viewBox="0 0 24 14" fill="none"><rect x="1" y="7.5" width="3.4" height="5.5" rx="1.2" fill="#1A2B4A"/><rect x="6.2" y="5" width="3.4" height="8" rx="1.2" fill="#1A2B4A"/><rect x="11.4" y="2.5" width="3.4" height="10.5" rx="1.2" fill="#1A2B4A"/><rect x="16.6" y="0.5" width="3.4" height="12.5" rx="1.2" fill="#1A2B4A"/></svg>
+    </div>
+  </div>
+
+  <!-- 顶部品牌栏 -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">锐</div>
+      <div>
+        <div class="brand-name">锐涞小程序</div>
+        <div class="brand-sub">RUI LAI MINI</div>
+      </div>
+    </div>
+    <div class="role-sw">
+      <span class="on">一级</span><span>二级</span><span>子账号</span>
+    </div>
+  </div>
+
+  <!-- 页头 -->
+  <div class="pagehead">
+    <div class="page-title">业务</div>
+    <div class="page-sub">采购 / 销售 / C端客户订单</div>
+  </div>
+
+  <!-- 标签 -->
+  <div class="tabs">
+    <span class="tab on">采购</span>
+    <span class="tab">销售</span>
+    <span class="tab">C端订单</span>
+  </div>
+
+  <!-- 发起采购申请 -->
+  <div class="action-row">
+    <span class="action-tip">发起采购申请（标准/非标/配件）</span>
+    <div class="btn-primary">新建采购申请</div>
+  </div>
+
+  <!-- 筛选面板 -->
+  <div class="filter-panel">
+    <div class="f-row">
+      <div class="seg">
+        <span class="on">全部<span class="bd">4</span></span>
+        <span>待处理<span class="bd">2</span></span>
+        <span>会签中<span class="bd">1</span></span>
+        <span>已完成<span class="bd">1</span></span>
+      </div>
+    </div>
+    <div class="f-row" style="margin-top:14px;">
+      <div class="seg">
+        <span>今日</span><span>本周</span><span>本月</span><span>上月</span><span>全部</span>
+      </div>
+    </div>
+    <div class="f-row2">
+      <div class="date-box">年/月/日</div>
+      <div class="date-box">年/月/日</div>
+      <div class="sn-box">SN码
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B4BECD" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- 单据列表 -->
+  <div class="orders">
+    <div class="order">
+      <div class="o-top">
+        <span class="o-no">PO20260807021</span>
+        <span class="st st-amber">待处理</span>
+      </div>
+      <div class="o-time">2026-08-07 11:31</div>
+      <div class="o-goods">锐涞经典款套件/M×10</div>
+      <div class="o-warn"><span class="warn-chip">预警倍数异常</span><span class="unhandled">未处理</span></div>
+      <div class="o-sn">暂无号段</div>
+    </div>
+    <div class="order">
+      <div class="o-top">
+        <span class="o-no">PO20260807030</span>
+        <span class="st st-blue">会签中</span>
+      </div>
+      <div class="o-time">2026-08-06 11:00</div>
+      <div class="o-goods">锐涞经典款套件/SS×8</div>
+      <div class="o-warn"><span class="warn-chip">预警倍数异常</span><span class="unhandled">未处理</span></div>
+      <div class="o-sn">RL202608060001-RL202608060008</div>
+    </div>
+    <div class="order">
+      <div class="o-top">
+        <span class="o-no">PO20260807015</span>
+        <span class="st st-amber">待处理</span>
+      </div>
+      <div class="o-time">2026-08-03 14:20</div>
+      <div class="o-goods">锐涞经典款套件/L×5，锐涞经典款套件/M×3</div>
+      <div class="o-warn"><span class="warn-chip">预警倍数异常</span><span class="unhandled">未处理</span></div>
+      <div class="o-sn">暂无号段</div>
+    </div>
+    <div class="order">
+      <div class="o-top">
+        <span class="o-no">PO20260807003</span>
+        <span class="st st-green">已完成</span>
+      </div>
+      <div class="o-time">2026-08-01 10:00</div>
+      <div class="o-goods">锐涞经典款套件/M×30，锐涞经典款套件/L×20</div>
+      <div class="o-warn"><span class="warn-chip">预警倍数异常</span><span class="unhandled">未处理</span></div>
+      <div class="o-sn">RL202608010001-RL202608010030 RL202608010031-RL202608010050 RL202608010051-RL202608010060</div>
+    </div>
+  </div>
+
+  <!-- 底部导航 -->
+  <div class="tabbar">
+    <div class="tb">
+      <div class="ico">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></svg>
+      </div>
+      首页
+    </div>
+    <div class="tb on">
+      <div class="ico">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+      </div>
+      业务
+    </div>
+    <div class="tb">
+      <div class="ico">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg>
+      </div>
+      库存
+    </div>
+    <div class="tb">
+      <div class="ico">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      售后
+    </div>
+    <div class="tb">
+      <div class="ico">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>
+      </div>
+      我的
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

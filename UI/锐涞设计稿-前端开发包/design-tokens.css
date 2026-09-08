@@ -1,0 +1,84 @@
+/* =========================================================
+   锐涞经销商管理系统 · 设计令牌（Design Tokens）
+   主色 #1A68D7 ｜ 中性灰体系 ｜ 现代 B 端组件规范
+   用法：<link rel="stylesheet" href="design-tokens.css">
+   ========================================================= */
+
+:root{
+  /* ---------- 品牌主色 ---------- */
+  --color-primary:        #1A68D7;
+  --color-primary-hover:  #1559BC;
+  --color-primary-active: #124E9E;
+  --color-primary-soft:   #EAF2FD;
+  --color-primary-softer: #F4F8FE;
+  --color-primary-border: #C7DCF8;
+  --grad-primary:         linear-gradient(135deg,#2B7BF0 0%,#1A68D7 100%);
+
+  /* ---------- 语义色 ---------- */
+  --color-success:      #1B9E5A;
+  --color-success-bg:   #E6F6EE;
+  --color-success-border:#BEE8D0;
+  --color-warning:      #E08A1E;
+  --color-warning-bg:   #FDF3E2;
+  --color-warning-border:#F6DCB0;
+  --color-danger:       #DE4B4B;
+  --color-danger-bg:    #FCEBEB;
+  --color-danger-border:#F5C2C2;
+  --color-info:         #1A68D7;
+  --color-info-bg:      #EAF2FD;
+
+  /* ---------- 中性色 ---------- */
+  --color-bg:         #F3F5F9;
+  --color-card:       #FFFFFF;
+  --color-border:     #E5E9F1;
+  --color-border-strong:#D6DCE8;
+  --color-text-1:     #1B2430;
+  --color-text-2:     #5B6472;
+  --color-text-3:     #9AA4B2;
+  --color-text-4:     #C4CAD4;
+
+  /* ---------- 图表辅助色（数据可视化） ---------- */
+  --chart-cyan:   #0EA5C8;
+  --chart-orange: #F5A623;
+  --chart-green:  #34D399;
+  --chart-gray:   #9AA4B2;
+
+  /* ---------- 圆角 ---------- */
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
+
+  /* ---------- 阴影 ---------- */
+  --shadow-card: 0 1px 2px rgba(22,32,64,.04), 0 4px 16px rgba(22,32,64,.05);
+  --shadow-pop:  0 8px 32px rgba(22,32,64,.14);
+  --shadow-primary: 0 3px 8px rgba(26,104,215,.28);
+
+  /* ---------- 字体 ---------- */
+  --font-family: "PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+  --font-mono:   "SFMono-Regular",Consolas,monospace;
+
+  /* ---------- 字号体系 ---------- */
+  --font-xs:   11px;    /* 辅助说明、时间戳 */
+  --font-sm:   12px;    /* 次级标签、表头 */
+  --font-base: 13px;    /* 正文、单元格 */
+  --font-md:   15px;    /* 卡片标题 */
+  --font-lg:   20px;    /* 页面标题 */
+  --font-xl:   28px;    /* 大数字 */
+
+  /* ---------- 间距体系（8 栅格） ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+
+  /* ---------- 控件尺寸 ---------- */
+  --control-h: 32px;          /* 输入框/按钮高度 */
+  --control-h-sm: 28px;       /* 小按钮高度 */
+  --table-th-h: 40px;
+  --table-td-h: 48px;
+  --sidebar-w: 224px;
+  --topbar-h: 56px;
+}

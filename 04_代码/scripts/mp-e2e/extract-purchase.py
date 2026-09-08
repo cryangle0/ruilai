@@ -1,0 +1,10 @@
+import pathlib, re
+p = pathlib.Path(r"e:\angsa\angsa_data\项目\锐涞经销商管理系统\04_代码\miniprogram\dist\build\mp-weixin\pkg\purchase\index.js")
+s = p.read_text(encoding="utf-8")
+print("len", len(s))
+idx = s.find('ref("5")')
+print("qty idx", idx)
+print(s[idx - 80 : idx + 400])
+print("--- createPurchase ---")
+i = s.find("createPurchase")
+print(s[i - 200 : i + 500])

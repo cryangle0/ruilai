@@ -1,0 +1,188 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>工作台 · 锐涞经销商管理系统</title>
+<link rel="stylesheet" href="../../style.css">
+<style>
+/* 工作台专用：下半区布局 */
+.todo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+.todo-tile{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:16px 18px 14px;box-shadow:var(--shadow-card);position:relative;overflow:hidden;
+  transition:border-color .15s,transform .15s;cursor:pointer;
+}
+.todo-tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;}
+.todo-tile:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(22,32,64,.09);}
+.todo-tile.t-blue::before{background:var(--primary);}
+.todo-tile.t-orange::before{background:var(--warning);}
+.todo-tile.t-red::before{background:var(--danger);}
+.tile-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.tile-cat{font-size:11px;color:var(--text-3);background:var(--bg);padding:3px 9px;border-radius:10px;}
+.tile-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.tile-ico.blue{background:var(--primary-soft);color:var(--primary);}
+.tile-ico.orange{background:var(--warning-bg);color:var(--warning);}
+.tile-ico.red{background:var(--danger-bg);color:var(--danger);}
+.tile-name{font-size:13px;font-weight:500;color:var(--text-1);margin-top:10px;}
+.tile-foot{display:flex;align-items:baseline;justify-content:space-between;margin-top:10px;}
+.tile-count{font-size:24px;font-weight:700;color:var(--text-1);line-height:1;}
+.tile-go{font-size:11.5px;color:var(--text-3);display:flex;align-items:center;gap:2px;}
+.tile-go:hover{color:var(--primary);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ======= 侧边导航 ======= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">锐</div>
+      <div>
+        <div class="brand-name">锐涞经销商管理系统</div>
+        <div class="brand-sub">RUI LAI DEALER SYSTEM</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-title">概览</div>
+        <div class="nav-item active"><span class="nav-label">工作台</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">渠道</div>
+        <div class="nav-item"><span class="nav-label">一级代理商</span></div>
+        <div class="nav-item"><span class="nav-label">二级代理商</span></div>
+        <div class="nav-item"><span class="nav-label">二级审核</span><span class="nav-badge">1</span></div>
+        <div class="nav-item"><span class="nav-label">待分配(法人)</span><span class="nav-badge">1</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">货品</div>
+        <div class="nav-item"><span class="nav-label">SN码库</span></div>
+        <div class="nav-item"><span class="nav-label">商品库</span></div>
+        <div class="nav-item"><span class="nav-label">采购单管理</span><span class="nav-badge">3</span></div>
+        <div class="nav-item"><span class="nav-label">销售单管理</span></div>
+        <div class="nav-item"><span class="nav-label">库存管理</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">售后与风控</div>
+        <div class="nav-item"><span class="nav-label">退货管理</span><span class="nav-badge">7</span></div>
+        <div class="nav-item"><span class="nav-label">异常管理</span><span class="nav-badge">7</span></div>
+        <div class="nav-item"><span class="nav-label">销售客户</span></div>
+        <div class="nav-item"><span class="nav-label">数据统计</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">系统</div>
+        <div class="nav-item"><span class="nav-label">角色与权限</span></div>
+        <div class="nav-item"><span class="nav-label">操作日志</span></div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ======= 主区 ======= -->
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">首页 <span class="sep">/</span> <span class="cur">工作台</span></div>
+      <div class="top-right">
+        <div class="link-btn">管理后台</div>
+        <div class="bell">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="bell-dot">9</span>
+        </div>
+        <div class="user">
+          <div class="avatar">a</div>
+          <span class="user-name">admin</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- 页头 -->
+      <div class="page-head">
+        <div>
+          <div class="page-title">工作台</div>
+          <div class="page-sub">平台运营总览与待办</div>
+        </div>
+      </div>
+
+      <!-- 核心数据统计区 -->
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-cornor"></span>
+          <div class="stat-top"><div class="stat-ico s1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><span class="stat-badge">渠道</span></div>
+          <div class="stat-label">一级代理</div>
+          <div class="stat-value">3<span class="unit">家</span></div>
+        </div>
+        <div class="stat">
+          <span class="stat-cornor"></span>
+          <div class="stat-top"><div class="stat-ico s2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><span class="stat-badge">渠道</span></div>
+          <div class="stat-label">二级代理</div>
+          <div class="stat-value">3<span class="unit">家</span></div>
+        </div>
+        <div class="stat">
+          <span class="stat-cornor"></span>
+          <div class="stat-top"><div class="stat-ico s3"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 3 5-6"/></svg></div><span class="stat-badge">销量</span></div>
+          <div class="stat-label">筛选区间销量</div>
+          <div class="stat-value">10<span class="unit">台</span></div>
+        </div>
+        <div class="stat">
+          <span class="stat-cornor"></span>
+          <div class="stat-top"><div class="stat-ico s4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M7 14h6"/></svg></div><span class="stat-badge">货品</span></div>
+          <div class="stat-label">已销售SN</div>
+          <div class="stat-value">16<span class="unit">条</span></div>
+        </div>
+        <div class="stat c-warn">
+          <span class="stat-cornor"></span>
+          <div class="stat-top"><div class="stat-ico s5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div><span class="stat-badge">待处理</span></div>
+          <div class="stat-label">待处理采购</div>
+          <div class="stat-value">3<span class="unit">单</span></div>
+        </div>
+        <div class="stat c-danger">
+          <span class="stat-cornor"></span>
+          <div class="stat-top"><div class="stat-ico s6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></div><span class="stat-badge">待处理</span></div>
+          <div class="stat-label">待处理异常</div>
+          <div class="stat-value">7<span class="unit">条</span></div>
+        </div>
+      </div>
+
+      <!-- 待办事项区 -->
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-title">待办事项</div>
+          <span class="card-tip">按业务模块汇总待办数量</span>
+        </div>
+        <div class="card-bd" style="padding-top:14px;">
+          <div class="todo-grid">
+            <div class="todo-tile t-blue">
+              <div class="tile-top"><span class="tile-cat">渠道</span><span class="tile-ico blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></span></div>
+              <div class="tile-name">待分配二级(法人)</div>
+              <div class="tile-foot"><span class="tile-count">1</span><span class="tile-go">›</span></div>
+            </div>
+            <div class="todo-tile t-blue">
+              <div class="tile-top"><span class="tile-cat">渠道</span><span class="tile-ico blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span></div>
+              <div class="tile-name">二级审核待处理</div>
+              <div class="tile-foot"><span class="tile-count">1</span><span class="tile-go">›</span></div>
+            </div>
+            <div class="todo-tile t-orange">
+              <div class="tile-top"><span class="tile-cat">货品</span><span class="tile-ico orange"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span></div>
+              <div class="tile-name">采购待处理/会签</div>
+              <div class="tile-foot"><span class="tile-count">3</span><span class="tile-go">›</span></div>
+            </div>
+            <div class="todo-tile t-red">
+              <div class="tile-top"><span class="tile-cat">风控</span><span class="tile-ico red"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></span></div>
+              <div class="tile-name">待处理异常</div>
+              <div class="tile-foot"><span class="tile-count">7</span><span class="tile-go">›</span></div>
+            </div>
+            <div class="todo-tile t-red">
+              <div class="tile-top"><span class="tile-cat">售后</span><span class="tile-ico red"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></span></div>
+              <div class="tile-name">退货待审批</div>
+              <div class="tile-foot"><span class="tile-count">7</span><span class="tile-go">›</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+

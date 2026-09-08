@@ -1,0 +1,46 @@
+{
+  "pages": [
+    { "path": "pages/login/index", "style": { "navigationStyle": "custom", "disableScroll": true, "enableShareAppMessage": true } },
+    { "path": "pages/home/index", "style": { "navigationStyle": "custom", "enableShareAppMessage": true } },
+    { "path": "pages/biz/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/stock/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/service/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/mine/index", "style": { "navigationStyle": "custom", "enableShareAppMessage": true } }
+  ],
+  "subPackages": [
+    {
+      "root": "pkg",
+      "pages": [
+        { "path": "scan/index", "style": { "navigationStyle": "custom" } },
+        { "path": "bind/index", "style": { "navigationStyle": "custom" } },
+        { "path": "purchase/index", "style": { "navigationStyle": "custom" } },
+        { "path": "detail/index", "style": { "navigationStyle": "custom" } },
+        { "path": "return-form/index", "style": { "navigationStyle": "custom" } },
+        { "path": "mine-l2/index", "style": { "navigationStyle": "custom" } },
+        { "path": "mine-sub/index", "style": { "navigationStyle": "custom" } },
+        { "path": "mine-customers/index", "style": { "navigationStyle": "custom" } },
+        { "path": "mine-profile/index", "style": { "navigationStyle": "custom" } },
+        { "path": "policy/index", "style": { "navigationStyle": "custom" } }
+      ]
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "锐涞经销商",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F3F5F9"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#8e8e93",
+    "selectedColor": "#1A68D7",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/biz/index", "text": "业务" },
+      { "pagePath": "pages/stock/index", "text": "库存" },
+      { "pagePath": "pages/service/index", "text": "售后" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  }
+}

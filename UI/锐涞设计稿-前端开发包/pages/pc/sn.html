@@ -1,0 +1,254 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>SN码库 · 锐涞经销商管理系统</title>
+<link rel="stylesheet" href="../../style.css">
+<style>
+.sn-tags{display:flex;gap:6px;align-items:center;}
+.td-sn{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;color:var(--text-1);}
+.filter-panel .f-zone{gap:14px 18px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ======= 侧边导航 ======= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">锐</div>
+      <div>
+        <div class="brand-name">锐涞经销商管理系统</div>
+        <div class="brand-sub">RUI LAI DEALER SYSTEM</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-title">概览</div>
+        <div class="nav-item"><span class="nav-label">工作台</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">渠道</div>
+        <div class="nav-item"><span class="nav-label">一级代理商</span></div>
+        <div class="nav-item"><span class="nav-label">二级代理商</span></div>
+        <div class="nav-item"><span class="nav-label">二级审核</span><span class="nav-badge">1</span></div>
+        <div class="nav-item"><span class="nav-label">待分配(法人)</span><span class="nav-badge">1</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">货品</div>
+        <div class="nav-item active"><span class="nav-label">SN码库</span></div>
+        <div class="nav-item"><span class="nav-label">商品库</span></div>
+        <div class="nav-item"><span class="nav-label">采购单管理</span><span class="nav-badge">3</span></div>
+        <div class="nav-item"><span class="nav-label">销售单管理</span></div>
+        <div class="nav-item"><span class="nav-label">库存管理</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">售后与风控</div>
+        <div class="nav-item"><span class="nav-label">退货管理</span><span class="nav-badge">6</span></div>
+        <div class="nav-item"><span class="nav-label">异常管理</span><span class="nav-badge">6</span></div>
+        <div class="nav-item"><span class="nav-label">销售客户</span></div>
+        <div class="nav-item"><span class="nav-label">数据统计</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">系统</div>
+        <div class="nav-item"><span class="nav-label">角色与权限</span></div>
+        <div class="nav-item"><span class="nav-label">操作日志</span></div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ======= 主区 ======= -->
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">首页 <span class="sep">/</span> <span class="cur">SN码库</span></div>
+      <div class="top-right">
+        <div class="link-btn">管理后台</div>
+        <div class="bell">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="bell-dot">6</span>
+        </div>
+        <div class="user"><div class="avatar">a</div><span class="user-name">admin</span></div>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- 页头 -->
+      <div class="page-head">
+        <div>
+          <div class="page-title">SN码库</div>
+          <div class="page-sub">未处理激活异常的SN置顶·点击行查看生命周期/编辑</div>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            系统生成SN
+          </button>
+          <button class="btn btn-ghost">Excel导入段号</button>
+        </div>
+      </div>
+
+      <!-- 状态切换（标准：主层级下划线 + 次级胶囊） -->
+      <div class="tab-stack">
+        <div class="tabs-lg">
+          <span class="tab-lg active">全部状态</span>
+          <span class="tab-lg">已销售</span>
+          <span class="tab-lg">一级在库</span>
+          <span class="tab-lg">二级在库</span>
+          <span class="tab-lg">原厂在库</span>
+        </div>
+        <div class="tabs-sm">
+          <span class="tab-sm active">全部标签</span>
+          <span class="tab-sm">异常未处理</span>
+          <span class="tab-sm">已冻结</span>
+        </div>
+      </div>
+
+      <!-- 筛选栏（标准：左侧主色竖条白卡） -->
+      <div class="filter-panel">
+        <div class="f-zone">
+          <div class="f-item"><span class="fg-label">SN</span><input class="input" placeholder="输入SN"></div>
+          <div class="f-item"><span class="fg-label">商品名称</span><input class="input" placeholder="输入商品名称"></div>
+          <div class="f-item"><span class="fg-label">一级</span><select class="select"><option>全部一级</option></select></div>
+          <div class="f-item"><span class="fg-label">二级</span><select class="select"><option>全部二级</option></select></div>
+          <div class="f-item"><span class="fg-label">弹力带尺码</span><select class="select"><option>全部尺码</option></select></div>
+          <div class="f-item"><span class="fg-label">腰带尺码</span><select class="select"><option>全部尺码</option></select></div>
+          <div class="f-item"><span class="fg-label">渠道</span><select class="select"><option>全部渠道</option></select></div>
+          <div class="f-item"><span class="fg-label">标签筛选</span><select class="select"><option>全部标签</option></select></div>
+          <div class="f-item"><span class="fg-label">出厂</span><div class="date-input">2026/01/01<span class="di">—</span>2026/08/31</div></div>
+          <div class="f-item"><span class="fg-label">销售</span><div class="date-input">2026/01/01<span class="di">—</span>2026/08/31</div></div>
+          <div class="f-item"><span class="fg-label">退货</span><div class="date-input">2026/01/01<span class="di">—</span>2026/08/31</div></div>
+          <div class="f-item f-act"><button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            查询</button></div>
+        </div>
+      </div>
+
+      <!-- 汇总统计（标准：KPI卡） -->
+      <div class="kpi-row">
+        <div class="kpi c-blue">
+          <div class="kpi-ico b">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </div>
+          <div class="kpi-info"><div class="kpi-l">当前筛选SN数</div><div class="kpi-v">10</div></div>
+        </div>
+        <div class="kpi c-orange">
+          <div class="kpi-ico o">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          </div>
+          <div class="kpi-info"><div class="kpi-l">异常未处理</div><div class="kpi-v">5</div></div>
+        </div>
+        <div class="kpi c-red">
+          <div class="kpi-ico r">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.7-8 11-4.5-2.3-8-6-8-11V5l8-3z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          </div>
+          <div class="kpi-info"><div class="kpi-l">已冻结</div><div class="kpi-v red">2</div></div>
+        </div>
+      </div>
+
+      <!-- 数据表格 -->
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>SN</th>
+                <th>商品</th>
+                <th>尺寸</th>
+                <th>腰带</th>
+                <th>渠道</th>
+                <th>一级</th>
+                <th>二级</th>
+                <th>状态</th>
+                <th>标签</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="td-sn">RL202607200003</span></td>
+                <td>锐涞经典款套件</td><td>M</td><td>腰带M</td><td>分销</td>
+                <td>华东锐涞总代</td><td>杭州城西专营</td>
+                <td><div class="sn-tags"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td class="td-weak">—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202607200004</span></td>
+                <td>锐涞经典款套件</td><td>M</td><td>腰带M</td><td>分销</td>
+                <td>华东锐涞总代</td><td>杭州城西专营</td>
+                <td><div class="sn-tags"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td class="td-weak">—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202607210001</span></td>
+                <td>锐涞经典款套件</td><td>L</td><td>腰带L</td><td>分销</td>
+                <td>华东锐涞总代</td><td>宁波海曙店</td>
+                <td><div class="sn-tags"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td class="td-weak">—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202608030001</span></td>
+                <td>锐涞经典款套件</td><td>L</td><td>腰带L</td><td>直售</td>
+                <td>华东锐涞总代</td><td class="td-weak">—</td>
+                <td><div class="sn-tags"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td class="td-weak">—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202608070001</span></td>
+                <td>锐涞经典款套件</td><td>S</td><td>腰带S</td><td>直售</td>
+                <td>华东锐涞总代</td><td class="td-weak">—</td>
+                <td><div class="sn-tags"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td class="td-weak">—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202606150001</span></td>
+                <td>锐涞经典款套件</td><td>M</td><td>腰带M</td><td class="td-weak">—</td>
+                <td class="td-weak">—</td><td class="td-weak">—</td>
+                <td><div class="sn-tags"><span class="tag tag-info">原厂在库</span><span class="tag tag-muted">已冻结</span></div></td>
+                <td>已冻结</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202606150002</span></td>
+                <td>锐涞经典款套件</td><td>S</td><td>腰带S</td><td class="td-weak">—</td>
+                <td class="td-weak">—</td><td class="td-weak">—</td>
+                <td><div class="sn-tags"><span class="tag tag-info">原厂在库</span><span class="tag tag-muted">已冻结</span></div></td>
+                <td>已冻结</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202607200008</span></td>
+                <td>锐涞经典款套件</td><td>M</td><td>腰带M</td><td>分销</td>
+                <td>华东锐涞总代</td><td>杭州城西专营</td>
+                <td><span class="tag tag-info">二级在库</span></td>
+                <td class="td-weak">—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202607200009</span></td>
+                <td>锐涞经典款套件</td><td>M</td><td>腰带M</td><td>分销</td>
+                <td>华东锐涞总代</td><td>杭州城西专营</td>
+                <td><span class="tag tag-info">二级在库</span></td>
+                <td class="td-weak">—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202608010001</span></td>
+                <td>锐涞经典款套件</td><td>M</td><td>腰带M</td><td>分销</td>
+                <td>华东锐涞总代</td><td class="td-weak">—</td>
+                <td><span class="tag tag-info">一级在库</span></td>
+                <td class="td-weak">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span style="color:var(--text-4);">未处理激活异常的SN置顶</span>
+          <div class="page-ctrl">
+            <span class="page-btn" style="font-size:14px;">‹</span>
+            <span class="page-btn cur">1</span>
+            <span class="page-btn">2</span>
+            <span class="page-btn">3</span>
+            <span class="page-btn" style="font-size:14px;">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

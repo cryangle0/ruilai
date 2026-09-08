@@ -1,0 +1,103 @@
+// 锐涞小程序设计令牌。数值按 750 宽设计稿直接换算为 rpx。
+// 原有变量保留为兼容别名，页面与组件应优先复用本文件而非散落色值。
+
+// 品牌色
+$rl-primary: #1A68D7;
+$rl-primary-hover: #1559BC;
+$rl-primary-active: #124E9E;
+$rl-primary-soft: #EAF2FD;
+$rl-primary-softer: #F4F8FE;
+$rl-primary-border: #C7DCF8;
+$rl-gradient-primary: linear-gradient(135deg, #2B7BF0 0%, #1A68D7 100%);
+$rl-gradient-primary-horizontal: linear-gradient(90deg, #1A68D7 0%, #2B7BF0 100%);
+$rl-gradient-primary-vertical: linear-gradient(180deg, #2B7BF0 0%, #1A68D7 100%);
+
+// 语义色
+$rl-success: #1B9E5A;
+$rl-success-bg: #E6F6EE;
+$rl-success-border: #BEE8D0;
+$rl-warning: #E08A1E;
+$rl-warning-bg: #FDF3E2;
+$rl-warning-border: #F6DCB0;
+$rl-danger: #DE4B4B;
+$rl-danger-bg: #FCEBEB;
+$rl-danger-border: #F5C2C2;
+$rl-info: $rl-primary;
+$rl-info-bg: $rl-primary-soft;
+
+// 中性色
+$rl-bg: #F3F5F9;
+$rl-card: #FFFFFF;
+$rl-navy: #1A2B4A;
+$rl-text-secondary: #7A879C;
+$rl-text-tertiary: #8A97AD;
+$rl-text-placeholder: #9AA6BA;
+$rl-text-disabled: #B4BECD;
+$rl-border-design: #E3E9F2;
+$rl-border: $rl-border-design;
+$rl-border-strong: #D7E3F7;
+$rl-border-soft: #EDF1F7;
+$rl-fill-segment: #F1F4F9;
+$rl-fill-muted: #F4F6FA;
+$rl-fill-primary: #F5F9FF;
+$rl-fill-note: #F7F9FC;
+$rl-fill-upload: #F7FAFE;
+$rl-fill-soft: #FBFCFE;
+$rl-text: $rl-navy;
+$rl-text-2: $rl-text-secondary;
+$rl-text-3: $rl-text-tertiary;
+$rl-text-4: $rl-text-placeholder;
+
+// 图表辅助色
+$rl-chart-cyan: #0EA5C8;
+$rl-chart-orange: #F5A623;
+$rl-chart-green: #34D399;
+$rl-chart-gray: $rl-text-3;
+
+// 字号
+$rl-font-xs: 22rpx;
+$rl-font-sm: 24rpx;
+$rl-font-base: 26rpx;
+$rl-font-md: 30rpx;
+$rl-font-lg: 40rpx;
+$rl-font-xl: 56rpx;
+
+// 8 栅格间距
+$rl-space-1: 8rpx;
+$rl-space-2: 16rpx;
+$rl-space-3: 24rpx;
+$rl-space-4: 32rpx;
+$rl-space-5: 40rpx;
+$rl-space-6: 48rpx;
+$rl-space-7: 64rpx;
+
+// 圆角
+$rl-radius-sm: 12rpx;
+$rl-radius-md: 16rpx;
+$rl-radius-lg: 24rpx;
+$rl-radius-card: 20rpx;
+$rl-radius-round: 999rpx;
+
+// 控件与页面壳尺寸
+$rl-control-h-sm: 56rpx;
+$rl-control-h: 64rpx;
+$rl-control-h-lg: 84rpx;
+$rl-filter-control-h: 50rpx;
+$rl-nav-content-h: 96rpx;
+$rl-brand-content-h: 70rpx;
+$rl-page-gutter: 32rpx;
+$rl-tabbar-content-h: 96rpx;
+
+// 阴影
+$rl-shadow-control: 0 2rpx 6rpx rgba(22, 32, 64, .08);
+$rl-shadow-card: 0 8rpx 22rpx rgba(22, 32, 64, .05);
+$rl-shadow-pop: 0 16rpx 64rpx rgba(22, 32, 64, .14);
+$rl-shadow-primary: 0 6rpx 16rpx rgba(26, 104, 215, .28);
+$rl-shadow-brand: 0 8rpx 18rpx rgba(26, 104, 215, .32);
+
+// 兼容现有命名
+$rl-primary-deep: $rl-primary-hover;
+$rl-mint: $rl-primary-border;
+$rl-ink: $rl-text;
+$rl-glass: $rl-card;
+$rl-stroke: $rl-border;

@@ -1,0 +1,160 @@
+{
+  "at": "2026-09-03T09:17:27.623Z",
+  "results": [
+    {
+      "id": "BOOT",
+      "status": "PASS",
+      "note": "pages/mine/index"
+    },
+    {
+      "id": "MP-C01-hd-login",
+      "status": "PASS",
+      "note": "pages/home/index"
+    },
+    {
+      "id": "MP-C01-hd",
+      "status": "PASS",
+      "note": "pages/home/index"
+    },
+    {
+      "id": "MP-L1-01",
+      "status": "PASS",
+      "note": "首页 pages/home/index"
+    },
+    {
+      "id": "MP-L1-biz",
+      "status": "PASS",
+      "note": "pages/biz/index"
+    },
+    {
+      "id": "MP-L1-02",
+      "status": "PASS",
+      "note": "采购表单打开未提交 pkg/purchase/index"
+    },
+    {
+      "id": "MP-L1-03",
+      "status": "PASS",
+      "note": "销售单表单打开未提交 path=pkg/purchase/index query={\"kind\":\"sales\"}"
+    },
+    {
+      "id": "MP-L1-04",
+      "status": "PASS",
+      "note": "出货扫码页（未真扫） pkg/scan/index"
+    },
+    {
+      "id": "MP-L1-05",
+      "status": "WARN",
+      "note": "查询扫码在首页扫码面板"
+    },
+    {
+      "id": "MP-L1-06",
+      "status": "PASS",
+      "note": "pages/stock/index"
+    },
+    {
+      "id": "MP-L1-10",
+      "status": "PASS",
+      "note": "pages/service/index"
+    },
+    {
+      "id": "MP-L1-mine",
+      "status": "PASS",
+      "note": "pages/mine/index"
+    },
+    {
+      "id": "MP-L1-07",
+      "status": "PASS",
+      "note": "二级管理打开未提交 pkg/mine-l2/index"
+    },
+    {
+      "id": "MP-L1-11",
+      "status": "PASS",
+      "note": "协议入口在创建抽屉"
+    },
+    {
+      "id": "MP-L1-08",
+      "status": "PASS",
+      "note": "子账号页打开未创建 pkg/mine-sub/index"
+    },
+    {
+      "id": "MP-L1-09",
+      "status": "PASS",
+      "note": "绑定页打开未写库 pkg/bind/index"
+    },
+    {
+      "id": "MP-C02",
+      "status": "PASS",
+      "note": "自定义 NavBar 分包页 pkg/mine-profile/index"
+    },
+    {
+      "id": "MP-C03",
+      "status": "PASS",
+      "note": "退出→pages/login/index"
+    },
+    {
+      "id": "MP-C01-hz",
+      "status": "PASS",
+      "note": "pages/home/index"
+    },
+    {
+      "id": "MP-L2-01",
+      "status": "PASS",
+      "note": "pages/stock/index"
+    },
+    {
+      "id": "MP-L2-02",
+      "status": "PASS",
+      "note": "直销绑定打开未提交 pkg/bind/index"
+    },
+    {
+      "id": "MP-L2-03",
+      "status": "PASS",
+      "note": "销售 Tab（无分销建单，见截图） pages/biz/index"
+    },
+    {
+      "id": "MP-L2-04",
+      "status": "PASS",
+      "note": "售后页打开，退原厂入口以截图为准"
+    },
+    {
+      "id": "MP-L2-05",
+      "status": "PASS",
+      "note": "pages/service/index"
+    },
+    {
+      "id": "MP-L2-06",
+      "status": "WARN",
+      "note": "静音报警若未在我的页展示则记 WARN"
+    },
+    {
+      "id": "MP-C01-sub",
+      "status": "PASS",
+      "note": "pages/home/index"
+    },
+    {
+      "id": "MP-SUB-01",
+      "status": "PASS",
+      "note": "SUB 首页/扫码 pages/home/index"
+    },
+    {
+      "id": "MP-SUB-02",
+      "status": "PASS",
+      "note": "扫码页；确认按钮 SUB 不可见 pkg/scan/index"
+    },
+    {
+      "id": "MP-SUB-03",
+      "status": "PASS",
+      "note": "SUB Tab 无业务入口（仅扫码/我的）"
+    },
+    {
+      "id": "MP-SUB-04",
+      "status": "PASS",
+      "note": "SUB navigateTo bind 被 ensureRole(L1/L2) 弹回扫码页（拒绝进入）；API 403 已验。截图仍为销售扫码"
+    },
+    {
+      "id": "MP-SUB-05",
+      "status": "PASS",
+      "note": "无采购/退货 Tab pages/mine/index"
+    }
+  ]
+}

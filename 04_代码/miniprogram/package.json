@@ -1,0 +1,33 @@
+{
+  "name": "ruilai-miniprogram",
+  "version": "1.0.0",
+  "private": true,
+  "description": "锐涞经销商 · 微信小程序（uni-app Vue3）",
+  "scripts": {
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "upload:mp": "node scripts/upload-ci.mjs",
+    "test:purchase": "node --no-warnings --experimental-strip-types --test tests/purchase-model.test.ts",
+    "test:mini-pages": "node --no-warnings --experimental-strip-types --test tests/mini-pages.test.ts",
+    "dev:h5": "uni -p h5",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4020920240930001",
+    "@dcloudio/uni-components": "3.0.0-4020920240930001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4020920240930001",
+    "@dcloudio/uni-h5": "3.0.0-4020920240930001",
+    "pinia": "^2.2.6",
+    "vue": "^3.5.12"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "3.4.15",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4020920240930001",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "sass": "^1.93.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.0.0",
+    "vue-tsc": "^2.1.10",
+    "miniprogram-ci": "^2.0.0"
+  }
+}

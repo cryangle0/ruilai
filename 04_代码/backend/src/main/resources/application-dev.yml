@@ -1,0 +1,23 @@
+# 本机开发：经 SSH 隧道连 label 上的 MySQL/Redis，不要起本机库。
+# 隧道：powershell 执行 04_代码/scripts/dev-tunnel.ps1
+# 密码：backend/application-local.yml（已 gitignore）或环境变量 RUILAI_DB_PWD
+spring:
+  config:
+    import: optional:file:./application-local.yml
+  datasource:
+    url: jdbc:mysql://${RUILAI_DB_HOST:127.0.0.1}:${RUILAI_DB_PORT:3307}/ruilai?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${RUILAI_DB_USER:miniapps}
+    password: ${RUILAI_DB_PWD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 8
+      connection-init-sql: "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+  data:
+    redis:
+      host: ${RUILAI_REDIS_HOST:127.0.0.1}
+      port: ${RUILAI_REDIS_PORT:6380}
+      database: 8
+
+logging:
+  level:
+    com.ruilai: DEBUG

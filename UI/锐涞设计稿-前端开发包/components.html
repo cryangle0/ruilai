@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>组件库 · 锐涞经销商管理系统</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* 组件库展示页专用样式 */
+body{overflow:auto;}
+.kit{display:flex;min-height:100vh;}
+.kit-side{width:224px;flex:0 0 224px;background:#fff;border-right:1px solid var(--border);padding:20px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.kit-side .kit-brand{font-size:15px;font-weight:600;color:var(--text-1);padding:0 10px 16px;border-bottom:1px solid var(--border);margin-bottom:14px;display:flex;align-items:center;gap:9px;}
+.kit-side .kit-brand i{width:28px;height:28px;border-radius:8px;background:var(--primary-grad);color:#fff;font-style:normal;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.kit-nav a{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-md);color:var(--text-2);font-size:13px;text-decoration:none;margin-bottom:2px;}
+.kit-nav a:hover{background:#F5F7FB;color:var(--text-1);}
+.kit-nav a.on{background:var(--primary-soft);color:var(--primary);font-weight:600;}
+.kit-main{flex:1;padding:24px 28px 60px;min-width:0;}
+.kit-h{font-size:20px;font-weight:600;color:var(--text-1);margin-bottom:4px;}
+.kit-sub{font-size:12.5px;color:var(--text-3);margin-bottom:22px;}
+.sec{margin-bottom:34px;}
+.sec-title{font-size:15px;font-weight:600;color:var(--text-1);display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.sec-title::before{content:"";width:3px;height:14px;background:var(--primary);border-radius:2px;}
+.sec-title .en{font-size:11px;color:var(--text-4);font-weight:400;font-family:Consolas,monospace;}
+.demo{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;}
+.demo .dname{font-size:11.5px;color:var(--text-3);margin-bottom:12px;font-family:Consolas,monospace;}
+.demo-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+.demo-row:last-child{margin-bottom:0;}
+.demo-col{display:flex;flex-direction:column;gap:8px;}
+.gap{width:100%;}
+/* 色板 */
+.swatch{display:flex;align-items:center;gap:10px;}
+.sw{width:56px;height:40px;border-radius:8px;border:1px solid rgba(0,0,0,.06);}
+.sw-info{font-size:11px;color:var(--text-3);}
+.sw-info b{display:block;font-size:12px;color:var(--text-1);font-weight:600;}
+/* 图标栅格 */
+.ico-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+.ico-cell{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px;background:#FBFCFE;border:1px solid var(--border);border-radius:10px;}
+.ico-cell img{width:22px;height:22px;}
+.ico-cell span{font-size:10.5px;color:var(--text-3);font-family:Consolas,monospace;word-break:break-all;text-align:center;line-height:1.4;}
+/* 标注 */
+.anno{font-size:11px;color:var(--text-4);margin-top:6px;font-family:Consolas,monospace;}
+</style>
+</head>
+<body>
+<div class="kit">
+
+  <!-- 侧边分类导航 -->
+  <aside class="kit-side">
+    <div class="kit-brand"><i>锐</i>组件库 · Design Kit</div>
+    <nav class="kit-nav">
+      <a href="#c1">01 色彩体系</a>
+      <a href="#c2">02 字体与间距</a>
+      <a href="#c3">03 图标集</a>
+      <a href="#c4">04 按钮</a>
+      <a href="#c5">05 状态标签</a>
+      <a href="#c6">06 表单控件</a>
+      <a href="#c7">07 标签页 Tab</a>
+      <a href="#c8">08 筛选面板</a>
+      <a href="#c9">09 统计卡片</a>
+      <a href="#c10">10 表格</a>
+      <a href="#c11">11 分页</a>
+      <a href="#c12">12 详情信息</a>
+      <a href="#c13">13 时间线</a>
+      <a href="#c14">14 弹窗</a>
+      <a href="#c15">15 导航结构</a>
+    </nav>
+  </aside>
+
+  <!-- 主区 -->
+  <div class="kit-main">
+    <div class="kit-h">锐涞经销商管理系统 · 前端组件库</div>
+    <div class="kit-sub">基于高保真设计稿提炼的可复用分层组件，样式类全部来自 style.css / design-tokens.css，可直接用于开发。</div>
+
+    <!-- 01 色彩体系 -->
+    <div class="sec" id="c1">
+      <div class="sec-title">色彩体系 <span class="en">--color-*</span></div>
+      <div class="demo">
+        <div class="dname">品牌主色（primary）</div>
+        <div class="swatch"><div class="sw" style="background:#1A68D7"></div><div class="sw-info"><b>主色 #1A68D7</b>var(--color-primary)</div></div>
+      </div>
+      <div class="demo">
+        <div class="dname">语义色（semantic）</div>
+        <div class="demo-row">
+          <div class="swatch"><div class="sw" style="background:#1B9E5A"></div><div class="sw-info"><b>成功 #1B9E5A</b>--color-success</div></div>
+          <div class="swatch"><div class="sw" style="background:#E08A1E"></div><div class="sw-info"><b>警告 #E08A1E</b>--color-warning</div></div>
+          <div class="swatch"><div class="sw" style="background:#DE4B4B"></div><div class="sw-info"><b>危险 #DE4B4B</b>--color-danger</div></div>
+          <div class="swatch"><div class="sw" style="background:#EAF2FD"></div><div class="sw-info"><b>信息底 #EAF2FD</b>--color-info-bg</div></div>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="dname">中性色阶（neutral）</div>
+        <div class="demo-row">
+          <div class="swatch"><div class="sw" style="background:#F3F5F9"></div><div class="sw-info"><b>页面底 #F3F5F9</b></div></div>
+          <div class="swatch"><div class="sw" style="background:#FFFFFF"></div><div class="sw-info"><b>卡片 #FFFFFF</b></div></div>
+          <div class="swatch"><div class="sw" style="background:#E5E9F1"></div><div class="sw-info"><b>边框 #E5E9F1</b></div></div>
+          <div class="swatch"><div class="sw" style="background:#D6DCE8"></div><div class="sw-info"><b>强边框 #D6DCE8</b></div></div>
+          <div class="swatch"><div class="sw" style="background:#1B2430"></div><div class="sw-info"><b>主文字 #1B2430</b></div></div>
+          <div class="swatch"><div class="sw" style="background:#5B6472"></div><div class="sw-info"><b>次文字 #5B6472</b></div></div>
+          <div class="swatch"><div class="sw" style="background:#9AA4B2"></div><div class="sw-info"><b>辅助 #9AA4B2</b></div></div>
+          <div class="swatch"><div class="sw" style="background:#C4CAD4"></div><div class="sw-info"><b>弱化 #C4CAD4</b></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 字体与间距 -->
+    <div class="sec" id="c2">
+      <div class="sec-title">字体与间距 <span class="en">--font-* / --space-*</span></div>
+      <div class="demo">
+        <div class="dname">字号体系（--font-xs ~ --font-xl）</div>
+        <div class="demo-row" style="align-items:flex-end;">
+          <div class="demo-col"><span style="font-size:11px;color:var(--text-3)">11px 辅助说明</span><span class="anno">--font-xs</span></div>
+          <div class="demo-col"><span style="font-size:12px;color:var(--text-2)">12px 表头/次级</span><span class="anno">--font-sm</span></div>
+          <div class="demo-col"><span style="font-size:13px">13px 正文/单元格</span><span class="anno">--font-base</span></div>
+          <div class="demo-col"><span style="font-size:15px;font-weight:600">15px 卡片标题</span><span class="anno">--font-md</span></div>
+          <div class="demo-col"><span style="font-size:20px;font-weight:600">20px 页面标题</span><span class="anno">--font-lg</span></div>
+          <div class="demo-col"><span style="font-size:28px;font-weight:700">28px 大数字</span><span class="anno">--font-xl</span></div>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="dname">间距体系（8px 栅格：4/8/12/16/20/24/32）</div>
+        <div class="demo-row">
+          <div style="display:flex;align-items:flex-end;gap:0;">
+            <div style="width:4px;height:20px;background:var(--primary);border-radius:2px"></div><span class="anno" style="margin:0 6px 0 2px">s1</span>
+            <div style="width:8px;height:20px;background:var(--primary);border-radius:2px"></div><span class="anno" style="margin:0 6px 0 2px">s2</span>
+            <div style="width:12px;height:20px;background:var(--primary);border-radius:2px"></div><span class="anno" style="margin:0 6px 0 2px">s3</span>
+            <div style="width:16px;height:20px;background:var(--primary);border-radius:2px"></div><span class="anno" style="margin:0 6px 0 2px">s4</span>
+            <div style="width:20px;height:20px;background:var(--primary);border-radius:2px"></div><span class="anno" style="margin:0 6px 0 2px">s5</span>
+            <div style="width:24px;height:20px;background:var(--primary);border-radius:2px"></div><span class="anno" style="margin:0 6px 0 2px">s6</span>
+            <div style="width:32px;height:20px;background:var(--primary);border-radius:2px"></div><span class="anno" style="margin:0 0 0 2px">s7</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 图标集 -->
+    <div class="sec" id="c3">
+      <div class="sec-title">图标集 <span class="en">icons/*.svg（stroke=currentColor，可随父元素着色）</span></div>
+      <div class="demo">
+        <div class="dname">全部 37 个图标（点击源文件在 icons/ 目录）</div>
+        <div class="ico-grid">
+          <div class="ico-cell"><img src="icons/icon-bell.svg"><span>icon-bell</span></div>
+          <div class="ico-cell"><img src="icons/icon-alert-circle.svg"><span>icon-alert-circle</span></div>
+          <div class="ico-cell"><img src="icons/icon-alert.svg"><span>icon-alert</span></div>
+          <div class="ico-cell"><img src="icons/icon-warning.svg"><span>icon-warning</span></div>
+          <div class="ico-cell"><img src="icons/icon-search.svg"><span>icon-search</span></div>
+          <div class="ico-cell"><img src="icons/icon-search-sm.svg"><span>icon-search-sm</span></div>
+          <div class="ico-cell"><img src="icons/icon-grid.svg"><span>icon-grid</span></div>
+          <div class="ico-cell"><img src="icons/icon-apps.svg"><span>icon-apps</span></div>
+          <div class="ico-cell"><img src="icons/icon-book.svg"><span>icon-book</span></div>
+          <div class="ico-cell"><img src="icons/icon-shield.svg"><span>icon-shield</span></div>
+          <div class="ico-cell"><img src="icons/icon-shield-check.svg"><span>icon-shield-check</span></div>
+          <div class="ico-cell"><img src="icons/icon-shield-sm.svg"><span>icon-shield-sm</span></div>
+          <div class="ico-cell"><img src="icons/icon-edit.svg"><span>icon-edit</span></div>
+          <div class="ico-cell"><img src="icons/icon-pen.svg"><span>icon-pen</span></div>
+          <div class="ico-cell"><img src="icons/icon-chart-line.svg"><span>icon-chart-line</span></div>
+          <div class="ico-cell"><img src="icons/icon-trend-up.svg"><span>icon-trend-up</span></div>
+          <div class="ico-cell"><img src="icons/icon-users.svg"><span>icon-users</span></div>
+          <div class="ico-cell"><img src="icons/icon-user.svg"><span>icon-user</span></div>
+          <div class="ico-cell"><img src="icons/icon-user-sm.svg"><span>icon-user-sm</span></div>
+          <div class="ico-cell"><img src="icons/icon-list.svg"><span>icon-list</span></div>
+          <div class="ico-cell"><img src="icons/icon-box.svg"><span>icon-box</span></div>
+          <div class="ico-cell"><img src="icons/icon-check-doc.svg"><span>icon-check-doc</span></div>
+          <div class="ico-cell"><img src="icons/icon-refresh.svg"><span>icon-refresh</span></div>
+          <div class="ico-cell"><img src="icons/icon-clock.svg"><span>icon-clock</span></div>
+          <div class="ico-cell"><img src="icons/icon-copy.svg"><span>icon-copy</span></div>
+          <div class="ico-cell"><img src="icons/icon-arrow-left.svg"><span>icon-arrow-left</span></div>
+          <div class="ico-cell"><img src="icons/icon-back.svg"><span>icon-back</span></div>
+          <div class="ico-cell"><img src="icons/icon-chevron-down.svg"><span>icon-chevron-down</span></div>
+          <div class="ico-cell"><img src="icons/icon-chevron-right.svg"><span>icon-chevron-right</span></div>
+          <div class="ico-cell"><img src="icons/icon-plus.svg"><span>icon-plus</span></div>
+          <div class="ico-cell"><img src="icons/icon-image.svg"><span>icon-image</span></div>
+          <div class="ico-cell"><img src="icons/icon-scan.svg"><span>icon-scan</span></div>
+          <div class="ico-cell"><img src="icons/icon-zap.svg"><span>icon-zap</span></div>
+          <div class="ico-cell"><img src="icons/icon-home.svg"><span>icon-home</span></div>
+          <div class="ico-cell"><img src="icons/icon-layers.svg"><span>icon-layers</span></div>
+          <div class="ico-cell"><img src="icons/icon-wifi.svg"><span>icon-wifi</span></div>
+          <div class="ico-cell"><img src="icons/icon-signal.svg"><span>icon-signal</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 按钮 -->
+    <div class="sec" id="c4">
+      <div class="sec-title">按钮 <span class="en">.btn .btn-primary/.btn-ghost/.btn-soft/.btn-warn/.btn-sm</span></div>
+      <div class="demo">
+        <div class="demo-row">
+          <button class="btn btn-primary">主操作</button>
+          <button class="btn btn-ghost">次要操作</button>
+          <button class="btn btn-soft">软主色</button>
+          <button class="btn btn-warn">警示</button>
+          <button class="btn btn-sm btn-primary">小主按钮</button>
+          <button class="btn btn-sm btn-ghost">小次按钮</button>
+        </div>
+        <div class="anno">hover/active 色：--color-primary-hover / --color-primary-active；主按钮阴影 --shadow-primary</div>
+      </div>
+    </div>
+
+    <!-- 05 状态标签 -->
+    <div class="sec" id="c5">
+      <div class="sec-title">状态标签 <span class="en">.tag .tag-success/.tag-warning/.tag-danger/.tag-info/.tag-muted</span></div>
+      <div class="demo">
+        <div class="demo-row">
+          <span class="tag tag-success">正常</span>
+          <span class="tag tag-warning">待处理</span>
+          <span class="tag tag-danger">异常</span>
+          <span class="tag tag-info">进行中</span>
+          <span class="tag tag-muted">已停用</span>
+        </div>
+        <div class="demo-row">
+          <span class="tag tag-success">一级在库</span>
+          <span class="tag tag-info">二级在库</span>
+          <span class="tag tag-warning">原厂在库</span>
+          <span class="tag tag-danger">已销售</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 表单控件 -->
+    <div class="sec" id="c6">
+      <div class="sec-title">表单控件 <span class="en">.input/.select/.date-input/.chip/.form-grid</span></div>
+      <div class="demo">
+        <div class="demo-row">
+          <input class="input" placeholder="请输入 SN 码">
+          <select class="select"><option>全部状态</option><option>一级在库</option></select>
+          <div class="date-input"><span>2026/08/01</span></div>
+        </div>
+        <div class="demo-row">
+          <span class="chip on">已选择</span>
+          <span class="chip">可选</span>
+          <span class="chip occ">已占用</span>
+        </div>
+        <div class="anno">focus 态：边框主色 + 3px 光环 box-shadow: 0 0 0 3px rgba(26,104,215,.12)</div>
+      </div>
+    </div>
+
+    <!-- 07 标签页 -->
+    <div class="sec" id="c7">
+      <div class="sec-title">标签页 Tab <span class="en">.tabs-lg/.tabs-sm/.tab-stack</span></div>
+      <div class="demo">
+        <div class="dname">主标签（下划线式，大号醒目）</div>
+        <div class="tabs-lg">
+          <span class="tab-lg active">全部<span class="tab-num">24</span></span>
+          <span class="tab-lg">待审核<span class="tab-num">6</span></span>
+          <span class="tab-lg">已完成</span>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="dname">次级标签（小号胶囊，用于二级状态切换）</div>
+        <div class="tabs-sm">
+          <span class="tab-sm active">全部<span class="tab-num">8</span></span>
+          <span class="tab-sm">待处理<span class="tab-num">3</span></span>
+          <span class="tab-sm">已处理</span>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="dname">上下堆叠（主标签 + 次级标签，退货管理标准结构）</div>
+        <div class="tab-stack">
+          <div class="tabs-lg">
+            <span class="tab-lg active">退货管理<span class="tab-num">6</span></span>
+          </div>
+          <div class="tabs-sm">
+            <span class="tab-sm active">全部<span class="tab-num">6</span></span>
+            <span class="tab-sm">待处理<span class="tab-num">3</span></span>
+            <span class="tab-sm">已处理<span class="tab-num">3</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 08 筛选面板 -->
+    <div class="sec" id="c8">
+      <div class="sec-title">筛选面板 <span class="en">.filter-panel .f-zone .f-item</span></div>
+      <div class="filter-panel">
+        <div class="f-zone">
+          <div class="f-item"><span class="fg-label">状态</span><select class="select"><option>全部</option></select></div>
+          <div class="f-item"><span class="fg-label">一级代理</span><select class="select"><option>全部一级代理</option></select></div>
+          <div class="f-item"><span class="fg-label">日期范围</span><div class="date-input"><span>2026/08/01 - 2026/08/07</span></div></div>
+          <div class="f-item f-act"><button class="btn btn-primary">查询</button></div>
+        </div>
+      </div>
+      <div class="anno">标准结构：白卡 + 左侧 4px 主色竖条（.filter-panel::before），控件 132/200/220px 紧凑宽度</div>
+    </div>
+
+    <!-- 09 统计卡片 -->
+    <div class="sec" id="c9">
+      <div class="sec-title">统计卡片 <span class="en">.kpi-row .kpi / .stats-sm .stat-sm</span></div>
+      <div class="demo">
+        <div class="dname">KPI 左色条卡（退货/异常/SN 标准）</div>
+        <div class="kpi-row">
+          <div class="kpi c-blue"><div class="kpi-ico b"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="kpi-info"><div class="kpi-l">退货总数</div><div class="kpi-v">6</div></div></div>
+          <div class="kpi c-orange"><div class="kpi-ico o"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div><div class="kpi-info"><div class="kpi-l">待处理</div><div class="kpi-v">3</div></div></div>
+          <div class="kpi c-red"><div class="kpi-ico r"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></div><div class="kpi-info"><div class="kpi-l">异常数</div><div class="kpi-v red">2</div></div></div>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="dname">纯数字统计卡（3/4/5 列栅格：.stats-sm .col4 .col5）</div>
+        <div class="stats-sm col4" style="margin:0;">
+          <div class="stat-sm"><div class="sl">区间采购数</div><div class="sv">91</div></div>
+          <div class="stat-sm"><div class="sl">累计采购数</div><div class="sv">91</div></div>
+          <div class="stat-sm"><div class="sl">区间直售数</div><div class="sv">4</div></div>
+          <div class="stat-sm"><div class="sl">当前在库</div><div class="sv">89</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10 表格 -->
+    <div class="sec" id="c10">
+      <div class="sec-title">表格 <span class="en">table + thead/tbody，th 灰底 12.5px，td 48px 行高</span></div>
+      <div class="demo">
+        <table>
+          <thead><tr><th>SN码</th><th>商品名称</th><th>规格</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:var(--font-mono);font-size:12.5px;">RL202608010001</td><td>锐涞经典款套件</td><td>M+腰带M</td><td><span class="tag tag-success">一级在库</span></td><td><span class="link-op">详情</span>　<span class="link-op">编辑</span></td></tr>
+            <tr><td style="font-family:var(--font-mono);font-size:12.5px;">RL202608010002</td><td>锐涞经典款套件</td><td>M+腰带M</td><td><span class="tag tag-danger">异常</span></td><td><span class="link-op">详情</span>　<span class="link-op">编辑</span></td></tr>
+          </tbody>
+        </table>
+        <div class="anno">行 hover：--color-primary-softer；状态子信息用 .status-sub .sub-line（含 danger 红字）</div>
+      </div>
+    </div>
+
+    <!-- 11 分页 -->
+    <div class="sec" id="c11">
+      <div class="sec-title">分页 <span class="en">.pagination .page-btn</span></div>
+      <div class="demo">
+        <div class="pagination" style="padding:0;">
+          <span>共 24 条</span>
+          <div class="page-ctrl">
+            <span class="page-btn" style="padding:0 8px;">‹</span>
+            <span class="page-btn cur">1</span>
+            <span class="page-btn">2</span>
+            <span class="page-btn">3</span>
+            <span class="page-btn" style="padding:0 8px;">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12 详情信息 -->
+    <div class="sec" id="c12">
+      <div class="sec-title">详情信息 <span class="en">.kv-grid .kv .desc-grid .desc-item</span></div>
+      <div class="demo">
+        <div class="kv-grid">
+          <div class="kv"><span class="kv-label">一级代理名称</span><span class="kv-value">华东锐涞总代</span></div>
+          <div class="kv"><span class="kv-label">状态</span><span class="kv-value"><span class="tag tag-success">正常</span></span></div>
+          <div class="kv kv-full"><span class="kv-label">SN码</span><span class="kv-value code">RL202608010046</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 13 时间线 -->
+    <div class="sec" id="c13">
+      <div class="sec-title">时间线 <span class="en">.timeline .tl（.abn/.done/.ret 三态）</span></div>
+      <div class="demo">
+        <div class="timeline">
+          <div class="tl done"><div class="tl-name">采购入库 <span class="tl-tag normal">正常</span></div><div class="tl-desc">华东锐涞总代 · +30</div><div class="tl-time">2026-08-01 10:00</div></div>
+          <div class="tl ret"><div class="tl-name">退货申请 <span class="tl-tag ret">退货</span></div><div class="tl-desc">已现场核对，同意退原厂质检</div><div class="tl-time">2026-08-05 16:15</div></div>
+          <div class="tl abn"><div class="tl-name">异常标记 <span class="tl-tag abn">异常</span></div><div class="tl-desc">SN 状态异常，等待处理</div><div class="tl-time">2026-08-06 09:30</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 14 弹窗 -->
+    <div class="sec" id="c14">
+      <div class="sec-title">弹窗 <span class="en">.modal-mask .modal / .modal-confirm .confirm-ico（盾牌对勾）</span></div>
+      <div class="demo" style="background:rgba(15,23,42,.45);">
+        <div class="modal modal-confirm" style="max-height:none;">
+          <div class="modal-hd"><div class="modal-title">操作确认</div><span class="modal-x">✕</span></div>
+          <div class="confirm-body">
+            <div class="confirm-ico" style="width:46px;height:46px;border-radius:10px;background:var(--success-bg);color:var(--success);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.7-8 11-4.5-2.3-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+            </div>
+            <div class="confirm-title">确认处理该异常？</div>
+            <div class="confirm-msg">处理后该条记录将移出待处理列表，可在已完成中查看。</div>
+          </div>
+          <div class="modal-ft"><button class="btn btn-ghost">取消</button><button class="btn btn-primary">确认</button></div>
+        </div>
+      </div>
+      <div class="anno">确认弹窗图标规范：圆角方形底（44px，10px 圆角）+ 语义色图标（异常=盾牌对勾绿/警示），文案横排</div>
+    </div>
+
+    <!-- 15 导航结构 -->
+    <div class="sec" id="c15">
+      <div class="sec-title">导航结构 <span class="en">.sidebar .nav .nav-item .nav-badge</span></div>
+      <div class="demo">
+        <div style="display:flex;gap:20px;align-items:flex-start;">
+          <div style="width:224px;border:1px solid var(--border);border-radius:12px;padding:14px 12px;background:#fff;">
+            <div style="display:flex;align-items:center;gap:9px;padding:0 8px 12px;border-bottom:1px solid var(--border);margin-bottom:10px;">
+              <div style="width:30px;height:30px;border-radius:9px;background:var(--primary-grad);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;">锐</div>
+              <div><div style="font-size:13px;font-weight:600;">锐涞经销商管理系统</div><div style="font-size:9px;color:var(--text-3);letter-spacing:.5px;">RUI LAI DEALER SYSTEM</div></div>
+            </div>
+            <div class="nav-group"><div class="nav-group-title">概览</div><div class="nav-item"><span class="nav-label">工作台</span></div></div>
+            <div class="nav-group"><div class="nav-group-title">渠道</div>
+              <div class="nav-item"><span class="nav-label">一级代理商</span></div>
+              <div class="nav-item active"><span class="nav-label">二级审核</span><span class="nav-badge">1</span></div>
+            </div>
+            <div class="nav-group"><div class="nav-group-title">货品</div>
+              <div class="nav-item"><span class="nav-label">采购单管理</span><span class="nav-badge">3</span></div>
+            </div>
+            <div class="nav-group"><div class="nav-group-title">售后与风控</div>
+              <div class="nav-item"><span class="nav-label">退货管理</span><span class="nav-badge">6</span></div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="dname">导航规范</div>
+            <div class="anno" style="line-height:1.9;">
+              侧栏宽 224px（--sidebar-w）· 分组标题 11px 灰 + 主色小竖条<br>
+              菜单项 13px/40px 高，hover #F5F7FB，选中主色底 .nav-item.active + 左侧 3px 主色条<br>
+              待办角标 .nav-badge：红色 #DE4B4B 圆角胶囊，统一红色（不按分组变色）<br>
+              二级菜单不再使用前置小图标；badge 仅红点/数字两种形态
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

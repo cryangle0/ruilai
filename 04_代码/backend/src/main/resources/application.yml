@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: ruilai
+  profiles:
+    active: ${RUILAI_PROFILE:dev}
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+  servlet:
+    multipart:
+      max-file-size: 40MB
+      max-request-size: 50MB
+  flyway:
+    enabled: true
+    encoding: UTF-8
+    locations: classpath:db/migration
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  type-handlers-package: com.ruilai.common.config
+
+springdoc:
+  swagger-ui:
+    path: /doc/swagger-ui.html
+
+server:
+  port: ${RUILAI_PORT:8610}
+
+ruilai:
+  jwt:
+    secret: ${RUILAI_JWT_SECRET:dev-only-ruilai-secret-change-me-32b!!}
+    ttl-days: 7
+  upload-dir: ./data/uploads
+  sms:
+    mock: ${RUILAI_SMS_MOCK:true}
+    access-key-id: ${RUILAI_SMS_AK:}
+    access-key-secret: ${RUILAI_SMS_SK:}
+    sign-name: 杭州昂撒科技
+    template-code: SMS_323320055
+    region: cn-hangzhou
+    endpoint: dysmsapi.aliyuncs.com
+    master-code: ${RUILAI_SMS_MASTER_CODE:}
+  oss:
+    enabled: ${RUILAI_OSS_ENABLED:false}
+    endpoint: oss-cn-hangzhou.aliyuncs.com
+    bucket: onnsa
+    access-key-id: ${RUILAI_OSS_AK:}
+    access-key-secret: ${RUILAI_OSS_SK:}
+    image-prefix: ruilai/images
+    video-prefix: ruilai/videos
+    file-prefix: ruilai/files
+    cdn-domain: cdn.onnsa.cn
+  geo:
+    provider: ${RUILAI_GEO_PROVIDER:amap}
+    amap-key: ${RUILAI_AMAP_KEY:}
+    tencent-key: ${RUILAI_TENCENT_MAP_KEY:}
+  phone:
+    provider: ${RUILAI_PHONE_PROVIDER:aliyun-market}
+    app-code: ${RUILAI_PHONE_APPCODE:}
+    app-key: ${RUILAI_PHONE_APPKEY:}
+    app-secret: ${RUILAI_PHONE_APPSECRET:}
+    endpoint: ${RUILAI_PHONE_ENDPOINT:https://jisushouji.market.alicloudapi.com/shouji/query}
+    param: ${RUILAI_PHONE_PARAM:shouji}

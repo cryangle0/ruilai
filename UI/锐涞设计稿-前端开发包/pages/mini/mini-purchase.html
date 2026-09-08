@@ -1,0 +1,167 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>提交采购单 · 锐涞小程序</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:750px;height:1880px;overflow:hidden;}
+body{font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;background:#F3F5F9;color:#1A2B4A;-webkit-font-smoothing:antialiased;}
+.app{position:relative;width:750px;height:1880px;display:flex;flex-direction:column;background:#F3F5F9;}
+
+/* 状态栏 */
+.statusbar{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;font-size:24px;font-weight:600;color:#1A2B4A;}
+.sb-right{display:flex;align-items:center;gap:10px;}
+
+/* 导航头 */
+.nav{height:96px;background:#fff;border-bottom:1px solid #EDF1F7;display:flex;align-items:center;position:relative;padding:0 32px;}
+.nav-back{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#1A2B4A;background:#F4F6FA;flex:0 0 52px;}
+.nav-title{position:absolute;left:0;right:0;text-align:center;font-size:30px;font-weight:700;color:#1A2B4A;padding:0 140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* 内容 */
+.content{flex:1;overflow:hidden;padding:22px 32px 0;}
+.card{background:#fff;border:1px solid #E3E9F2;border-radius:20px;padding:22px 24px;box-shadow:0 8px 22px rgba(22,32,64,.05);margin-bottom:22px;}
+.sec-title{font-size:26px;font-weight:700;color:#1A2B4A;display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.sec-title::before{content:"";width:8px;height:26px;border-radius:4px;background:linear-gradient(180deg,#2B7BF0,#1A68D7);}
+.sec-title .cnt{font-size:20px;color:#9AA6BA;font-weight:500;}
+.sec-title .cnt b{color:#1A68D7;font-weight:700;}
+
+/* 商品名称 */
+.f-item{display:flex;flex-direction:column;gap:12px;}
+.f-label{font-size:20px;color:#9AA6BA;}
+.f-box{height:72px;border:1px solid #D7E3F7;border-radius:14px;background:#F5F9FF;display:flex;align-items:center;padding:0 22px;font-size:25px;color:#1A2B4A;font-weight:600;position:relative;}
+.f-box .arr{position:absolute;right:22px;color:#B4BECD;}
+
+/* 提示条 */
+.tipbox{background:#EFF6FE;border:1px solid #CEE1FA;border-radius:16px;padding:20px 22px;font-size:21px;color:#3E6FA8;line-height:1.65;margin-bottom:22px;}
+
+/* 标准套件行 */
+.std-row{display:flex;align-items:center;justify-content:space-between;padding:20px 2px;border-bottom:1px solid #F3F5F9;}
+.std-row:last-of-type{border-bottom:none;}
+.std-name{font-size:23px;color:#1A2B4A;}
+.std-name .g{color:#9AA6BA;font-size:21px;}
+.stepper{display:flex;align-items:center;gap:0;flex:0 0 auto;}
+.stp-btn{width:52px;height:52px;border:1px solid #D7E3F7;background:#F5F9FF;color:#1A68D7;font-size:30px;font-weight:600;display:flex;align-items:center;justify-content:center;border-radius:12px;}
+.stp-num{width:68px;text-align:center;font-size:26px;font-weight:700;color:#1A2B4A;}
+.stp-btn.dis{color:#C4CBD8;background:#F7F8FB;border-color:#E6EAF2;}
+.sum-row{display:flex;justify-content:flex-end;margin-top:6px;font-size:21px;color:#9AA6BA;}
+.sum-row b{color:#1A2B4A;font-weight:700;font-size:24px;}
+
+/* 非标套件 */
+.ns-form{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.ns-col{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0;}
+.ns-label{font-size:19px;color:#9AA6BA;}
+.ns-box{height:64px;border:1px solid #E3E9F2;border-radius:12px;background:#FBFCFE;display:flex;align-items:center;justify-content:center;font-size:22px;color:#1A2B4A;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;padding:0 8px;}
+.ns-box .arr{position:absolute;right:12px;color:#B4BECD;}
+.ns-add{width:120px;height:64px;border-radius:12px;background:linear-gradient(135deg,#2B7BF0,#1A68D7);color:#fff;font-size:23px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:26px;flex:0 0 120px;box-shadow:0 6px 14px rgba(26,104,215,.26);}
+.ns-tip{font-size:19px;color:#9AA6BA;line-height:1.55;background:#F7F9FC;border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+.empty{text-align:center;font-size:22px;color:#B4BECD;background:#FBFCFE;border:1px dashed #E3E9F2;border-radius:14px;padding:30px 0;margin-bottom:8px;}
+
+/* 底部操作条 */
+.footer{margin-top:auto;background:#fff;border-top:1px solid #EDF1F7;padding:20px 32px calc(20px + 12px);display:flex;gap:16px;}
+.btn{flex:1;height:84px;border-radius:16px;font-size:26px;font-weight:600;display:flex;align-items:center;justify-content:center;line-height:1;}
+.btn-ghost{background:#F4F6FA;color:#5B6472;border:1px solid #E3E9F2;}
+.btn-primary{background:linear-gradient(135deg,#2B7BF0,#1A68D7);color:#fff;box-shadow:0 8px 20px rgba(26,104,215,.32);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 状态栏 -->
+  <div class="statusbar">
+    <span>9:41</span>
+    <div class="sb-right">
+      <svg width="26" height="14" viewBox="0 0 26 14" fill="none"><rect x="0.5" y="0.5" width="19" height="13" rx="4" stroke="#1A2B4A"/><rect x="2.5" y="2.5" width="13" height="9" rx="2" fill="#1A2B4A"/><rect x="21.5" y="4" width="2.5" height="6" rx="1" fill="#1A2B4A"/></svg>
+      <svg width="24" height="14" viewBox="0 0 24 14" fill="none"><rect x="1" y="7.5" width="3.4" height="5.5" rx="1.2" fill="#1A2B4A"/><rect x="6.2" y="5" width="3.4" height="8" rx="1.2" fill="#1A2B4A"/><rect x="11.4" y="2.5" width="3.4" height="10.5" rx="1.2" fill="#1A2B4A"/><rect x="16.6" y="0.5" width="3.4" height="12.5" rx="1.2" fill="#1A2B4A"/></svg>
+    </div>
+  </div>
+
+  <!-- 导航头 -->
+  <div class="nav">
+    <div class="nav-back">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    </div>
+    <div class="nav-title">提交采购单（购物车）</div>
+  </div>
+
+  <!-- 内容 -->
+  <div class="content">
+    <!-- 商品名称 -->
+    <div class="card">
+      <div class="f-item">
+        <span class="f-label">商品名称</span>
+        <div class="f-box">锐涞经典款套件
+          <span class="arr">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 标品提示 -->
+    <div class="tipbox">标品5档：小（腰带腰带S+弹力带SS）；小（腰带腰带S+弹力带S）；中（腰带腰带M+弹力带M）；大（腰带腰带L+弹力带L）；大（腰带腰带L+弹力带LL）。其他组合请下非标。当前可选：腰带腰带S/腰带M/腰带L · 弹力带SS/S/M/L/LL</div>
+
+    <!-- 标准套件 -->
+    <div class="card">
+      <div class="sec-title">标准套件 <span class="cnt">（5）</span></div>
+      <div class="std-row"><span class="std-name">小（腰带腰带S+弹力带SS）</span>
+        <div class="stepper"><span class="stp-btn dis">−</span><span class="stp-num">0</span><span class="stp-btn">＋</span></div>
+      </div>
+      <div class="std-row"><span class="std-name">小（腰带腰带S+弹力带S）</span>
+        <div class="stepper"><span class="stp-btn dis">−</span><span class="stp-num">0</span><span class="stp-btn">＋</span></div>
+      </div>
+      <div class="std-row"><span class="std-name">中（腰带腰带M+弹力带M）</span>
+        <div class="stepper"><span class="stp-btn dis">−</span><span class="stp-num">0</span><span class="stp-btn">＋</span></div>
+      </div>
+      <div class="std-row"><span class="std-name">大（腰带腰带L+弹力带L）</span>
+        <div class="stepper"><span class="stp-btn dis">−</span><span class="stp-num">0</span><span class="stp-btn">＋</span></div>
+      </div>
+      <div class="std-row"><span class="std-name">大（腰带腰带L+弹力带LL）</span>
+        <div class="stepper"><span class="stp-btn dis">−</span><span class="stp-num">0</span><span class="stp-btn">＋</span></div>
+      </div>
+      <div class="sum-row">标准套件总计 <b>0</b> 件</div>
+    </div>
+
+    <!-- 非标套件 -->
+    <div class="card">
+      <div class="sec-title">非标套件</div>
+      <div class="ns-form">
+        <div class="ns-col">
+          <span class="ns-label">腰带</span>
+          <div class="ns-box">小（腰带S）
+            <span class="arr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </div>
+        <div class="ns-col">
+          <span class="ns-label">弹力带</span>
+          <div class="ns-box">M
+            <span class="arr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </div>
+        <div class="ns-col">
+          <span class="ns-label">数量</span>
+          <div class="ns-box">1</div>
+        </div>
+        <div class="ns-add">+添加</div>
+      </div>
+      <div class="ns-tip">非标仅展示「本商品已维护尺码」中排除标品后的组合。可多次添加。</div>
+      <div class="empty">暂无非标，点「+添加」</div>
+      <div class="sum-row">非标套件总计 <b>0</b> 件</div>
+    </div>
+
+    <!-- 可随售单品 -->
+    <div class="card">
+      <div class="sec-title">可随售单品</div>
+    </div>
+  </div>
+
+  <!-- 底部操作条 -->
+  <div class="footer">
+    <div class="btn btn-ghost">取消</div>
+    <div class="btn btn-primary">提交采购单</div>
+  </div>
+
+</div>
+</body>
+</html>
+

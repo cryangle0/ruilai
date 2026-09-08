@@ -1,0 +1,1 @@
+function(){return new Promise(function(resolve){try{wx.onNeedPrivacyAuthorization(function(cb){cb({event:"agree"})});wx.requirePrivacyAuthorize({success:function(){resolve({ok:true})},fail:function(e){resolve({fail:e})}})}catch(err){resolve({throw:String(err)})}})}

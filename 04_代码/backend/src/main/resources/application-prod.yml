@@ -1,0 +1,30 @@
+# 生产：跑在 label 本机，连 127.0.0.1 的 MySQL/Redis。
+# 密钥由 systemd EnvironmentFile 注入，禁止把密钥写进仓库。
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/ruilai?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${RUILAI_DB_USER:miniapps}
+    password: ${RUILAI_DB_PWD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 16
+      connection-init-sql: "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 8
+
+server:
+  port: 8610
+  address: 127.0.0.1
+
+ruilai:
+  sms:
+    mock: false
+  oss:
+    enabled: true
+
+logging:
+  level:
+    com.ruilai: INFO

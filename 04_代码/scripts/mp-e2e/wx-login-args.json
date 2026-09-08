@@ -1,0 +1,8 @@
+[
+  {
+    "url": "https://label.onnsa.cn/ruilai-api/api/auth/login",
+    "method": "POST",
+    "header": { "Content-Type": "application/json" },
+    "data": { "username": "agent_hd", "password": "demo", "client": "mini" }
+  }
+]

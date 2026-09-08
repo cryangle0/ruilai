@@ -1,0 +1,253 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>编辑SN · 锐涞经销商管理系统</title>
+<link rel="stylesheet" href="../../style.css">
+<style>
+.td-sn{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;color:var(--text-1);}
+/* 编辑弹窗专属 */
+.edit-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.edit-row .date-input{width:150px;height:32px;flex:0 0 auto;}
+.edit-row .edit-input{flex:1;min-width:0;}
+.edit-del{
+  flex:0 0 auto;width:34px;height:32px;border:1px solid var(--border-strong);border-radius:6px;
+  background:#fff;color:var(--text-3);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.edit-del:hover{border-color:var(--danger);color:var(--danger);}
+.add-row{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--primary);cursor:pointer;margin-bottom:8px;font-weight:500;}
+.edit-tip{font-size:11px;color:var(--text-3);background:var(--bg);border-radius:6px;padding:8px 10px;line-height:1.5;margin-bottom:6px;}
+.edit-row .input{height:32px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ======= 侧边导航 ======= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">锐</div>
+      <div>
+        <div class="brand-name">锐涞经销商管理系统</div>
+        <div class="brand-sub">RUI LAI DEALER SYSTEM</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-title">概览</div>
+        <div class="nav-item"><span class="nav-label">工作台</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">渠道</div>
+        <div class="nav-item"><span class="nav-label">一级代理商</span></div>
+        <div class="nav-item"><span class="nav-label">二级代理商</span></div>
+        <div class="nav-item"><span class="nav-label">二级审核</span><span class="nav-badge">1</span></div>
+        <div class="nav-item"><span class="nav-label">待分配(法人)</span><span class="nav-badge">1</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">货品</div>
+        <div class="nav-item active"><span class="nav-label">SN码库</span></div>
+        <div class="nav-item"><span class="nav-label">商品库</span></div>
+        <div class="nav-item"><span class="nav-label">采购单管理</span><span class="nav-badge">3</span></div>
+        <div class="nav-item"><span class="nav-label">销售单管理</span></div>
+        <div class="nav-item"><span class="nav-label">库存管理</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">售后与风控</div>
+        <div class="nav-item"><span class="nav-label">退货管理</span><span class="nav-badge">6</span></div>
+        <div class="nav-item"><span class="nav-label">异常管理</span><span class="nav-badge">6</span></div>
+        <div class="nav-item"><span class="nav-label">销售客户</span></div>
+        <div class="nav-item"><span class="nav-label">数据统计</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">系统</div>
+        <div class="nav-item"><span class="nav-label">角色与权限</span></div>
+        <div class="nav-item"><span class="nav-label">操作日志</span></div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ======= 主区（背景为SN码库列表） ======= -->
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">首页 <span class="sep">/</span> <span class="cur">SN码库</span></div>
+      <div class="top-right">
+        <div class="link-btn">管理后台</div>
+        <div class="bell">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="bell-dot">6</span>
+        </div>
+        <div class="user"><div class="avatar">a</div><span class="user-name">admin</span></div>
+      </div>
+    </header>
+    <div class="content">
+      <div class="page-head">
+        <div>
+          <div class="page-title">SN码库</div>
+          <div class="page-sub">未处理激活异常的SN置顶·点击行查看生命周期/编辑</div>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-primary">系统生成SN</button>
+          <button class="btn btn-ghost">Excel导入段号</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-left">
+          <div class="filter-group">
+            <span class="filter-label">SN</span>
+            <input class="input" placeholder="输入SN" style="width:200px;">
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">商品名称</span>
+            <input class="input" placeholder="输入商品名称" style="width:200px;">
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">标签筛选</span>
+            <select class="select"><option>全部标签</option></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">出厂</span>
+            <div class="date-input">2026/01/01<span class="di">—</span>2026/08/31</div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">销售</span>
+            <div class="date-input">2026/01/01<span class="di">—</span>2026/08/31</div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">退货</span>
+            <div class="date-input">2026/01/01<span class="di">—</span>2026/08/31</div>
+          </div>
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            查询</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>SN</th><th>商品</th><th>尺寸</th><th>腰带</th><th>渠道</th><th>一级</th><th>二级</th><th>状态</th><th>标签</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="td-sn">RL202607200003</span></td>
+                <td>锐涞经典款套件</td><td>M</td><td>腰带M</td><td>分销</td>
+                <td>华东锐涞总代</td><td>杭州城西专营</td>
+                <td><div style="display:flex;gap:6px;"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202607200004</span></td>
+                <td>锐涞经典款套件</td><td>M</td><td>腰带M</td><td>分销</td>
+                <td>华东锐涞总代</td><td>杭州城西专营</td>
+                <td><div style="display:flex;gap:6px;"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn">RL202607210001</span></td>
+                <td>锐涞经典款套件</td><td>L</td><td>腰带L</td><td>分销</td>
+                <td>华东锐涞总代</td><td>宁波海曙店</td>
+                <td><div style="display:flex;gap:6px;"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td><span class="td-sn" style="color:var(--primary);">RL202608030001</span></td>
+                <td>锐涞经典款套件</td><td>L</td><td>腰带L</td><td>直售</td>
+                <td>华东锐涞总代</td><td>—</td>
+                <td><div style="display:flex;gap:6px;"><span class="tag tag-success">已销售</span><span class="tag tag-danger">异常未处理</span></div></td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= 编辑SN弹窗 ======= -->
+  <div class="modal-mask">
+    <div class="modal modal-xl">
+      <div class="modal-hd">
+        <div class="modal-title">编辑 SN · RL202608030001</div>
+        <div class="modal-x">✕</div>
+      </div>
+      <div class="modal-layout">
+        <!-- 左：编辑表单 -->
+        <div class="modal-left">
+          <div class="modal-sec">
+            <div class="modal-sec-title">客户信息</div>
+            <div class="form-grid" style="grid-template-columns:repeat(2,1fr);">
+              <div class="form-item"><span class="form-label">姓名</span><input class="input" value="王芳"></div>
+              <div class="form-item"><span class="form-label">性别</span><select class="select" style="width:100%;"><option>女</option><option>男</option></select></div>
+              <div class="form-item"><span class="form-label">年龄</span><input class="input" value="31"></div>
+              <div class="form-item"><span class="form-label">手机</span><input class="input" value="13700001108"></div>
+              <div class="form-item"><span class="form-label">归属地</span><input class="input" value="浙江"></div>
+              <div class="form-item"><span class="form-label">地址</span><input class="input" value="杭州市西湖区文三路100号"></div>
+            </div>
+          </div>
+          <div class="modal-sec">
+            <div class="modal-sec-title">情况说明</div>
+            <div class="edit-row">
+              <div class="date-input">2026/08/07</div>
+              <input class="input edit-input" placeholder="情况说明">
+              <span class="edit-del">删</span>
+            </div>
+            <div class="add-row">+ 添加一条</div>
+            <div class="edit-tip">逐条填写年月日和说明；展示时按同一日期合并</div>
+          </div>
+          <div class="modal-sec">
+            <div class="modal-sec-title">处理说明</div>
+            <div class="edit-row">
+              <div class="date-input">2026/08/07</div>
+              <input class="input edit-input" placeholder="处理说明">
+              <span class="edit-del">删</span>
+            </div>
+            <div class="add-row">+ 添加一条</div>
+            <div class="edit-tip">逐条填写年月日和说明；展示时按同一日期合并</div>
+          </div>
+          <div class="modal-sec">
+            <div class="modal-sec-title">修改字段</div>
+            <div class="form-grid" style="grid-template-columns:repeat(2,1fr);">
+              <div class="form-item"><span class="form-label">SN</span><input class="input" value="RL202608030001" style="font-family:Consolas,monospace;font-size:12px;"></div>
+              <div class="form-item"><span class="form-label">弹力带尺码</span><select class="select" style="width:100%;"><option>L</option></select></div>
+              <div class="form-item"><span class="form-label">腰带尺码</span><select class="select" style="width:100%;"><option>腰带L</option></select></div>
+              <div class="form-item"><span class="form-label">所属一级</span><select class="select" style="width:100%;"><option>华东锐涞总代</option></select></div>
+              <div class="form-item full"><span class="form-label">所属二级(调库)</span><select class="select" style="width:100%;"><option>—</option></select></div>
+            </div>
+          </div>
+        </div>
+        <!-- 右：流转记录 -->
+        <div class="modal-right">
+          <div class="modal-sec-title" style="margin-bottom:20px;">完整流转(6)</div>
+          <div class="timeline">
+            <div class="tl done">
+              <div class="tl-name">直销扫码</div>
+              <div class="tl-desc">SO20260807102 · —</div>
+              <div class="tl-time">2026-08-03 14:10</div>
+            </div>
+            <div class="tl done">
+              <div class="tl-name">销售到C端</div>
+              <div class="tl-desc">13700001108 · 杭州市西湖区文三路100号（后退货）</div>
+              <div class="tl-time">2026-08-03 14:10</div>
+            </div>
+            <div class="tl done">
+              <div class="tl-name">采购审核入库</div>
+              <div class="tl-desc">进入一级代理库存</div>
+              <div class="tl-time">2026-08-03 10:30</div>
+            </div>
+            <div class="tl done">
+              <div class="tl-name">生成并导入码库</div>
+              <div class="tl-desc">锐涞经典款套件/L+腰带L · 华东锐涞总代</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn btn-ghost">取消</button>
+        <button class="btn btn-primary">保存修改</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<svg viewBox="0 0 640 250" preserveAspectRatio="none">
+          <g stroke="#EEF1F6" stroke-width="1">
+            <line x1="46" y1="24" x2="620" y2="24"/><line x1="46" y1="88" x2="620" y2="88"/>
+            <line x1="46" y1="152" x2="620" y2="152"/><line x1="46" y1="216" x2="620" y2="216"/>
+          </g>
+          <!-- 采购 -->
+          <polyline points="70,60 160,44 250,82 340,52 430,74 520,36 610,58" fill="none" stroke="#1A68D7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 销售 -->
+          <polyline points="70,140 160,158 250,118 340,134 430,102 520,168 610,122" fill="none" stroke="#E08A1E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <g font-size="11" fill="#9AA6BA" text-anchor="middle">
+            <text x="70" y="238">08-01</text><text x="160" y="238">08-02</text><text x="250" y="238">08-03</text>
+            <text x="340" y="238">08-04</text><text x="430" y="238">08-05</text><text x="520" y="238">08-06</text>
+            <text x="610" y="238">08-07</text>
+          </g>
+        </svg>

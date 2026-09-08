@@ -1,0 +1,6 @@
+# Local credentials and generated helper files
+**/*.key
+**/private.wx*.key
+**/wx-set-token.json
+_tmp_*.js
+*.bak

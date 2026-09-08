@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>商品库 · 锐涞经销商管理系统</title>
+<link rel="stylesheet" href="../../style.css">
+<style>
+.table-wrap td{vertical-align:middle;}
+.type-cell{display:inline-flex;gap:6px;}
+.combo-col{display:flex;flex-wrap:wrap;gap:5px;max-width:640px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ======= 侧边导航 ======= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">锐</div>
+      <div>
+        <div class="brand-name">锐涞经销商管理系统</div>
+        <div class="brand-sub">RUI LAI DEALER SYSTEM</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-title">概览</div>
+        <div class="nav-item"><span class="nav-label">工作台</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">渠道</div>
+        <div class="nav-item"><span class="nav-label">一级代理商</span></div>
+        <div class="nav-item"><span class="nav-label">二级代理商</span></div>
+        <div class="nav-item"><span class="nav-label">二级审核</span><span class="nav-badge">1</span></div>
+        <div class="nav-item"><span class="nav-label">待分配(法人)</span><span class="nav-badge">1</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">货品</div>
+        <div class="nav-item"><span class="nav-label">SN码库</span></div>
+        <div class="nav-item active"><span class="nav-label">商品库</span></div>
+        <div class="nav-item"><span class="nav-label">采购单管理</span><span class="nav-badge">3</span></div>
+        <div class="nav-item"><span class="nav-label">销售单管理</span></div>
+        <div class="nav-item"><span class="nav-label">库存管理</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">售后与风控</div>
+        <div class="nav-item"><span class="nav-label">退货管理</span><span class="nav-badge">6</span></div>
+        <div class="nav-item"><span class="nav-label">异常管理</span><span class="nav-badge">6</span></div>
+        <div class="nav-item"><span class="nav-label">销售客户</span></div>
+        <div class="nav-item"><span class="nav-label">数据统计</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">系统</div>
+        <div class="nav-item"><span class="nav-label">角色与权限</span></div>
+        <div class="nav-item"><span class="nav-label">操作日志</span></div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ======= 主区 ======= -->
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">首页 <span class="sep">/</span> <span class="cur">商品库</span></div>
+      <div class="top-right">
+        <div class="link-btn">管理后台</div>
+        <div class="bell">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="bell-dot">6</span>
+        </div>
+        <div class="user"><div class="avatar">a</div><span class="user-name">admin</span></div>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- 页头 -->
+      <div class="page-head">
+        <div>
+          <div class="page-title">商品库</div>
+          <div class="page-sub">套件 / 单品（有SN）；套件可勾选随售单品</div>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            新建套件
+          </button>
+          <button class="btn btn-ghost">新建单品</button>
+        </div>
+      </div>
+
+      <!-- 类型标签页 + 搜索 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div class="tabs-lg">
+          <span class="tab-lg active">全部 <span class="tab-num">4</span></span>
+          <span class="tab-lg">套件 <span class="tab-num">3</span></span>
+          <span class="tab-lg">单品 <span class="tab-num">1</span></span>
+        </div>
+        <div class="filter-left">
+          <div class="filter-group">
+            <input class="input" style="width:240px;" placeholder="搜索编码/名称/组件">
+          </div>
+          <button class="btn btn-primary">查询</button>
+        </div>
+      </div>
+
+      <!-- 数据表格 -->
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>编码</th>
+                <th>名称</th>
+                <th>类型</th>
+                <th>组件/规格</th>
+                <th>标品组合</th>
+                
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span style="font-family:Consolas,monospace;">P-1001</span></td>
+                <td>锐涞经典款套件</td>
+                <td><span class="tag tag-info">套件</span></td>
+                <td>腰带/腰带S/腰带M/腰带L + 弹力带(SS/S/M/L/LL)</td>
+                <td>
+                  <div class="combo-col">
+                    <span class="combo">小·小（腰带腰带S+弹力带SS）</span>
+                    <span class="combo">小·小（腰带腰带S+弹力带S）</span>
+                    <span class="combo">中·中（腰带腰带M+弹力带M）</span>
+                    <span class="combo">大·大（腰带腰带L+弹力带L）</span>
+                    <span class="combo">大·大（腰带腰带L+弹力带LL）</span>
+                  </div>
+                </td>
+                
+              </tr>
+              <tr>
+                <td><span style="font-family:Consolas,monospace;">P-1002</span></td>
+                <td>锐涞运动款套件</td>
+                <td><span class="tag tag-info">套件</span></td>
+                <td>腰带(腰带S/腰带M/腰带L) + 弹力带(SS/S/M/L/LL)</td>
+                <td>
+                  <div class="combo-col">
+                    <span class="combo">小·小（腰带腰带S+弹力带SS）</span>
+                    <span class="combo">小·小（腰带腰带S+弹力带S）</span>
+                    <span class="combo">中·中（腰带腰带M+弹力带M）</span>
+                    <span class="combo">大·大（腰带腰带L+弹力带L）</span>
+                    <span class="combo">大·大（腰带腰带L+弹力带LL）</span>
+                  </div>
+                </td>
+                
+              </tr>
+              <tr>
+                <td><span style="font-family:Consolas,monospace;">P-SOCK-01</span></td>
+                <td>袜子+鞋套套件</td>
+                <td><span class="tag tag-info">套件</span></td>
+                <td>袜子(S/M/L) + 鞋套(S/M/L)</td>
+                <td>
+                  <div class="combo-col">
+                    <span class="combo">小·小（袜子S+鞋套S）</span>
+                    <span class="combo">中·中（袜子M+鞋套M）</span>
+                    <span class="combo">大·大（袜子L+鞋套L）</span>
+                  </div>
+                </td>
+                
+              </tr>
+              <tr>
+                <td><span style="font-family:Consolas,monospace;">P-SINGLE-01</span></td>
+                <td>锐涞护膝单品</td>
+                <td><span class="tag tag-muted">单品</span></td>
+                <td>S M L</td>
+                <td><span class="combo">按尺码</span></td>
+                
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span style="color:var(--text-4);">共 4 条</span>
+          <div class="page-ctrl">
+            <span class="page-btn" style="font-size:14px;">‹</span>
+            <span class="page-btn cur">1</span>
+            <span class="page-btn" style="font-size:14px;">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+

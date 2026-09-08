@@ -1,0 +1,217 @@
+{
+  "at": "2026-09-03T09:37:55Z",
+  "base": "https://label.onnsa.cn/ruilai-api",
+  "cases": {
+    "NFR-PERF-01": {
+      "title": "GET /api/health serial x8",
+      "expect": "200, p95 < 800ms (smoke)",
+      "stats": {
+        "n": 8,
+        "min": 52.1,
+        "p50": 68.4,
+        "p95": 82.4,
+        "max": 134.2,
+        "mean": 75.2,
+        "ok": 8,
+        "fail": 0,
+        "statuses": [
+          200
+        ]
+      },
+      "sample": {
+        "ok": true,
+        "status": 200,
+        "ms": 134.2,
+        "n": 136,
+        "body": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "version": "0.1.0",
+            "app": "ruilai-server",
+            "zone": "Asia/Shanghai",
+            "time": "2026-09-03T17:37:54.353733219"
+          }
+        }
+      }
+    },
+    "NFR-CONC-01": {
+      "title": "GET /api/health concurrent x20",
+      "expect": "all 200, no 5xx",
+      "stats": {
+        "n": 20,
+        "min": 60.0,
+        "p50": 83.1,
+        "p95": 128.5,
+        "max": 20011.7,
+        "mean": 1082.3,
+        "ok": 19,
+        "fail": 1,
+        "statuses": [
+          0,
+          200
+        ]
+      }
+    },
+    "NFR-AUTH-01": {
+      "title": "unauthenticated GET business APIs",
+      "expect": "401/403, not 200 with data",
+      "rows": [
+        {
+          "path": "/api/products?page=1&pageSize=5",
+          "ok": false,
+          "status": 401,
+          "ms": 82.6,
+          "n": 56,
+          "code": 401
+        },
+        {
+          "path": "/api/agents/l1?page=1&pageSize=5",
+          "ok": false,
+          "status": 401,
+          "ms": 65.8,
+          "n": 56,
+          "code": 401
+        },
+        {
+          "path": "/api/sns?page=1&pageSize=5",
+          "ok": false,
+          "status": 401,
+          "ms": 60.0,
+          "n": 56,
+          "code": 401
+        },
+        {
+          "path": "/api/purchases?page=1&pageSize=5",
+          "ok": false,
+          "status": 401,
+          "ms": 58.9,
+          "n": 56,
+          "code": 401
+        }
+      ]
+    },
+    "NFR-AUTH-02": {
+      "title": "admin login",
+      "expect": "200 + token",
+      "status": 200,
+      "ms": 222.5,
+      "hasToken": true
+    },
+    "NFR-PERF-02": {
+      "title": "authenticated list GETs x3 each",
+      "expect": "200, p95 < 1500ms smoke",
+      "rows": [
+        {
+          "path": "/api/health",
+          "stats": {
+            "n": 3,
+            "min": 59.8,
+            "p50": 72.4,
+            "p95": 72.4,
+            "max": 84.4,
+            "mean": 72.2,
+            "ok": 3,
+            "fail": 0,
+            "statuses": [
+              200
+            ]
+          },
+          "status0": 200
+        },
+        {
+          "path": "/api/products?page=1&pageSize=20",
+          "stats": {
+            "n": 3,
+            "min": 66.9,
+            "p50": 71.2,
+            "p95": 71.2,
+            "max": 93.8,
+            "mean": 77.3,
+            "ok": 3,
+            "fail": 0,
+            "statuses": [
+              200
+            ]
+          },
+          "status0": 200
+        },
+        {
+          "path": "/api/sns?page=1&pageSize=20",
+          "stats": {
+            "n": 3,
+            "min": 93.5,
+            "p50": 102.4,
+            "p95": 102.4,
+            "max": 112.0,
+            "mean": 102.6,
+            "ok": 3,
+            "fail": 0,
+            "statuses": [
+              200
+            ]
+          },
+          "status0": 200
+        },
+        {
+          "path": "/api/stock/summary",
+          "stats": {
+            "n": 3,
+            "min": 81.1,
+            "p50": 90.8,
+            "p95": 90.8,
+            "max": 104.2,
+            "mean": 92.0,
+            "ok": 3,
+            "fail": 0,
+            "statuses": [
+              200
+            ]
+          },
+          "status0": 200
+        },
+        {
+          "path": "/api/purchases?page=1&pageSize=20",
+          "stats": {
+            "n": 3,
+            "min": 80.1,
+            "p50": 84.8,
+            "p95": 84.8,
+            "max": 107.1,
+            "mean": 90.7,
+            "ok": 3,
+            "fail": 0,
+            "statuses": [
+              200
+            ]
+          },
+          "status0": 200
+        },
+        {
+          "path": "/api/sales?page=1&pageSize=20",
+          "stats": {
+            "n": 3,
+            "min": 143.1,
+            "p50": 147.6,
+            "p95": 147.6,
+            "max": 167.5,
+            "mean": 152.7,
+            "ok": 3,
+            "fail": 0,
+            "statuses": [
+              200
+            ]
+          },
+          "status0": 200
+        }
+      ]
+    },
+    "NFR-AUTHZ-01": {
+      "title": "ops GET /api/roles",
+      "expect": "403",
+      "status": 403,
+      "ms": 80.8,
+      "msg": "没有权限执行该操作"
+    }
+  }
+}

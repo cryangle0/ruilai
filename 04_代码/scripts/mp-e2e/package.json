@@ -1,0 +1,8 @@
+{
+  "name": "ruilai-mp-e2e",
+  "private": true,
+  "description": "WeChat DevTools automator runner for 锐涞小程序 §7",
+  "dependencies": {
+    "miniprogram-automator": "^0.12.1"
+  }
+}

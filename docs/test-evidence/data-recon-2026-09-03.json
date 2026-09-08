@@ -1,0 +1,524 @@
+{
+  "dashboard": {
+    "monthSales": 2,
+    "pendingPo": 3,
+    "pendingReturn": 1,
+    "pendingAudit": 1,
+    "l1Count": 3,
+    "boundSn": 15,
+    "pendingDisable": 1,
+    "l2Count": 3,
+    "openEx": 9,
+    "pendingAssign": 1
+  },
+  "sn": {
+    "total": 111,
+    "byStatus": {
+      "bound": 15,
+      "l1": 70,
+      "l2": 17,
+      "warehouse": 9
+    },
+    "byL1": {
+      "L1B": {
+        "bound": 2,
+        "l1": 19,
+        "l2": 5
+      },
+      "L1A": {
+        "bound": 11,
+        "l1": 51,
+        "l2": 12,
+        "warehouse": 7
+      },
+      "—": {
+        "warehouse": 2
+      },
+      "L1C": {
+        "bound": 2
+      }
+    }
+  },
+  "stock": {
+    "summaryRows": 10,
+    "qty": 87,
+    "hd_self": 51,
+    "hd_all": 63,
+    "hz": 8
+  },
+  "mini_hd_month": {
+    "actAll": 11,
+    "agentId": "L1A",
+    "pendingPo": 3,
+    "pendingReturn": 1,
+    "purchaseRange": 1,
+    "returnRange": 1,
+    "directRange": 1,
+    "salesAll": 12,
+    "directAll": 4,
+    "stockQty": 51,
+    "scanningSo": 1,
+    "monthSales": 2,
+    "distRange": 1,
+    "returnAll": 6,
+    "actRange": 1,
+    "roleCode": "L1",
+    "name": "华东锐涞总代",
+    "from": "2026-09-01",
+    "to": "2026-09-03",
+    "distAll": 8,
+    "purchaseAll": 52,
+    "salesRange": 2
+  },
+  "mini_hz_month": {
+    "actAll": 7,
+    "agentId": "L2A",
+    "pendingPo": 0,
+    "pendingReturn": 0,
+    "purchaseRange": 1,
+    "returnRange": 1,
+    "directRange": 1,
+    "salesAll": 7,
+    "directAll": 7,
+    "stockQty": 8,
+    "scanningSo": 1,
+    "monthSales": 1,
+    "distRange": 1,
+    "returnAll": 3,
+    "actRange": 1,
+    "roleCode": "L2",
+    "name": "杭州城西专营",
+    "from": "2026-09-01",
+    "to": "2026-09-03",
+    "distAll": 8,
+    "purchaseAll": 8,
+    "salesRange": 1
+  },
+  "web_stats_month": {
+    "purchaseRange": 1,
+    "purchaseAll": 77,
+    "salesRange": 2,
+    "salesAll": 13,
+    "stock": 87,
+    "returnRange": 1,
+    "returnAll": 6,
+    "actAll": 15,
+    "distAll": 8,
+    "directAll": 5
+  },
+  "web_stats_l1a": {
+    "purchaseRange": 1,
+    "purchaseAll": 52,
+    "salesRange": 2,
+    "salesAll": 12,
+    "stock": 63,
+    "returnRange": 1,
+    "returnAll": 6,
+    "actAll": 11,
+    "distAll": 8,
+    "directAll": 4
+  },
+  "web_stats_l2a": {
+    "purchaseRange": 1,
+    "purchaseAll": 8,
+    "salesRange": 1,
+    "salesAll": 7,
+    "stock": 8,
+    "returnRange": 1,
+    "returnAll": 3,
+    "actAll": 7
+  },
+  "shot_l1_vs_api": {
+    "returnAll": {
+      "shot": 5,
+      "api": 6
+    }
+  },
+  "shot_l2_vs_api": {},
+  "so_missing_product": [],
+  "so_missing_n": 0,
+  "stock_row_M": {
+    "qty": 6,
+    "productId": "P1",
+    "productName": "锐涞经典款套件",
+    "sns": [
+      "RL202607200007",
+      "RL202607200008",
+      "RL202607200009",
+      "RL202607200010",
+      "RL202607200011",
+      "RL202607200012"
+    ],
+    "lib_total": 6,
+    "lib2_total": 6,
+    "missing": []
+  },
+  "counts": {
+    "po": 7,
+    "so": 9,
+    "rt": 5,
+    "ex": 13,
+    "prod": 6,
+    "l1": 3,
+    "l2": 5
+  },
+  "checks": [
+    {
+      "name": "SN total vs page total",
+      "ok": true,
+      "detail": {
+        "listed": 111,
+        "total": 111
+      }
+    },
+    {
+      "name": "stock summary qty == l1+l2 SN",
+      "ok": true,
+      "detail": {
+        "stock_qty": 87,
+        "l1": 70,
+        "l2": 17,
+        "bound": 15,
+        "sn_total": 111
+      }
+    },
+    {
+      "name": "dashboard boundSn == bound SN",
+      "ok": true,
+      "detail": {
+        "dash": 15,
+        "count": 15
+      }
+    },
+    {
+      "name": "dashboard pendingPo",
+      "ok": true,
+      "detail": {
+        "dash": 3,
+        "count": 3
+      }
+    },
+    {
+      "name": "dashboard pendingReturn",
+      "ok": true,
+      "detail": {
+        "dash": 1,
+        "count": 1
+      }
+    },
+    {
+      "name": "dashboard openEx",
+      "ok": true,
+      "detail": {
+        "dash": 9,
+        "count": 9,
+        "ex_total": 13
+      }
+    },
+    {
+      "name": "dashboard l1Count 启用",
+      "ok": true,
+      "detail": {
+        "dash": 3,
+        "enabled": 3,
+        "l1_total": 3
+      }
+    },
+    {
+      "name": "dashboard l2Count approved+not pending",
+      "ok": true,
+      "detail": {
+        "dash": 3,
+        "approved": 3,
+        "pendingAudit": [
+          "温州鹿城专营"
+        ],
+        "pendingAssign": [
+          "金华法人渠道"
+        ]
+      }
+    },
+    {
+      "name": "mini L1 home stockQty == L1A status=l1",
+      "ok": true,
+      "detail": {
+        "home": 51,
+        "l1a_l1": 51,
+        "l1a_l2": 12,
+        "note": "首页文案写本级及下属，接口只计 status=l1"
+      }
+    },
+    {
+      "name": "mini L1 self stock sum == l1a_l1",
+      "ok": true,
+      "detail": {
+        "self_stock": 51,
+        "l1a_l1": 51,
+        "rows": 4
+      }
+    },
+    {
+      "name": "mini L1 all-scope stock == l1+l2 under L1A",
+      "ok": true,
+      "detail": {
+        "all_stock": 63,
+        "l1a_l1": 51,
+        "l1a_l2": 12
+      }
+    },
+    {
+      "name": "mini L2 stockQty == L2A status=l2",
+      "ok": true,
+      "detail": {
+        "home": 8,
+        "l2a_l2": 8,
+        "hz_stock": 8
+      }
+    },
+    {
+      "name": "mini L1 purchaseAll == approved PO qty",
+      "ok": true,
+      "detail": {
+        "home": 52,
+        "po_qty": 52,
+        "po_n": 3
+      }
+    },
+    {
+      "name": "mini L1 salesAll == dist+direct scanned",
+      "ok": true,
+      "detail": {
+        "home": 12,
+        "scanned": 12,
+        "dist": 8,
+        "direct": 4
+      }
+    },
+    {
+      "name": "mini L1 distAll+directAll == salesAll",
+      "ok": true,
+      "detail": {
+        "distAll": 8,
+        "directAll": 4,
+        "salesAll": 12
+      }
+    },
+    {
+      "name": "mini L1 month salesRange == distRange+directRange",
+      "ok": true,
+      "detail": {
+        "salesRange": 2,
+        "distRange": 1,
+        "directRange": 1,
+        "recalc_dist": 1,
+        "recalc_direct": 1
+      }
+    },
+    {
+      "name": "mini L1 returnAll == SN count on related RTs",
+      "ok": true,
+      "detail": {
+        "home": 6,
+        "rt_sn": 6,
+        "rt_n": 5
+      }
+    },
+    {
+      "name": "mini L1 actAll == L1A bound SN",
+      "ok": true,
+      "detail": {
+        "home": 11,
+        "bound": 11
+      }
+    },
+    {
+      "name": "mini L2 inbound purchaseAll",
+      "ok": true,
+      "detail": {
+        "home": 8,
+        "inbound_scanned": 8
+      }
+    },
+    {
+      "name": "mini L2 salesAll == L2A bound",
+      "ok": true,
+      "detail": {
+        "home": 7,
+        "bound": 7
+      }
+    },
+    {
+      "name": "mini L2 returnAll",
+      "ok": true,
+      "detail": {
+        "home": 3,
+        "rt_sn": 3,
+        "rt_n": 3
+      }
+    },
+    {
+      "name": "Web 87 == all in-stock SN",
+      "ok": true,
+      "detail": {
+        "web_seen": 87,
+        "now": 87
+      }
+    },
+    {
+      "name": "return 5 orders / 6 SN pieces",
+      "ok": true,
+      "detail": {
+        "orders": 5,
+        "sns": 6,
+        "note": "KPI 件数=SN 条数，列表=单数，单位不同"
+      }
+    },
+    {
+      "name": "stock row L2A M+腰带M qty vs SN lib",
+      "ok": true,
+      "detail": {
+        "row_qty": 6,
+        "row_sns": 6,
+        "productId": "P1",
+        "lib_with_jump_filters": 6,
+        "lib_local_same_spec": 6,
+        "missing_in_lib": [],
+        "extra_in_lib": [],
+        "note": "码库按 productId+规格筛选"
+      }
+    },
+    {
+      "name": "products 6 = kit3 + single1 + other",
+      "ok": true,
+      "detail": {
+        "total": 6,
+        "types": {
+          "kit": 3,
+          "single": 1,
+          "part": 2
+        }
+      }
+    },
+    {
+      "name": "SN identity l1+l2+bound+warehouse == total",
+      "ok": true,
+      "detail": {
+        "l1": 70,
+        "l2": 17,
+        "bound": 15,
+        "warehouse": 9,
+        "other": {
+          "bound": 15,
+          "l1": 70,
+          "l2": 17,
+          "warehouse": 9
+        },
+        "total": 111
+      }
+    },
+    {
+      "name": "no leftover l2Id on l1/warehouse SN",
+      "ok": true,
+      "detail": {
+        "leftover": []
+      }
+    },
+    {
+      "name": "dashboard stats.stock == l1+l2 minus frozen",
+      "ok": true,
+      "detail": {
+        "stats": 87,
+        "l1_l2": 87,
+        "frozen_in_stock": 0,
+        "stock_page": 87,
+        "note": "库存页含冻结，数据看板不含"
+      }
+    },
+    {
+      "name": "L1A purchaseAll mini==web stats",
+      "ok": true,
+      "detail": {
+        "mini": 52,
+        "web": 52
+      }
+    },
+    {
+      "name": "L1A salesAll mini==web stats",
+      "ok": true,
+      "detail": {
+        "mini": 12,
+        "web": 12
+      }
+    },
+    {
+      "name": "L1A distAll mini==web stats",
+      "ok": true,
+      "detail": {
+        "mini": 8,
+        "web": 8
+      }
+    },
+    {
+      "name": "L1A directAll mini==web stats",
+      "ok": true,
+      "detail": {
+        "mini": 4,
+        "web": 4
+      }
+    },
+    {
+      "name": "L1A actAll mini==web stats",
+      "ok": true,
+      "detail": {
+        "mini": 11,
+        "web": 11
+      }
+    },
+    {
+      "name": "L1A mini stockQty == L1A status=l1",
+      "ok": true,
+      "detail": {
+        "mini_l1_only": 51,
+        "l1a_l1": 51,
+        "web_in_stock_includes_l2": 63,
+        "l1a_l2": 12
+      }
+    },
+    {
+      "name": "L1A returnAll mini==web stats",
+      "ok": true,
+      "detail": {
+        "mini": 6,
+        "web": 6,
+        "note": "看板多计 SN 仍挂在该一级的退货单"
+      }
+    },
+    {
+      "name": "L2A salesAll mini==web stats",
+      "ok": true,
+      "detail": {
+        "mini": 7,
+        "web": 7
+      }
+    },
+    {
+      "name": "L2A stockQty mini==web stats.stock",
+      "ok": true,
+      "detail": {
+        "mini": 8,
+        "web": 8
+      }
+    },
+    {
+      "name": "global returnAll stats vs SN pieces",
+      "ok": true,
+      "detail": {
+        "stats": 6,
+        "rt_sns": 6,
+        "orders": 5
+      }
+    }
+  ],
+  "pass": 38,
+  "fail": 0
+}

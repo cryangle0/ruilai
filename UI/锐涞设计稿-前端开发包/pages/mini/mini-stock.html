@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>库存详情 · 锐涞小程序</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:750px;height:1650px;overflow:hidden;}
+body{font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;background:#F3F5F9;color:#1A2B4A;-webkit-font-smoothing:antialiased;}
+.app{position:relative;width:750px;height:1650px;display:flex;flex-direction:column;background:#F3F5F9;}
+
+/* 状态栏 */
+.statusbar{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;font-size:24px;font-weight:600;color:#1A2B4A;}
+.sb-right{display:flex;align-items:center;gap:10px;}
+
+/* 导航头 */
+.nav{height:96px;background:#fff;border-bottom:1px solid #EDF1F7;display:flex;align-items:center;position:relative;padding:0 32px;}
+.nav-back{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#1A2B4A;background:#F4F6FA;flex:0 0 52px;}
+.nav-title{position:absolute;left:0;right:0;text-align:center;font-size:30px;font-weight:700;color:#1A2B4A;padding:0 140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* 内容 */
+.content{flex:1;overflow:hidden;padding:22px 32px 0;}
+.card{background:#fff;border:1px solid #E3E9F2;border-radius:20px;padding:22px 24px;box-shadow:0 8px 22px rgba(22,32,64,.05);margin-bottom:22px;}
+.sec-title{font-size:26px;font-weight:700;color:#1A2B4A;display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.sec-title::before{content:"";width:8px;height:26px;border-radius:4px;background:linear-gradient(180deg,#2B7BF0,#1A68D7);}
+.sec-title .cnt{font-size:20px;color:#9AA6BA;font-weight:500;}
+.sec-title .cnt b{color:#1A68D7;font-weight:700;}
+
+/* 商品信息 */
+.kv2{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;}
+.kv{display:flex;flex-direction:column;gap:7px;}
+.kv-label{font-size:20px;color:#9AA6BA;}
+.kv-value{font-size:25px;color:#1A2B4A;font-weight:600;}
+.kv-value.sub{color:#7A879C;font-weight:400;}
+.kv-value.code{font-family:Consolas,"SFMono-Regular",monospace;font-size:23px;}
+.kv-full{grid-column:1/-1;}
+.tag{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;border-radius:17px;font-size:21px;font-weight:600;width:max-content;}
+.tag::before{content:"";width:10px;height:10px;border-radius:50%;}
+.tag-info{background:#EAF2FE;color:#1A68D7;}
+.tag-info::before{background:#1A68D7;}
+.tag-success{background:#E6F6EE;color:#1B9E5A;}
+.tag-success::before{background:#1B9E5A;}
+.tag-muted{background:#F1F4F9;color:#7A879C;}
+.tag-muted::before{background:#B4BECD;}
+.tag-warning{background:#FDF3E2;color:#E08A1E;}
+.tag-warning::before{background:#E08A1E;}
+
+/* 表格 */
+.mt{width:100%;border-collapse:collapse;}
+.mt th{text-align:left;padding:12px 6px;font-size:19px;color:#9AA6BA;font-weight:500;border-bottom:1px solid #EDF1F7;white-space:nowrap;}
+.mt td{padding:16px 6px;border-bottom:1px solid #F3F5F9;font-size:21px;color:#1A2B4A;white-space:nowrap;}
+.mt tr:last-child td{border-bottom:none;}
+.mt .code{font-family:Consolas,"SFMono-Regular",monospace;font-size:20px;}
+.mt .plus{color:#1B9E5A;font-weight:700;}
+.mt .link{color:#1A68D7;font-weight:600;}
+.mt .muted{color:#B4BECD;}
+.hint{font-size:19px;color:#9AA6BA;margin:-6px 0 8px;}
+
+/* 底部操作条 */
+.footer{margin-top:auto;background:#fff;border-top:1px solid #EDF1F7;padding:20px 32px calc(20px + 12px);display:flex;gap:16px;}
+.btn{flex:1;height:84px;border-radius:16px;font-size:26px;font-weight:600;display:flex;align-items:center;justify-content:center;line-height:1;}
+.btn-ghost{background:#F4F6FA;color:#5B6472;border:1px solid #E3E9F2;}
+.btn-primary{background:linear-gradient(135deg,#2B7BF0,#1A68D7);color:#fff;box-shadow:0 8px 20px rgba(26,104,215,.32);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 状态栏 -->
+  <div class="statusbar">
+    <span>9:41</span>
+    <div class="sb-right">
+      <svg width="26" height="14" viewBox="0 0 26 14" fill="none"><rect x="0.5" y="0.5" width="19" height="13" rx="4" stroke="#1A2B4A"/><rect x="2.5" y="2.5" width="13" height="9" rx="2" fill="#1A2B4A"/><rect x="21.5" y="4" width="2.5" height="6" rx="1" fill="#1A2B4A"/></svg>
+      <svg width="24" height="14" viewBox="0 0 24 14" fill="none"><rect x="1" y="7.5" width="3.4" height="5.5" rx="1.2" fill="#1A2B4A"/><rect x="6.2" y="5" width="3.4" height="8" rx="1.2" fill="#1A2B4A"/><rect x="11.4" y="2.5" width="3.4" height="10.5" rx="1.2" fill="#1A2B4A"/><rect x="16.6" y="0.5" width="3.4" height="12.5" rx="1.2" fill="#1A2B4A"/></svg>
+    </div>
+  </div>
+
+  <!-- 导航头 -->
+  <div class="nav">
+    <div class="nav-back">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    </div>
+    <div class="nav-title">库存详情 · 锐涞经典款套件</div>
+  </div>
+
+  <!-- 内容 -->
+  <div class="content">
+    <!-- 商品信息 -->
+    <div class="card">
+      <div class="sec-title">商品信息</div>
+      <div class="kv2">
+        <div class="kv"><span class="kv-label">商品</span><span class="kv-value">锐涞经典款套件</span></div>
+        <div class="kv"><span class="kv-label">规格</span><span class="kv-value">M+腰带M</span></div>
+        <div class="kv"><span class="kv-label">一级代理名称</span><span class="kv-value">华东锐涞总代</span></div>
+        <div class="kv"><span class="kv-label">二级代理名称</span><span class="kv-value sub">—</span></div>
+        <div class="kv"><span class="kv-label">数量</span><span class="kv-value" style="color:#1A68D7;">25</span></div>
+        <div class="kv"><span class="kv-label">层级</span><span class="tag tag-info">一级在库</span></div>
+        <div class="kv kv-full"><span class="kv-label">标签</span><span class="kv-value sub">—</span></div>
+      </div>
+    </div>
+
+    <!-- 流水 -->
+    <div class="card">
+      <div class="sec-title">流水 <span class="cnt">（1）</span></div>
+      <table class="mt">
+        <thead><tr><th>时间</th><th>代理</th><th>变动</th><th>原因</th><th>单号</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>2026-08-01 10:00</td>
+            <td>华东锐涞总代</td>
+            <td class="plus">+30</td>
+            <td>采购入库</td>
+            <td class="code muted">PO-SEED</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SN码 -->
+    <div class="card">
+      <div class="sec-title">SN码 <span class="cnt">（25）</span></div>
+      <div class="hint">点击SN查看详情</div>
+      <table class="mt">
+        <thead><tr><th>SN</th><th>规格</th><th>状态</th><th>标签</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="code">RL202608010001</td><td>M+腰带M</td><td><span class="tag tag-info">一级在库</span></td><td class="muted">—</td><td class="link">详情</td></tr>
+          <tr><td class="code">RL202608010002</td><td>M+腰带M</td><td><span class="tag tag-info">一级在库</span></td><td class="muted">—</td><td class="link">详情</td></tr>
+          <tr><td class="code">RL202608010003</td><td>M+腰带M</td><td><span class="tag tag-info">一级在库</span></td><td class="muted">—</td><td class="link">详情</td></tr>
+          <tr><td class="code">RL202608010004</td><td>M+腰带M</td><td><span class="tag tag-info">一级在库</span></td><td class="muted">—</td><td class="link">详情</td></tr>
+          <tr><td class="code">RL202608010005</td><td>M+腰带M</td><td><span class="tag tag-info">一级在库</span></td><td class="muted">—</td><td class="link">详情</td></tr>
+          <tr><td class="code">RL202608010006</td><td>M+腰带M</td><td><span class="tag tag-info">一级在库</span></td><td class="muted">—</td><td class="link">详情</td></tr>
+          <tr><td class="code">RL202608010007</td><td>M+腰带M</td><td><span class="tag tag-info">一级在库</span></td><td class="muted">—</td><td class="link">详情</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 底部操作条 -->
+  <div class="footer">
+    <div class="btn btn-ghost">关闭</div>
+    <div class="btn btn-primary">查看在库SN</div>
+  </div>
+
+</div>
+</body>
+</html>
+
