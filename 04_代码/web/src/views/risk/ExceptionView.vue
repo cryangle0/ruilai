@@ -99,23 +99,16 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="rulesOpen" title="异常标准配置" width="420px" @close="closeRules">
+    <el-dialog v-model="rulesOpen" class="issue-wide-dialog" title="异常标准配置" width="560px" @close="closeRules">
       <p class="hint">全局倍数针对所有一/二级。一级分销给二级不触发库存异常；二级可单独设严格/软报警。</p>
       <p class="hint">第三方：IP/围栏 {{ cap.geoConfigured ? cap.geoProvider : '未配置 Key（离线/提示）' }} · 号码归属 {{ cap.phoneConfigured ? '阿里云' : '离线号段兜底' }}</p>
+      <p class="hint">立即扫描会按当前全局倍数重新检查代理库存并生成待处理异常，不会修改库存数量。</p>
       <el-form label-width="120px">
         <el-form-item label="全局倍数"><el-input-number v-model="rules.multiplier" :min="0.5" :max="9" :step="0.1" /></el-form-item>
-        <el-form-item label="超量比">
-          <el-input-number v-model="rules.overOrderRatio" :min="0.5" :max="9" :step="0.1" />
-          <span class="extra-tag">extra</span>
-        </el-form-item>
-        <el-form-item label="周转倍数">
-          <el-input-number v-model="rules.stockTurnover" :min="0.5" :max="9" :step="0.1" />
-          <span class="extra-tag">extra</span>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="closeRules">取消</el-button>
-        <el-button @click="scanStock">立即扫描库存预警</el-button>
+        <el-button @click="scanStock">立即按当前标准扫描库存</el-button>
         <el-button type="primary" @click="saveRules">保存标准</el-button>
       </template>
     </el-dialog>

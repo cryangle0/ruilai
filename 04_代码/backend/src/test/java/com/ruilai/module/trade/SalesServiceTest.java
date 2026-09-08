@@ -24,6 +24,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -206,6 +208,27 @@ class SalesServiceTest {
                 .isInstanceOf(BizException.class).hasMessageContaining("重复");
         verify(snMapper, never()).updateById(any(SnCode.class));
         verify(stockLogMapper, never()).insert(any(com.ruilai.module.trade.entity.StockLog.class));
+    }
+
+    @Test
+    void confirmDistributionRecordsL1OutflowAndL2Inflow() {
+        SalesOrder so = order("scanning", List.of("S1"));
+        when(soMapper.selectById("SO1")).thenReturn(so);
+        when(snMapper.selectById("S1")).thenReturn(sn("S1", "P1", "M", "腰带M"));
+
+        service.confirm("SO1");
+
+        ArgumentCaptor<com.ruilai.module.trade.entity.StockLog> logs =
+                ArgumentCaptor.forClass(com.ruilai.module.trade.entity.StockLog.class);
+        verify(stockLogMapper, times(2)).insert(logs.capture());
+        assertThat(logs.getAllValues()).extracting(
+                com.ruilai.module.trade.entity.StockLog::getAgentType,
+                com.ruilai.module.trade.entity.StockLog::getAgentId,
+                com.ruilai.module.trade.entity.StockLog::getDelta,
+                com.ruilai.module.trade.entity.StockLog::getReason)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("l1", "L1A", -1, "销售出库"),
+                        org.assertj.core.groups.Tuple.tuple("l2", "L2A", 1, "销售转入"));
     }
 
     @Test

@@ -198,9 +198,9 @@ const kpiItems = computed(() => {
   ]
 })
 const tabItems = computed(() => [
-  { id: 'summary', title: '产品种类数', badge: list.value.length || null },
-  { id: 'sn', title: 'SN 列表', badge: snTotal.value || null },
-  { id: 'flow', title: '库存流水', badge: logs.value.length || null },
+  { id: 'summary', title: '产品种类数' },
+  { id: 'sn', title: 'SN 列表' },
+  { id: 'flow', title: '库存流水' },
 ])
 const agents = computed(() => {
   if (query.value.agentType === 'l2') return l2s.value.map((a) => ({ id: a.id, label: a.name }))

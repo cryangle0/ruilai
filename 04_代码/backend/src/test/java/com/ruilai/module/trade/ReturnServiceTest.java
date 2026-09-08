@@ -22,8 +22,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +60,30 @@ class ReturnServiceTest {
         assertThatThrownBy(() -> service.get("RT1"))
                 .isInstanceOf(com.ruilai.common.web.BizException.class)
                 .hasMessageContaining("无权");
+    }
+
+    @Test
+    void rejectCopiesProcessNoteAndEventToSn() {
+        login("ADMIN", null);
+        ReturnOrder row = new ReturnOrder();
+        row.setId("RT1");
+        row.setNo("RT-1");
+        row.setType("l1_to_factory");
+        row.setStatus("pending");
+        row.setSns(List.of("SN1"));
+        when(rtMapper.selectById("RT1")).thenReturn(row);
+
+        com.ruilai.module.sn.entity.SnCode sn = new com.ruilai.module.sn.entity.SnCode();
+        sn.setSn("SN1");
+        sn.setExtra(Map.of());
+        when(snMapper.selectById("SN1")).thenReturn(sn);
+
+        ReturnOrder rejected = service.decide("RT1", false, "包装破损，暂不接收");
+
+        assertThat(rejected.getStatus()).isEqualTo("rejected");
+        assertThat(sn.getExtra().get("processNotes")).asList().hasSize(1);
+        verify(eventWriter).append(sn, "退货申请已驳回", "RT-1 · 包装破损，暂不接收", "return");
+        verify(snWriter).update(sn);
     }
 
     private void login(String role, String agent) {

@@ -497,8 +497,8 @@
       "platform": "管理端",
       "module": "库存管理",
       "description": "标签上的数字去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：库存页签移除数量角标",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_429760_QN015xd2-rgvErDp_1788845714?w=1920&h=953"
       ],
@@ -513,8 +513,8 @@
       "platform": "管理端",
       "module": "库存管理",
       "description": "库存流水没有记录",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：分销、终端销售与退货补齐双向库存流水",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_151815_AJcYg8rmBFjH43dp_1788845857?w=1920&h=953"
       ],
@@ -529,8 +529,8 @@
       "platform": "管理端",
       "module": "返货管理",
       "description": "只有当一级代理退原厂有需要审核的时候，一级代理退原厂这里才会有上标数字，其他的标签的上标数字都去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：仅一级退原厂待审核数显示角标",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_354948_V82pewutALTaxoYp_1788845891?w=1920&h=953"
       ],
@@ -545,8 +545,8 @@
       "platform": "管理端",
       "module": "返货管理",
       "description": "这2种描述是同一个类型，描述应该统一：终端退货",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：返货类型统一为终端退货",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_338397_y_AmgNRfSs8evdvy_1788846112?w=1920&h=953"
       ],
@@ -561,8 +561,8 @@
       "platform": "管理端",
       "module": "返货管理",
       "description": "1、文字修改：处理改成驳回，审核通过改成通过\n2、点击审核通过或者驳回之后，需要加二次确认的弹窗",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：通过/驳回文案及二次确认",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_638816_01F29oyxc2chdRIP_1788848019?w=1920&h=953"
       ],
@@ -577,8 +577,8 @@
       "platform": "管理端",
       "module": "返货管理",
       "description": "列表上的状态和标签切换的状态对不上，标签上已处理改成已驳回；列表上的已处理改成已通过",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：状态页签与列表统一为已通过/已驳回",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_599502_1-plJBjP1MqoPqcV_1788848130?w=1920&h=953"
       ],
@@ -593,8 +593,8 @@
       "platform": "管理端",
       "module": "返货管理/SN码库",
       "description": "RL202608010041 该SN商品已发生售后，但SN码库里没有状态流转；且驳回时候填写的处理说明未在SN码库中同步显示；\n在SN码库中编辑的情况说明在返货管理里也没有同步显示；",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：返货事件、处理说明和SN情况说明双向同步",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_555035_Zyh20LdyDnWUw6Uq_1788848398?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_438102_mnMQT8t0GmTZ20kS_1788848474?w=1920&h=953",
@@ -613,8 +613,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "这是什么意思 有什么功能",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：补充立即扫描用途和不改库存说明",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_146455_jvWLEK65QvtoMTNT_1788849376?w=1920&h=953"
       ],
@@ -629,8 +629,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "1、异常标准配置的超量比和周转倍数去掉\n2、下方大片空白去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：移除超量比/周转倍数并使用内容高度弹窗",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_31277_w4P6tHntxYsxUL8n_1788849314?w=1920&h=953"
       ],
@@ -645,8 +645,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "销售库存异常里的一级代理未显示",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：销售库存异常由二级归属补齐一级代理",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_885906_nKPN8lfBLkii8bkD_1788849266?w=1920&h=953"
       ],

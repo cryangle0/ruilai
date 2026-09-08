@@ -48,7 +48,7 @@ test('issues 6 through 10 use content-height dialogs and live badges', () => {
 
 test('issues 6, 9, 10, 20, 30, 39 and 44 allow short dialogs to fit content', () => {
   const styles = source('src/styles/index.css')
-  assert.doesNotMatch(styles, /height:\s*min\(80vh,\s*calc\(100vh - 48px\)\)/)
+  assert.doesNotMatch(styles, /(?:^|\n)\s*height:\s*min\(80vh,\s*calc\(100vh - 48px\)\)/)
   assert.match(styles, /\.el-dialog\s*\{[\s\S]*?height:\s*auto/)
 })
 
@@ -136,4 +136,38 @@ test('issues 28 through 30 simplify sales tabs and detail dialog', () => {
   assert.doesNotMatch(tabBlock, /badge:/)
   assert.match(view, /class="muted-label">下单时间/)
   assert.match(view, /class="issue-wide-dialog"/)
+})
+
+test('issues 31 through 37 record stock and align return states', () => {
+  const stock = source('src/views/trade/StockView.vue')
+  const stockTabs = stock.match(/const tabItems = computed\(\(\) => \[([\s\S]*?)\]\)/)?.[1] || ''
+  const returns = source('src/views/risk/ReturnView.vue')
+  const dialog = source('src/views/risk/components/ReturnOrderDialog.vue')
+  const salesService = source('../backend/src/main/java/com/ruilai/module/trade/SalesService.java')
+  const returnService = source('../backend/src/main/java/com/ruilai/module/trade/ReturnService.java')
+
+  assert.doesNotMatch(stockTabs, /badge:/)
+  assert.match(salesService, /writeStockLog\(row,\s*"l1"/)
+  assert.match(salesService, /终端销售出库/)
+  assert.match(returns, /factoryPending/)
+  assert.doesNotMatch(returns, /title:\s*'二级代理退货',\s*badge:/)
+  assert.match(returns, /title:\s*'终端退货'/)
+  assert.match(dialog, /确认通过/)
+  assert.match(dialog, /确认驳回/)
+  assert.match(returns, /done:\s*'已通过'/)
+  assert.match(returns, /rejected:\s*'已驳回'/)
+  assert.match(returnService, /syncProcessNote/)
+  assert.match(returnService, /situationNotes/)
+})
+
+test('issues 38 through 40 explain stock scans and fill parent agents', () => {
+  const view = source('src/views/risk/ExceptionView.vue')
+  const service = source('../backend/src/main/java/com/ruilai/module/risk/ExceptionService.java')
+  assert.match(view, /不会修改库存数量/)
+  assert.match(view, /立即按当前标准扫描库存/)
+  assert.doesNotMatch(view, /v-model="rules\.overOrderRatio"/)
+  assert.doesNotMatch(view, /v-model="rules\.stockTurnover"/)
+  assert.match(view, /class="issue-wide-dialog"/)
+  assert.match(service, /l2\.getParentId\(\)/)
+  assert.match(service, /extra\.put\("l1Id"/)
 })

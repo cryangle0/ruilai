@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
@@ -274,14 +275,18 @@ public class SalesService {
 
     @Transactional
     public SalesOrder confirm(String soId) {
-        if ("SUB".equals(AuthUtil.current().getRoleCode())) {
-            throw new BizException(ErrCode.FORBIDDEN, "子账号不可确认出货单");
+        LoginUser operator = AuthUtil.current();
+        if (!operator.isAdmin() && !"L1".equals(operator.getRoleCode())) {
+            throw new BizException(ErrCode.FORBIDDEN, "仅平台或一级可确认出货单");
         }
         SalesOrder so = soMapper.selectById(soId);
         if (so == null) {
             throw new BizException(ErrCode.NOT_FOUND, "销售单不存在");
         }
         assertCanAccess(so);
+        if (!"scanning".equals(so.getStatus()) && !"pending".equals(so.getStatus())) {
+            throw BizException.state("当前销售单不可确认");
+        }
         List<String> scanned = so.getScanned() == null ? List.of() : so.getScanned();
         if (scanned.isEmpty()) {
             throw new BizException(ErrCode.BAD_REQUEST, "尚未扫入任何 SN");
@@ -290,32 +295,36 @@ public class SalesService {
         if (plan > 0 && scanned.size() < plan) {
             throw new BizException(ErrCode.BAD_REQUEST, "已扫数量不足计划（" + scanned.size() + "/" + plan + "）");
         }
-        Map<String, Integer> inboundBySpec = new HashMap<>();
+        if (new HashSet<>(scanned).size() != scanned.size()) {
+            throw new BizException(ErrCode.BAD_REQUEST, "销售单存在重复 SN");
+        }
+        List<SnCode> stockRows = new ArrayList<>(scanned.size());
         for (String sn : scanned) {
             SnCode row = snMapper.selectById(sn);
             if (row == null) {
-                continue;
+                throw new BizException(ErrCode.BAD_REQUEST, "SN 不存在：" + sn);
             }
+            if (row.getFrozen() != null && row.getFrozen() == 1) {
+                throw new BizException(ErrCode.BAD_REQUEST, "SN 已冻结：" + sn);
+            }
+            if (!"l1".equals(row.getStatus()) || !so.getL1Id().equals(row.getL1Id())) {
+                throw new BizException(ErrCode.BAD_REQUEST, "SN 不在本一级仓库：" + sn);
+            }
+            stockRows.add(row);
+        }
+        Map<String, Integer> inboundBySpec = new HashMap<>();
+        for (SnCode row : stockRows) {
             if ("distribute".equals(so.getChannel())) {
+                writeStockLog(row, "l1", so.getL1Id(), -1, "销售出库", so.getNo());
                 row.setL2Id(so.getL2Id());
                 row.setStatus("l2");
                 row.setSoldAt(ChinaTime.now());
                 eventWriter.append(row, "销售转入二级", so.getNo(), "sales");
+                writeStockLog(row, "l2", so.getL2Id(), 1, "销售转入", so.getNo());
             }
             snMapper.updateById(row);
             String key = str(row.getProductId()) + "|" + (row.getSizeCode() == null ? "" : row.getSizeCode());
             inboundBySpec.merge(key, 1, Integer::sum);
-            StockLog log = new StockLog();
-            log.setId(Ids.next("H"));
-            log.setAgentType("l2");
-            log.setAgentId(so.getL2Id());
-            log.setProductId(row.getProductId());
-            log.setSizeCode(row.getSizeCode());
-            log.setDelta(1);
-            log.setReason("销售转入");
-            log.setRefNo(so.getNo());
-            log.setOccurredAt(ChinaTime.now());
-            stockLogMapper.insert(log);
         }
         so.setStatus("done");
         soMapper.updateById(so);
@@ -338,6 +347,9 @@ public class SalesService {
         LoginUser u = AuthUtil.current();
         if ("SUB".equals(u.getRoleCode())) {
             throw new BizException(ErrCode.FORBIDDEN, "子账号不可直销激活");
+        }
+        if (customer == null) {
+            throw new BizException(ErrCode.BAD_REQUEST, "请填写客户信息");
         }
         String l1Id = u.isAdmin() ? str(customer == null ? null : customer.get("l1Id")) : u.getAgentId();
         if ("null".equalsIgnoreCase(l1Id)) {
@@ -465,6 +477,8 @@ public class SalesService {
         row.setUserJson(user);
         eventWriter.append(row, "销售到C端",
                 phone + " · " + loc.display() + " · " + addr, "bind");
+        writeStockLog(row, l2Stock ? "l2" : "l1", l2Stock ? row.getL2Id() : row.getL1Id(),
+                -1, "终端销售出库", sn);
         snMapper.updateById(row);
 
         SalesOrder so = new SalesOrder();
@@ -621,11 +635,16 @@ public class SalesService {
                 String size = str(line.get("size"));
                 String belt = str(line.get("belt"));
                 long qty = toLong(line.get("qty"));
-                if (!StringUtils.hasText(productId) || !StringUtils.hasText(size)
-                        || !StringUtils.hasText(belt) || qty <= 0) {
-                    throw new BizException(ErrCode.BAD_REQUEST, "每个销售明细须填写商品、尺码、腰带和正数数量");
+                if (!StringUtils.hasText(productId) || !StringUtils.hasText(size) || qty <= 0) {
+                    throw new BizException(ErrCode.BAD_REQUEST, "每个销售明细须填写商品、尺码和正数数量");
                 }
                 Product product = requireOnShelfProduct(productId);
+                if ("part".equals(product.getType())) {
+                    throw new BizException(ErrCode.BAD_REQUEST, "配件不可作为销售 SN 明细");
+                }
+                if ("kit".equals(product.getType()) && !StringUtils.hasText(belt)) {
+                    throw new BizException(ErrCode.BAD_REQUEST, "套件销售明细须填写腰带");
+                }
                 if (!maintainedSpec(product, size, belt)) {
                     throw new BizException(ErrCode.BAD_REQUEST, "商品规格不在维护范围：" + product.getName());
                 }
@@ -734,6 +753,23 @@ public class SalesService {
             }
             customerMapper.updateById(c);
         }
+    }
+
+    private void writeStockLog(SnCode row, String agentType, String agentId, int delta, String reason, String refNo) {
+        if (!StringUtils.hasText(agentId) || delta == 0) {
+            return;
+        }
+        StockLog log = new StockLog();
+        log.setId(Ids.next("H"));
+        log.setAgentType(agentType);
+        log.setAgentId(agentId);
+        log.setProductId(row.getProductId());
+        log.setSizeCode(row.getSizeCode());
+        log.setDelta(delta);
+        log.setReason(reason);
+        log.setRefNo(refNo);
+        log.setOccurredAt(ChinaTime.now());
+        stockLogMapper.insert(log);
     }
 
     private static long toLong(Object v) {

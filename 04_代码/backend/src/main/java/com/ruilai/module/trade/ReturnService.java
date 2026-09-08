@@ -65,11 +65,7 @@ public class ReturnService {
             });
         }
         if (StringUtils.hasText(status)) {
-            if ("done".equals(status)) {
-                q.in(ReturnOrder::getStatus, List.of("done", "rejected"));
-            } else {
-                q.eq(ReturnOrder::getStatus, status);
-            }
+            q.eq(ReturnOrder::getStatus, status);
         }
         if (StringUtils.hasText(type)) {
             q.eq(ReturnOrder::getType, type);
@@ -117,11 +113,35 @@ public class ReturnService {
         if (row == null) {
             throw new BizException(ErrCode.NOT_FOUND, "退货单不存在");
         }
+        assertCanAccess(row);
         enrich(row);
         return row;
     }
 
+    private void assertCanAccess(ReturnOrder row) {
+        LoginUser u = AuthUtil.current();
+        if (u.isAdmin()) {
+            return;
+        }
+        if ("L2".equals(u.getRoleCode()) && u.getAgentId().equals(row.getFromId())) {
+            return;
+        }
+        if ("L1".equals(u.getRoleCode())) {
+            if (u.getAgentId().equals(row.getFromId()) || u.getAgentId().equals(row.getApproverId())) {
+                return;
+            }
+            AgentL2 from = StringUtils.hasText(row.getFromId()) ? l2Mapper.selectById(row.getFromId()) : null;
+            if (from != null && u.getAgentId().equals(from.getParentId())) {
+                return;
+            }
+        }
+        throw new BizException(ErrCode.FORBIDDEN, "无权查看该退货单");
+    }
+
     private void enrich(ReturnOrder r) {
+        if ("user".equals(r.getType())) {
+            r.setTypeLabel("终端退货");
+        }
         List<String> sns = r.getSns() == null ? List.of() : r.getSns();
         Map<String, Integer> counts = new LinkedHashMap<>();
         List<Map<String, Object>> detail = new ArrayList<>();
@@ -146,8 +166,12 @@ public class ReturnService {
                 item.put("belt", row.getBelt());
                 item.put("spec", spec);
                 item.put("status", row.getStatus());
-                Object sit = row.getExtra() == null ? null : row.getExtra().get("situation");
-                item.put("situation", sit == null ? "" : String.valueOf(sit));
+                Object notes = row.getExtra() == null ? null : row.getExtra().get("situationNotes");
+                if (notes == null && row.getExtra() != null) {
+                    notes = row.getExtra().get("situation");
+                }
+                item.put("situationNotes", notes == null ? List.of() : notes);
+                item.put("situation", notesText(notes));
             }
             detail.add(item);
         }
@@ -187,13 +211,11 @@ public class ReturnService {
             body.setFromId(u.getAgentId());
             body.setFromName(u.getName());
         }
-        if (!StringUtils.hasText(body.getTypeLabel())) {
-            body.setTypeLabel(switch (String.valueOf(body.getType())) {
-                case "user" -> "终端退货";
-                case "l1_to_factory" -> "退原厂";
-                default -> "二级退一级";
-            });
-        }
+        body.setTypeLabel(switch (String.valueOf(body.getType())) {
+            case "user" -> "终端退货";
+            case "l1_to_factory" -> "退原厂";
+            default -> "二级退一级";
+        });
         if ("l1_to_factory".equals(body.getType()) && !u.isAdmin() && !"L1".equals(u.getRoleCode())) {
             throw new BizException(ErrCode.FORBIDDEN, "仅一级可申请退原厂");
         }
@@ -229,6 +251,9 @@ public class ReturnService {
         }
         rtMapper.insert(body);
         logService.record("提交退货 " + body.getNo(), "op", true);
+        if ("l1_to_factory".equals(body.getType())) {
+            appendSnEvent(body, "提交退原厂申请", body.getReason(), "return");
+        }
         if ("user".equals(body.getType()) || "l2_to_l1".equals(body.getType())) {
             return applyPass(body, "无需审核，自动入库");
         }
@@ -239,6 +264,9 @@ public class ReturnService {
         List<String> sns = body.getSns() == null ? List.of() : body.getSns();
         if (sns.isEmpty()) {
             throw new BizException(ErrCode.BAD_REQUEST, "请填写 SN");
+        }
+        if (sns.stream().distinct().count() != sns.size()) {
+            throw new BizException(ErrCode.BAD_REQUEST, "退货单存在重复 SN");
         }
         for (String sn : sns) {
             SnCode row = snMapper.selectById(sn);
@@ -300,9 +328,11 @@ public class ReturnService {
         if (!pass) {
             rt.setStatus("rejected");
             rtMapper.updateById(rt);
+            syncProcessNote(rt, processNote, "退货申请已驳回");
             logService.record("驳回退货 " + rt.getNo(), "op", true);
-            return rt;
+            return get(rt.getId());
         }
+        syncProcessNote(rt, processNote, "退货申请已通过");
         return applyPass(rt, processNote);
     }
 
@@ -411,5 +441,65 @@ public class ReturnService {
             }
         }
         return null;
+    }
+
+    private void syncProcessNote(ReturnOrder rt, String processNote, String eventTitle) {
+        for (String sn : rt.getSns() == null ? List.<String>of() : rt.getSns()) {
+            SnCode row = snMapper.selectById(sn);
+            if (row == null) {
+                continue;
+            }
+            if (StringUtils.hasText(processNote)) {
+                Map<String, Object> extra = row.getExtra() == null
+                        ? new LinkedHashMap<>()
+                        : new LinkedHashMap<>(row.getExtra());
+                List<Object> notes = new ArrayList<>();
+                Object raw = extra.get("processNotes");
+                if (raw instanceof List<?> list) {
+                    notes.addAll(list);
+                }
+                boolean exists = notes.stream().anyMatch(note ->
+                        note instanceof Map<?, ?> map && rt.getNo().equals(String.valueOf(map.get("ref"))));
+                if (!exists) {
+                    Map<String, Object> note = new LinkedHashMap<>();
+                    note.put("date", ChinaTime.today().toString());
+                    note.put("text", processNote.trim());
+                    note.put("source", "return");
+                    note.put("ref", rt.getNo());
+                    notes.add(note);
+                    extra.put("processNotes", notes);
+                    row.setExtra(extra);
+                }
+            }
+            eventWriter.append(row, eventTitle,
+                    rt.getNo() + (StringUtils.hasText(processNote) ? " · " + processNote.trim() : ""), "return");
+            snWriter.update(row);
+        }
+    }
+
+    private void appendSnEvent(ReturnOrder rt, String title, String detail, String type) {
+        for (String sn : rt.getSns() == null ? List.<String>of() : rt.getSns()) {
+            SnCode row = snMapper.selectById(sn);
+            if (row == null) {
+                continue;
+            }
+            eventWriter.append(row, title,
+                    rt.getNo() + (StringUtils.hasText(detail) ? " · " + detail.trim() : ""), type);
+            snWriter.update(row);
+        }
+    }
+
+    private static String notesText(Object raw) {
+        if (raw instanceof List<?> list) {
+            return list.stream().map(note -> {
+                if (note instanceof Map<?, ?> map) {
+                    String date = map.get("date") == null ? "" : String.valueOf(map.get("date"));
+                    String text = map.get("text") == null ? "" : String.valueOf(map.get("text"));
+                    return (date + " " + text).trim();
+                }
+                return String.valueOf(note);
+            }).filter(StringUtils::hasText).reduce((a, b) -> a + "；" + b).orElse("");
+        }
+        return raw == null ? "" : String.valueOf(raw);
     }
 }

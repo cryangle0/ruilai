@@ -171,6 +171,14 @@ public class ExceptionService {
         }
         Object l1Id = extra.get("l1Id");
         Object l2Id = extra.get("l2Id");
+        if ((l1Id == null || !StringUtils.hasText(String.valueOf(l1Id)))
+                && l2Id != null && StringUtils.hasText(String.valueOf(l2Id))) {
+            AgentL2 l2 = l2Mapper.selectById(String.valueOf(l2Id));
+            if (l2 != null && StringUtils.hasText(l2.getParentId())) {
+                l1Id = l2.getParentId();
+                extra.put("l1Id", l1Id);
+            }
+        }
         if (l1Id != null && StringUtils.hasText(String.valueOf(l1Id))) {
             AgentL1 a = l1Mapper.selectById(String.valueOf(l1Id));
             extra.put("l1Name", a == null ? l1Id : a.getName());
@@ -260,6 +268,10 @@ public class ExceptionService {
         extra.put("warnMode", m);
         if (StringUtils.hasText(l2Id)) {
             extra.put("l2Id", l2Id);
+            AgentL2 l2 = l2Mapper.selectById(l2Id);
+            if (l2 != null && StringUtils.hasText(l2.getParentId())) {
+                extra.put("l1Id", l2.getParentId());
+            }
         }
         if (StringUtils.hasText(target)) {
             SnCode sn = snMapper.selectById(target);
