@@ -102,6 +102,18 @@ async function toggleNotify() {
 async function readOne(n: any) {
   await api.readNotify(n.id)
   n.readFlag = 1
+  notifyOpen.value = false
+  await router.push(n.route || notificationRoute(n))
+}
+
+function notificationRoute(n: any) {
+  const text = `${n?.title || ''} ${n?.body || ''}`
+  if (/退货|返厂/.test(text)) return '/risk/return'
+  if (/异常|预警/.test(text)) return '/risk/exception'
+  if (/待分配/.test(text)) return '/agent/pending'
+  if (/二级审核/.test(text)) return '/agent/audit'
+  if (/采购/.test(text)) return '/trade/purchase'
+  return '/home'
 }
 
 async function markAll() {

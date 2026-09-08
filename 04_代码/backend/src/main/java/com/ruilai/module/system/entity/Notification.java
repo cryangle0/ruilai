@@ -15,6 +15,7 @@ public class Notification extends StringEntity {
     private LocalDateTime occurredAt;
     private String title;
     private String body;
+    private String route;
     @TableField("to_role")
     private String toRole;
     private Integer readFlag;

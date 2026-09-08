@@ -78,6 +78,23 @@ public class SystemController {
         return R.ok(roleMapper.selectById(body.getId()));
     }
 
+    @PostMapping("/roles/{id}/delete")
+    public R<Void> deleteRole(@PathVariable String id) {
+        AuthUtil.requireAdminPerm(RolePerms.ALL);
+        SysRole role = roleMapper.selectById(id);
+        if (role == null) {
+            throw new BizException(ErrCode.NOT_FOUND, "角色不存在");
+        }
+        Long bound = accountMapper.selectCount(
+                Wrappers.<SysAccount>lambdaQuery().eq(SysAccount::getRoleId, id));
+        if (bound != null && bound > 0) {
+            throw new BizException(ErrCode.BAD_REQUEST, "该角色已绑定账号，不可删除");
+        }
+        roleMapper.deleteById(id);
+        logService.record("删除角色 " + role.getName(), "op", true);
+        return R.ok();
+    }
+
     @GetMapping("/accounts")
     public R<List<Map<String, Object>>> accounts(@RequestParam(required = false) String status) {
         AuthUtil.requireAdminPerm(RolePerms.ALL);
@@ -155,6 +172,23 @@ public class SystemController {
         a.setStatus("启用".equals(a.getStatus()) ? "停用" : "启用");
         accountMapper.updateById(a);
         logService.record(a.getStatus() + "账号 " + a.getUsername(), "op", true);
+        return R.ok();
+    }
+
+    @PostMapping("/accounts/{id}/password")
+    public R<Void> changeAccountPassword(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        AuthUtil.requireAdminPerm(RolePerms.ALL);
+        SysAccount account = accountMapper.selectById(id);
+        if (account == null) {
+            throw new BizException(ErrCode.NOT_FOUND, "账号不存在");
+        }
+        String password = String.valueOf(body.getOrDefault("password", "")).trim();
+        if (password.length() < 6) {
+            throw new BizException(ErrCode.BAD_REQUEST, "新密码至少 6 位");
+        }
+        account.setPasswordHash(passwordEncoder.encode(password));
+        accountMapper.updateById(account);
+        logService.record("修改账号密码 " + account.getUsername(), "op", true);
         return R.ok();
     }
 

@@ -306,6 +306,7 @@ public class ExceptionService {
             n.setBody(target + " · " + detail);
             n.setToRole("一级+原厂");
             n.setReadFlag(0);
+            n.setRoute("/risk/exception?ticketId=" + t.getId());
             notificationMapper.insert(n);
             logService.record("触发异常 " + type + " · " + target, "exception", true);
         } else {

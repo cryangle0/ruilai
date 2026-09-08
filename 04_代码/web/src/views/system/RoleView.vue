@@ -22,10 +22,10 @@
           <span class="tag" :class="row.status==='启用'?'tag-green':'tag-gray'">{{ row.status }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="100">
+      <el-table-column label="操作" width="180">
         <template #default="{row}">
+          <el-button size="small" @click="openPassword(row)">修改密码</el-button>
           <el-button v-if="row.username!=='admin'" size="small" @click="toggleAcc(row)">{{ row.status==='启用'?'停用':'启用' }}</el-button>
-          <span v-else class="muted">—</span>
         </template>
       </el-table-column>
     </DataTableShell>
@@ -56,9 +56,10 @@
       <el-table-column label="账号数" width="90" align="right">
         <template #default="{row}">{{ accCount(row) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="110">
+      <el-table-column label="操作" width="180">
         <template #default="{row}">
           <el-button size="small" @click="openEditRole(row)">编辑权限</el-button>
+          <el-button v-if="accCount(row)===0" size="small" type="danger" plain @click="removeRole(row)">删除</el-button>
         </template>
       </el-table-column>
     </DataTableShell>
@@ -103,6 +104,18 @@
         <el-button type="primary" @click="createAcc">创建</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="passwordDlg" :title="`修改密码 · ${passwordAccount?.username || ''}`" width="420px" @closed="password=''">
+      <el-form label-width="80px">
+        <el-form-item label="新密码">
+          <el-input v-model="password" type="password" show-password placeholder="至少 6 位" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="passwordDlg=false">取消</el-button>
+        <el-button type="primary" @click="savePassword">确认修改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 <script setup lang="ts">
@@ -142,6 +155,9 @@ const subs = ref<any[]>([])
 const l1s = ref<any[]>([])
 const roleDlg = ref(false)
 const accDlg = ref(false)
+const passwordDlg = ref(false)
+const passwordAccount = ref<any>(null)
+const password = ref('')
 const roleForm = ref<any>({ perms: [] as string[] })
 const accForm = reactive({ username: '', name: '', password: 'demo', roleId: 'R1' })
 const tabItems = computed(() => [
@@ -230,6 +246,26 @@ async function toggleAcc(row: any) {
     })
   } catch { return }
   await api.toggleAccount(row.id)
+  load()
+}
+function openPassword(row: any) {
+  passwordAccount.value = row
+  password.value = ''
+  passwordDlg.value = true
+}
+async function savePassword() {
+  if (password.value.length < 6) { ElMessage.error('新密码至少 6 位'); return }
+  await api.changeAccountPassword(passwordAccount.value.id, password.value)
+  ElMessage.success('密码已修改')
+  passwordDlg.value = false
+}
+async function removeRole(row: any) {
+  if (accCount(row) > 0) { ElMessage.error('该角色已绑定账号，不可删除'); return }
+  try {
+    await ElMessageBox.confirm(`确认删除角色「${row.name}」？`, '删除角色', { type: 'warning' })
+  } catch { return }
+  await api.deleteRole(row.id)
+  ElMessage.success('角色已删除')
   load()
 }
 async function toggleSub(row: any) {

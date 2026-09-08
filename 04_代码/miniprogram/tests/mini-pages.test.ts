@@ -11,6 +11,7 @@ import {
   exceptionCountForTab,
   fetchNextPage,
   mergePage,
+  salesScanSummary,
   sortStockSns,
 } from '../src/utils/miniPages.ts'
 
@@ -64,6 +65,14 @@ test('exception badges use server counts without loading ticket pages', () => {
   assert.equal(exceptionCountForTab(counts, 'activate-dist'), 3)
   assert.equal(exceptionCountForTab(counts, 'stock'), 2)
   assert.equal(exceptionCountForTab(counts, 'all'), 7)
+})
+
+test('sales scan cards show product and progress', () => {
+  assert.deepEqual(salesScanSummary({
+    productDetail: '锐涞套件/M×2',
+    scanned: ['S1'],
+    planTotal: 2,
+  }), { product: '锐涞套件/M×2', progress: '1/2' })
 })
 
 test('complete paging keeps page size stable and removes repeated rows', async () => {

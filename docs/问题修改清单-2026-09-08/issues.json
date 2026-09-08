@@ -819,8 +819,8 @@
       "platform": "管理端",
       "module": "角色与权限",
       "description": "角色操作这里增加删除按钮，可以删除没有绑定过账号的角色",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：未绑定账号的角色可二次确认后删除",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_930818_VXBESLRh-FjsAX-9_1788852024?w=1920&h=953"
       ],
@@ -835,8 +835,8 @@
       "platform": "管理端",
       "module": "角色与权限",
       "description": "账号要可以修改密码",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：平台账号支持修改并加密保存新密码",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_14356_SoVbSxOIWXTw8AR5_1788852081?w=1920&h=953"
       ],
@@ -851,8 +851,8 @@
       "platform": "管理端",
       "module": "通知",
       "description": "点击之后跳转至列表页",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：通知已读后跳转对应业务列表",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_471770_xhAGwIrShKHYw7Kp_1788845321?w=1920&h=953"
       ],
@@ -867,8 +867,8 @@
       "platform": "小程序",
       "module": "数据",
       "description": "1、日期选择区域样式调整成设计稿那样\n2、当前在库数放到图表上方\n3、下面图表数据用左右切换的，移动端可以左右滑动交互效果",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：日期区卡片化、在库前置、图表支持左右滑动",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_394070_sOGtaYFcPAdoE6eb_1788852983?w=806&h=821"
       ],
@@ -883,8 +883,8 @@
       "platform": "小程序",
       "module": "数据",
       "description": "在手机上图表遮挡了菜单",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：首页增加底部安全间距避免图表遮挡菜单",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_228498_ARK1EDn-NOIGZYZN_1788858649?w=1280&h=2781"
       ],
@@ -899,8 +899,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "1、去掉查询扫码\n2、卡片调整到合适宽度\n3、按钮上下间隙调大一点\n4、下方待扫描的缺少商品名称、进度",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：移除查询扫码，调整卡片间距并补商品和进度",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_383161_8oLWkhdDqoAEncuc_1788853428?w=816&h=788"
       ],
@@ -915,8 +915,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "1、缺少输入sn码的框\n2、缺少下一步填写客户信息",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：扫码页增加SN输入及下一步客户信息",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_237783_Z8lFCX77kpaeMgM7_1788854927?w=772&h=672"
       ],
@@ -931,8 +931,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "应该可以一单扫码/输入多个SN码",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：同一客户可连续扫描/输入多个SN统一激活",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_922332_BfliRPIXMmmUOQSk_1788850536?w=414&h=780"
       ],
@@ -947,8 +947,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "输入不进去，填写没反应",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：手动输入改为页面内受控输入并提供明确加入按钮",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_51532_e58hoO0HnpHWRSiq_1788850619?w=414&h=780"
       ],
@@ -963,8 +963,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "地址的样式改成  [省 ▼] [市 ▼] [区 ▼]    [____路] [____号/弄] [____室]\n，省市区是下拉框且联动的，路号室是输入框",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：省市区联动选择，路/号弄/室分栏输入",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_882538_fR8QWsMexMKkMvpU_1788850671?w=414&h=780"
       ],

@@ -57,6 +57,19 @@ export function exceptionCountForTab(counts: Record<string, unknown>, tab: strin
   return Number(counts[key]) || 0
 }
 
+export function salesScanSummary(row: Record<string, any>) {
+  const product = String(
+    row.productDetail
+      || row.productName
+      || row.lines?.map((line: any) => line.productName || line.productId).filter(Boolean).join('、')
+      || row.productId
+      || '商品待补充',
+  )
+  const scanned = Array.isArray(row.scanned) ? row.scanned.length : 0
+  const total = Number(row.planTotal) || 0
+  return { product, progress: `${scanned}/${total}` }
+}
+
 export function aggregateStockRows(rows: Array<Record<string, any>>) {
   const grouped = new Map<string, Record<string, any>>()
   for (const row of rows) {

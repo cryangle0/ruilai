@@ -182,6 +182,8 @@ public class AgentService {
         n.setOccurredAt(ChinaTime.now());
         n.setTitle(title);
         n.setBody(body);
+        n.setRoute(title.contains("待分配") ? "/agent/pending"
+                : (title.contains("一级") ? "/agent/l1" : "/agent/l2"));
         n.setToRole("原厂");
         n.setReadFlag(0);
         notificationMapper.insert(n);

@@ -73,17 +73,6 @@
               <view class="duo"><text>区间 <text class="n">{{ home.actRange || 0 }}</text></text><text>累计 <text class="n">{{ home.actAll || 0 }}</text></text></view>
             </view>
           </view>
-          <view class="chart glass">
-            <SegBar variant="seg" v-model="chartTab" :items="chartSegs" />
-            <view class="chart-hd">
-              <text class="t">{{ chartTitle }}</text>
-              <text class="s">{{ chartTab === 'trend' ? trendGrain : chartTab === 'stock' ? '当前 SN' : '按区间' }}</text>
-            </view>
-            <TrendLine v-if="chartTab === 'trend'" :labels="dayLabels" :purchase="trendPurchase" :sales="trendSales" />
-            <ChannelMix v-else-if="chartTab === 'channel' || chartTab === 'stock'" :items="chartTab === 'stock' ? stockMix : channelPie" />
-            <HBarList v-else-if="chartTab === 'product'" :items="productBars" />
-            <HBarList v-else :items="l2Rank" />
-          </view>
           <view class="stock glass" @click="goTab('/pages/stock/index')">
             <view>
               <text class="k">当前在库</text>
@@ -91,10 +80,27 @@
             </view>
             <view class="stock-value"><text class="n big">{{ home.stockQty || 0 }}</text><text v-if="home.scanningSo" class="todo">进行中 {{ home.scanningSo }}</text></view>
           </view>
+          <view class="chart glass">
+            <SegBar variant="seg" v-model="chartTab" :items="chartSegs" />
+            <swiper class="chart-swiper" :current="chartIndex" @change="onChartSwipe">
+              <swiper-item v-for="item in chartSegs" :key="item.id">
+                <view class="chart-slide">
+                  <view class="chart-hd">
+                    <text class="t">{{ chartTitleOf(item.id) }}</text>
+                    <text class="s">{{ item.id === 'trend' ? trendGrain : item.id === 'stock' ? '当前 SN' : '按区间' }}</text>
+                  </view>
+                  <TrendLine v-if="item.id === 'trend'" :labels="dayLabels" :purchase="trendPurchase" :sales="trendSales" />
+                  <ChannelMix v-else-if="item.id === 'channel' || item.id === 'stock'" :items="item.id === 'stock' ? stockMix : channelPie" />
+                  <HBarList v-else-if="item.id === 'product'" :items="productBars" />
+                  <HBarList v-else :items="l2Rank" />
+                </view>
+              </swiper-item>
+            </swiper>
+          </view>
         </view>
         <view v-else>
           <view v-if="user.role === 'L2'" class="alert glass">出库不适用（二级不发货给下级）· 本页仅做直销激活</view>
-          <text v-else class="mini-page-desc">出货扫码 / 直销激活 / 查询扫码</text>
+          <text v-else class="mini-page-desc">出货扫码 / 直销激活</text>
           <view class="modes">
             <view v-if="user.role !== 'L2'" class="mode glass" :class="{ on: scanMode==='ship' }" @click="scanMode='ship'">
               <Icon name="scan" :size="40" />
@@ -104,22 +110,21 @@
               <Icon name="customers" :size="40" />
               <text class="mt">直销激活</text><text class="ms">先扫码再填客户</text>
             </view>
-            <view class="mode glass" :class="{ on: scanMode==='query' }" @click="scanMode='query'">
-              <Icon name="scan" :size="40" />
-              <text class="mt">查询扫码</text><text class="ms">查 SN 流转</text>
-            </view>
           </view>
           <button v-if="scanMode==='direct'" class="btn-p" @click="goBind">扫描 SN 激活</button>
-          <button v-else-if="scanMode==='query'" class="btn-p" @click="goQuery">扫描查询 SN</button>
           <template v-else>
             <button class="btn-p" @click="goCreateSo">创建销售单</button>
             <view v-if="!openSos.length"><Empty text="暂无进行中出货单" /></view>
             <ListCard
               v-for="s in openSos" :key="s.id"
               :title="s.no"
-              :sub="`已扫 ${(s.scanned||[]).length}/${s.planTotal || 0}`"
+              :sub="salesScanSummary(s).product"
               @click="goScanSo(s.id)"
             >
+              <view class="scan-progress-row">
+                <text>扫描进度</text>
+                <text>{{ salesScanSummary(s).progress }}</text>
+              </view>
               <view class="progress"><view class="progress-in" :style="{ width: progress(s) }" /></view>
             </ListCard>
           </template>
@@ -148,8 +153,7 @@ import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { greetingText, ROLE_LABEL, ruilaiShareMessage } from '@/utils/constants'
 import { datePresetRange } from '@/utils/dates'
-import { createNavigationIntent } from '@/utils/miniPages'
-import { scanOrPrompt } from '@/utils/scan'
+import { createNavigationIntent, salesScanSummary } from '@/utils/miniPages'
 
 const month = datePresetRange('month')
 const user = useUserStore()
@@ -213,13 +217,19 @@ const chartSegs = computed(() => [
     ? { id: 'l2', title: '二级排行' }
     : (stockMix.value.length ? { id: 'stock', title: '库存构成' } : null),
 ].filter(Boolean) as Array<{ id: string; title: string }>)
-const chartTitle = computed(() => ({
+const chartIndex = computed(() => Math.max(0, chartSegs.value.findIndex((item) => item.id === chartTab.value)))
+function chartTitleOf(tab: string) {
+  return ({
   trend: '采购 / 销售趋势',
   channel: channelTitle.value,
   product: '商品销量',
   l2: '下属二级销量',
   stock: '库存构成',
-}[chartTab.value] || '经营图表'))
+  } as Record<string, string>)[tab] || '经营图表'
+}
+function onChartSwipe(e: any) {
+  chartTab.value = chartSegs.value[Number(e.detail.current)]?.id || 'trend'
+}
 
 async function loadDash() {
   loading.value = true
@@ -294,16 +304,10 @@ function goScanSo(id?: string) {
 }
 function goBind() { uni.navigateTo({ url: '/pkg/bind/index' }) }
 function goCreateSo() { uni.navigateTo({ url: '/pkg/purchase/index?kind=sales' }) }
-async function goQuery() {
-  try {
-    const sn = await scanOrPrompt()
-    uni.navigateTo({ url: `/pkg/detail/index?kind=sn&id=${encodeURIComponent(sn)}` })
-  } catch { /* */ }
-}
 </script>
 <style scoped lang="scss">
 @import '@/styles/theme.scss';
-.pad { padding: 0 32rpx; }
+.pad { padding: 0 32rpx 180rpx; }
 .hero {
   position: relative;
   overflow: hidden;
@@ -337,6 +341,7 @@ async function goQuery() {
 .who { position: relative; z-index: 1; display: block; font-size: 44rpx; font-weight: 700; margin-top: 10rpx; color: #fff; }
 .role { position: relative; z-index: 1; display: inline-flex; margin: 10rpx 0 4rpx; padding: 4rpx 12rpx; border-radius: 999rpx; background: rgba(255,255,255,.16); color: #fff; font-size: 20rpx; }
 .sub { position: relative; z-index: 1; font-size: 22rpx; color: rgba(255,255,255,.78); }
+.filter-panel { margin-top: 18rpx; padding: 20rpx 22rpx; border: 2rpx solid $rl-border; border-radius: 20rpx; background: #fff; box-shadow: $rl-shadow-card; }
 .hint { display: block; font-size: 20rpx; color: #8A97AD; margin: 16rpx 4rpx 0; }
 .box {
   display: flex;
@@ -376,6 +381,8 @@ async function goQuery() {
 .duo > text + text { border-left: 2rpx solid #EEF1F6; padding-left: 22rpx; }
 .n { display: block; font-size: 38rpx; font-weight: 700; color: #1A2B4A; margin-top: 4rpx; line-height: 1; }
 .chart { padding: 18rpx 22rpx 20rpx; border-radius: 20rpx; margin-top: 16rpx; }
+.chart-swiper { height: 430rpx; }
+.chart-slide { height: 100%; overflow: hidden; }
 .chart-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12rpx; margin-bottom: 4rpx; }
 .chart-hd .t { font-size: 25rpx; font-weight: 700; color: #1A2B4A; }
 .chart-hd .s { font-size: 19rpx; color: #8A97AD; }
@@ -387,13 +394,14 @@ async function goQuery() {
 .stock-value { display: flex; flex-direction: column; align-items: flex-end; gap: 6rpx; }
 .todo { color: $rl-warning; font-size: 20rpx; font-weight: 600; }
 .alert { padding: 20rpx; border-radius: 16rpx; margin: 16rpx 0; color: $rl-text-2; font-size: 24rpx; }
-.modes { display: flex; gap: 12rpx; margin: 16rpx 0; }
-.mode { flex: 1; padding: 24rpx; border-radius: 20rpx; display: flex; flex-direction: column; gap: 8rpx; }
+.modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24rpx; margin: 24rpx 0 30rpx; }
+.mode { min-width: 0; padding: 30rpx 28rpx; border-radius: 20rpx; display: flex; flex-direction: column; gap: 10rpx; }
 .mode.on { border-color: $rl-primary; background: #F5F9FF; }
 .mt { display: block; font-weight: 700; }
 .ms { font-size: 22rpx; color: $rl-text-3; }
-.btn-p { margin: 12rpx 0 20rpx; background: $rl-primary; color: #fff; border-radius: 16rpx; font-weight: 700; }
+.btn-p { margin: 20rpx 0 28rpx; background: $rl-primary; color: #fff; border-radius: 16rpx; font-weight: 700; }
 .btn-p::after { border: 0; }
+.scan-progress-row { display: flex; justify-content: space-between; margin-top: 16rpx; color: $rl-text-2; font-size: 21rpx; }
 .progress { height: 12rpx; margin-top: 16rpx; overflow: hidden; border-radius: 6rpx; background: #EEF2F8; }
 .progress-in { height: 100%; border-radius: 6rpx; background: $rl-gradient-primary; }
 </style>
