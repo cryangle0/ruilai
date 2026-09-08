@@ -34,6 +34,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SnService {
 
+    private static final DateTimeFormatter EVENT_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private final SnCodeMapper snMapper;
     private final ProductMapper productMapper;
     private final SnEventWriter eventWriter;
@@ -119,7 +121,7 @@ public class SnService {
             q.orderByDesc(SnCode::getUpdatedAt);
         }
         PageResult<SnCode> result = PageResult.of(snMapper.selectPage(Page.of(page, size), q));
-        result.list().forEach(this::fillProductName);
+        result.list().forEach(this::enrichForDisplay);
         return result;
     }
 
@@ -128,7 +130,7 @@ public class SnService {
         if (row == null) {
             throw new BizException(ErrCode.NOT_FOUND, "SN 不存在");
         }
-        fillProductName(row);
+        enrichForDisplay(row);
         return row;
     }
 
@@ -293,7 +295,7 @@ public class SnService {
         row.setBelt(belt);
         row.setStatus("warehouse");
         row.setFrozen(0);
-        row.setFactoryAt(ChinaTime.now());
+        row.setFactoryAt(SnFactoryDates.resolve(sn));
         if (StringUtils.hasText(l1Id)) {
             row.setL1Id(l1Id);
         }
@@ -339,6 +341,51 @@ public class SnService {
         if (row.getTags() == null) {
             row.setTags(List.of());
         }
+    }
+
+    private void enrichForDisplay(SnCode row) {
+        fillProductName(row);
+        ensureLifecycleForDisplay(row);
+    }
+
+    /**
+     * 兼容旧数据：历史记录可能已经销售但没有 events。只补接口响应，不在读取时写库。
+     */
+    private void ensureLifecycleForDisplay(SnCode row) {
+        if (row == null) {
+            return;
+        }
+        List<Map<String, Object>> events = row.getEvents() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(row.getEvents());
+        if (events.isEmpty() && row.getFactoryAt() != null) {
+            events.add(event(row.getFactoryAt(), "生成并导入码库",
+                    nz(row.getProductName()) + " / " + nz(row.getSizeCode()) + "+" + nz(row.getBelt()), "import"));
+        }
+        boolean hasSale = events.stream().anyMatch(e -> "bind".equals(e.get("type"))
+                || String.valueOf(e.getOrDefault("title", "")).contains("销售到C端"));
+        if ("bound".equals(row.getStatus()) && !hasSale) {
+            LocalDateTime soldAt = row.getBindAt() != null ? row.getBindAt() : row.getSoldAt();
+            if (soldAt == null) {
+                soldAt = row.getUpdatedAt() != null ? row.getUpdatedAt() : row.getFactoryAt();
+            }
+            if (soldAt != null) {
+                Map<String, Object> customer = row.getUserJson() != null ? row.getUserJson() : row.getPrevUserJson();
+                String phone = customer == null ? "—" : String.valueOf(customer.getOrDefault("phone", "—"));
+                String addr = customer == null ? "" : String.valueOf(customer.getOrDefault("addr", ""));
+                events.add(0, event(soldAt, "销售到C端", phone + (addr.isBlank() ? "" : " · " + addr), "bind"));
+            }
+        }
+        row.setEvents(events);
+    }
+
+    private static Map<String, Object> event(LocalDateTime time, String title, String desc, String type) {
+        Map<String, Object> item = new java.util.LinkedHashMap<>();
+        item.put("time", time.format(EVENT_TIME));
+        item.put("title", title);
+        item.put("desc", desc);
+        item.put("type", type);
+        return item;
     }
 
     private static String str(Object v) {

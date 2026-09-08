@@ -31,7 +31,7 @@
         </template>
       </el-table-column>
     </DataTableShell>
-    <el-dialog v-model="dlg" :title="form.id ? `修改商品 · ${form.name || ''}` : `新建${typeLabel(form.type)}`" width="760px">
+    <el-dialog v-model="dlg" class="kit-form-dlg" :title="form.id ? `修改商品 · ${form.name || ''}` : `新建${typeLabel(form.type)}`" width="900px">
       <el-form label-width="96px">
         <el-form-item label="商品编号"><el-input v-model="form.code" /></el-form-item>
         <el-form-item label="商品名称"><el-input v-model="form.name" :placeholder="form.type==='single'?'如：护膝单品':'如：弹力带+腰带套件'" /></el-form-item>
@@ -60,17 +60,15 @@
               <div style="font-weight:600">{{ ci===0 ? '组件1弹力带' : ci===1 ? '组件2腰带' : `组件${ci+1}` }}尺码</div>
             </el-form-item>
             <el-form-item :label="creatingKit ? '' : '尺码池'">
-              <div class="line" style="margin-bottom:8px">
+              <div class="size-config-row">
                 <el-button size="small" :class="{ 'select-all-btn': true, on: allOn(c.pool, c.sizes) }" @click="toggleAll(c)">
                   {{ allOn(c.pool, c.sizes) ? '取消全选' : '全选' }}
                 </el-button>
-              </div>
-              <div v-if="c.pool.length" class="chips">
-                <button v-for="s in c.pool" :key="s" type="button" class="chip" :class="{ on: c.sizes.includes(s) }" @click="toggleSize(c, s)">{{ s }}</button>
-              </div>
-              <p v-else class="muted" style="margin:8px 0 0">暂无尺码，请在下方添加</p>
-              <div class="line" style="margin-top:8px">
-                <el-input v-model="c._add" placeholder="新增尺码，如 42号 / M" style="width:200px" @keyup.enter="addSize(c)" />
+                <div v-if="c.pool.length" class="chips size-chips">
+                  <button v-for="s in c.pool" :key="s" type="button" class="chip" :class="{ on: c.sizes.includes(s) }" @click="toggleSize(c, s)">{{ s }}</button>
+                </div>
+                <span v-else class="muted">暂无尺码</span>
+                <el-input v-model="c._add" class="size-add-input" placeholder="新增尺码，如 42号 / M" @keyup.enter="addSize(c)" />
                 <el-button size="small" type="primary" @click="addSize(c)">+ 添加尺码</el-button>
               </div>
             </el-form-item>
@@ -101,17 +99,15 @@
         <template v-else-if="form.type==='single'">
           <div class="alert alert-info">单品：仅维护尺码规格，下单按尺码数量；生成 SN，无双组件/标品组合。</div>
           <el-form-item label="规格尺码">
-            <div class="line" style="margin-bottom:8px">
+            <div class="size-config-row">
               <el-button size="small" :class="{ 'select-all-btn': true, on: allOn(sizePool, sizesSel) }" @click="toggleAllSizes">
                 {{ allOn(sizePool, sizesSel) ? '取消全选' : '全选' }}
               </el-button>
-            </div>
-            <div v-if="sizePool.length" class="chips">
-              <button v-for="s in sizePool" :key="s" type="button" class="chip" :class="{ on: sizesSel.includes(s) }" @click="togglePsize(s)">{{ s }}</button>
-            </div>
-            <p v-else class="muted" style="margin:8px 0 0">暂无尺码，请自行添加</p>
-            <div class="line" style="margin-top:8px">
-              <el-input v-model="sizeAdd" placeholder="新增尺码，如 XL / 42号" style="width:200px" @keyup.enter="addPsize" />
+              <div v-if="sizePool.length" class="chips size-chips">
+                <button v-for="s in sizePool" :key="s" type="button" class="chip" :class="{ on: sizesSel.includes(s) }" @click="togglePsize(s)">{{ s }}</button>
+              </div>
+              <span v-else class="muted">暂无尺码</span>
+              <el-input v-model="sizeAdd" class="size-add-input" placeholder="新增尺码，如 XL / 42号" @keyup.enter="addPsize" />
               <el-button size="small" type="primary" @click="addPsize">+ 添加尺码</el-button>
             </div>
           </el-form-item>
@@ -329,4 +325,18 @@ onMounted(load)
 </script>
 <style scoped>
 .muted { color: var(--text-3); font-size: 12px; }
+.size-config-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+.size-chips {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.size-add-input { width: 220px; }
 </style>

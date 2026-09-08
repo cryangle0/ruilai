@@ -61,7 +61,25 @@ test('issues 11 through 15 simplify and rebalance the SN list controls', () => {
   assert.match(view, /visibleTags\(row\.tags\)/)
 })
 
+test('issues 16 through 18 use traceable dates and lifecycle compatibility', () => {
+  const view = source('src/views/goods/SnView.vue')
+  const dates = source('../backend/src/main/java/com/ruilai/module/sn/SnFactoryDates.java')
+  const service = source('../backend/src/main/java/com/ruilai/module/sn/SnService.java')
+  assert.match(view, /RLyyyyMMdd/)
+  assert.match(view, /v-model="n\.date"/)
+  assert.match(view, /v-model="n\.text"/)
+  assert.match(view, /class="no-wrap-label"/)
+  assert.match(dates, /sn\.substring\(2,\s*10\)/)
+  assert.match(service, /ensureLifecycleForDisplay/)
+  assert.match(service, /销售到C端/)
+})
+
 test('issue 19 keeps size controls in one aligned editor row', () => {
   const view = source('src/views/goods/ProductView.vue')
   assert.match(view, /class="size-config-row"/)
+})
+
+test('issue 20 keeps the product dialog content-height', () => {
+  const view = source('src/views/goods/ProductView.vue')
+  assert.match(view, /class="kit-form-dlg"/)
 })

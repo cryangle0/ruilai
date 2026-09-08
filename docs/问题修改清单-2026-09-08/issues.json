@@ -173,8 +173,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "去掉“系统生成SN”按钮",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：移除系统生成SN入口及弹窗，只保留Excel导入；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_507713_dP7W34l2LZD7f-1t_1788774005?w=1920&h=953"
       ],
@@ -189,8 +189,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "起止日期不要换行",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：三组起止日期不换行；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_271812_nyZaUmhoexdiBZel_1788774298?w=1920&h=953"
       ],
@@ -205,8 +205,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "列宽调整：SN、商品、尺寸列宽太大了，后面几列列宽太小，需要调整平衡一点",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：SN列表列宽重新平衡；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_874613_gPYNYr53AHMn_7-V_1788774413?w=1920&h=953"
       ],
@@ -221,8 +221,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "商品编码改成输入框，搜索的编码，现在下拉框选择的是商品名称",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：商品编码改文本输入并使用既有productId API；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_680120_A3J4G42ejeGHfwfG_1788833510?w=1920&h=953"
       ],
@@ -237,8 +237,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "1、标签筛选下拉框选项去掉“个性化”，增加再入库\n2、去掉标签“修理过”、“个性化”",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：去个性化/修理过，增加再入库，兼容隐藏旧标签；前后端测试通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_7383_nFbZH0utAussucKT_1788833606?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_298872_lUQTHgBZZofZFbit_1788833690?w=1920&h=953"
@@ -255,8 +255,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "出厂日期是怎么算的",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：按原型以RLyyyyMMdd计算出厂日期，非法编码回退首次入码库；单测通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_135740_0nEmhRJzxFlWgOU1_1788833742?w=1920&h=953"
       ],
@@ -271,8 +271,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "状态已销售，但没有流转事件",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：历史已销售无事件时补响应层生命周期，不在读取时改库；单测通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_884756_8jlirxNB1G2wRDt6_1788833790?w=1920&h=953"
       ],
@@ -287,8 +287,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "1、修改页面情况说明和处理说明内容和原型不一致，缺少填写日期\n2、所属二级（调库）不要换行",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：说明改为日期+内容并兼容旧数据，所属二级不换行；构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_409832_XNda_65npIjCoIEd_1788848635?w=3840&h=953"
       ],
@@ -303,8 +303,8 @@
       "platform": "管理端",
       "module": "商品库",
       "description": "套件和单品修改/新建页面“取消全选”按钮和填写新增的输入框都没对齐，且还分别和前后的框粘连了",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：商品尺码控件统一对齐行；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_539829_k1zZCEuxC0SusO8r_1788834653?w=1920&h=953"
       ],
@@ -319,8 +319,8 @@
       "platform": "管理端",
       "module": "商品库",
       "description": "单品下面大片空白去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：商品弹窗改内容高度，去除底部空白；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_37975__Uec9J3PcdkhevNr_1788834852?w=1920&h=953"
       ],

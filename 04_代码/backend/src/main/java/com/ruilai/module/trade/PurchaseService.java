@@ -14,6 +14,7 @@ import com.ruilai.common.web.BizException;
 import com.ruilai.common.web.ErrCode;
 import com.ruilai.common.web.PageResult;
 import com.ruilai.module.sn.SnEventWriter;
+import com.ruilai.module.sn.SnFactoryDates;
 import com.ruilai.module.sn.SnWriter;
 import com.ruilai.module.sn.entity.SnCode;
 import com.ruilai.module.sn.mapper.SnCodeMapper;
@@ -211,7 +212,7 @@ public class PurchaseService {
             row.setStatus("l1");
             row.setL1Id(po.getL1Id());
             row.setFrozen(0);
-            row.setFactoryAt(ChinaTime.now());
+            row.setFactoryAt(SnFactoryDates.resolve(sn));
             eventWriter.append(row, "生成并审核入库", po.getNo() + " · 进入一级库存", "purchase");
             snMapper.insert(row);
             return;
@@ -232,7 +233,9 @@ public class PurchaseService {
         row.setL1Id(po.getL1Id());
         row.setL2Id(null);
         row.setStatus("l1");
-        row.setFactoryAt(ChinaTime.now());
+        if (row.getFactoryAt() == null) {
+            row.setFactoryAt(SnFactoryDates.resolve(sn));
+        }
         eventWriter.append(row, "采购审核入库", po.getNo() + " · 进入一级库存", "purchase");
         snWriter.update(row);
     }
