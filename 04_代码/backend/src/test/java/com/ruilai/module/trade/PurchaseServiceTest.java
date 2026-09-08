@@ -95,4 +95,42 @@ class PurchaseServiceTest {
                 .isInstanceOf(com.ruilai.common.web.BizException.class)
                 .hasMessageContaining("无权");
     }
+
+    @Test
+    void cosignPersistsAuditedCustomSpecs() {
+        PurchaseOrder po = new PurchaseOrder();
+        po.setId("PO2");
+        po.setNo("PO-2");
+        po.setL1Id("L1A");
+        po.setStatus("cosigning");
+        po.setLines(List.of());
+        po.setCustomLines(List.of());
+        po.setParts(List.of());
+        po.setCosign(new HashMap<>(Map.of("admin2", true)));
+        when(poMapper.selectById("PO2")).thenReturn(po);
+
+        List<Map<String, Object>> custom = List.of(new HashMap<>(Map.of(
+                "productId", "P1", "size", "M", "belt", "腰带S", "qty", 1)));
+        service.cosign("PO2", Map.of("P1_M_腰带S", List.of("RL202609080001")), custom);
+
+        assertThat(po.getCustomLines()).isEqualTo(custom);
+        assertThat(po.getStatus()).isEqualTo("approved");
+        verify(poMapper).updateById(po);
+    }
+
+    @Test
+    void rejectStoresReason() {
+        PurchaseOrder po = new PurchaseOrder();
+        po.setId("PO3");
+        po.setNo("PO-3");
+        po.setL1Id("L1A");
+        po.setStatus("pending");
+        when(poMapper.selectById("PO3")).thenReturn(po);
+
+        service.reject("PO3", "号段有误");
+
+        assertThat(po.getStatus()).isEqualTo("rejected");
+        assertThat(po.getRejectReason()).isEqualTo("号段有误");
+        verify(poMapper).updateById(po);
+    }
 }

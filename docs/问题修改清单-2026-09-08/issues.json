@@ -335,8 +335,8 @@
       "platform": "管理端",
       "module": "采购单管理/销售单管理/库存管理/返货管理/异常管理/销售客户",
       "description": "筛选和数据汇总区域样式和设计稿不统一",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：六个列表统一使用SearchPanel与KpiCards；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_604326_i-N3NPTtGi-ec34r_1788836630?w=3725&h=944"
       ],
@@ -351,8 +351,8 @@
       "platform": "管理端",
       "module": "采购单管理/返货管理/异常管理/销售客户",
       "description": "下单起止时间默认选中当前月份",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：采购/返货/异常/客户默认本月，显式历史跳转保留；构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_27524_NA3f1hQ2b2HKTFqA_1788836978?w=1920&h=953"
       ],
@@ -367,8 +367,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "配件改成单品",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：采购列表、详情和审核中的配件文案统一改为单品；构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_602667_hK92gSnURLbj_bv8_1788838692?w=1920&h=953"
       ],
@@ -383,8 +383,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "非标品始终显示SS+腰带SS，怎么选择其他规格",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：非标行从已维护商品规格选择并随会签持久化；前后端验证通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_10397_jxoCK2AsepCPl5-4_1788838890?w=1920&h=953"
       ],
@@ -399,8 +399,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "已填写号段显示为10，但是无法确认保存，提示已填0",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：前后端统一完整SN号段规则，纯数字段不再误判；测试通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_89342_zuLIVEisHjR6Lq8K_1788839175?w=1920&h=953"
       ],
@@ -415,8 +415,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "已完成后面增加已驳回的状态标签切换",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：采购补已驳回页签并使用各状态准确总数；构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_528123_urvzCJZYYaGVnHC7_1788839422?w=1920&h=953"
       ],
@@ -431,8 +431,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "当状态是已驳回，增加一个字段：驳回原因（就是驳回时候弹窗填写的内容）",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：驳回原因持久化并在采购详情展示；后端测试通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_478149_pfVUrrWl-8aGhT4s_1788839462?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_362540_-fbfwjcVpwnIW3KO_1788839513?w=1920&h=953"
@@ -449,8 +449,8 @@
       "platform": "管理端",
       "module": "销售单管理",
       "description": "标签上的数字去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：销售页签移除数量角标；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_379215_zsPZs2qQyh5JUToY_1788845453?w=1920&h=953"
       ],
@@ -465,8 +465,8 @@
       "platform": "管理端",
       "module": "销售单管理",
       "description": "时间筛选前面加文字下单时间",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：销售时间筛选前增加下单时间标签；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_966872_AD5pLnU1DxcOLVKt_1788838733?w=1920&h=953"
       ],
@@ -481,8 +481,8 @@
       "platform": "管理端",
       "module": "销售单管理",
       "description": "详情下面大片空白去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：销售详情使用横向内容高度弹窗；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_246308_veetYjcjssQhIEEi_1788845632?w=1920&h=953"
       ],

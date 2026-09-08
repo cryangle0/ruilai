@@ -83,3 +83,57 @@ test('issue 20 keeps the product dialog content-height', () => {
   const view = source('src/views/goods/ProductView.vue')
   assert.match(view, /class="kit-form-dlg"/)
 })
+
+test('issues 21 through 23 share list styling and current-month defaults', () => {
+  const paths = [
+    'src/views/trade/PurchaseView.vue',
+    'src/views/trade/SalesView.vue',
+    'src/views/trade/StockView.vue',
+    'src/views/risk/ReturnView.vue',
+    'src/views/risk/ExceptionView.vue',
+    'src/views/risk/CustomerView.vue',
+  ]
+  for (const path of paths) {
+    const view = source(path)
+    assert.match(view, /<SearchPanel/)
+    assert.match(view, /<KpiCards/)
+  }
+  for (const path of [
+    'src/views/trade/PurchaseView.vue',
+    'src/views/risk/ReturnView.vue',
+    'src/views/risk/ExceptionView.vue',
+  ]) {
+    assert.match(source(path), /applyListDates\(query,\s*route\.query\)/)
+  }
+  assert.match(source('src/views/risk/CustomerView.vue'), /query\.from\s*=\s*query\.from\s*\|\|\s*monthStart\(\)/)
+  assert.match(source('src/views/trade/PurchaseView.vue'), /标准\/非标\/单品/)
+  assert.doesNotMatch(source('src/views/trade/PurchaseView.vue'), /label="配件"/)
+})
+
+test('issues 24 through 27 persist valid custom specs and rejected reasons', () => {
+  const drawer = source('src/views/trade/components/PurchaseDrawer.vue')
+  const api = source('src/api/index.ts')
+  const controller = source('../backend/src/main/java/com/ruilai/module/trade/TradeController.java')
+  const service = source('../backend/src/main/java/com/ruilai/module/trade/PurchaseService.java')
+  const entity = source('../backend/src/main/java/com/ruilai/module/trade/entity/PurchaseOrder.java')
+  const migration = source('../backend/src/main/resources/db/migration/V6__purchase_reject_reason.sql')
+
+  assert.match(drawer, /customProducts/)
+  assert.match(drawer, /sizeOptions\(line\)/)
+  assert.match(drawer, /beltOptions\(line\)/)
+  assert.match(drawer, /\^RL\\d\{5,\}\$/)
+  assert.match(api, /customLines/)
+  assert.match(controller, /body\.get\("customLines"\)/)
+  assert.match(service, /po\.setCustomLines\(customLines\)/)
+  assert.match(service, /po\.setRejectReason/)
+  assert.match(entity, /rejectReason/)
+  assert.match(migration, /reject_reason/)
+})
+
+test('issues 28 through 30 simplify sales tabs and detail dialog', () => {
+  const view = source('src/views/trade/SalesView.vue')
+  const tabBlock = view.match(/const tabItems = computed\(\(\) => \[([\s\S]*?)\]\)/)?.[1] || ''
+  assert.doesNotMatch(tabBlock, /badge:/)
+  assert.match(view, /class="muted-label">下单时间/)
+  assert.match(view, /class="issue-wide-dialog"/)
+})

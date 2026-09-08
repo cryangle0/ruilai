@@ -28,6 +28,7 @@ public class PurchaseOrder extends StringEntity {
     private Map<String, Object> segments;
     @TableField(typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> cosign;
+    private String rejectReason;
     private LocalDateTime approvedAt;
     @TableField(exist = false)
     private Map<String, Object> warnEx;

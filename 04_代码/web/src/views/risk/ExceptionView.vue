@@ -141,8 +141,8 @@ import BackToDetailButton from '@/components/common/BackToDetailButton.vue'
 import KpiCards, { type KpiItem } from '@/components/common/KpiCards.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
-import { applyListDatesWide, routeQ } from '@/utils/detailJump'
-import { dateTimeFormatter, formatDateTime } from '@/utils/dates'
+import { applyListDates, routeQ } from '@/utils/detailJump'
+import { dateTimeFormatter, formatDateTime, monthStart, todayDate } from '@/utils/dates'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -235,7 +235,7 @@ async function load() {
 }
 function reset() {
   query.status = ''; query.l1Id = ''; query.l2Id = ''
-  query.from = ''; query.to = ''
+  query.from = monthStart(); query.to = todayDate()
   resetPage(); load()
 }
 async function openRow(row: any) {
@@ -347,7 +347,7 @@ onMounted(async () => {
   if (routeQ(route.query, 'l1Id')) query.l1Id = routeQ(route.query, 'l1Id')
   if (routeQ(route.query, 'l2Id')) query.l2Id = routeQ(route.query, 'l2Id')
   if (routeQ(route.query, 'type')) query.type = routeQ(route.query, 'type')
-  applyListDatesWide(query, route.query)
+  applyListDates(query, route.query)
   ingesting.value = false
   load()
 })

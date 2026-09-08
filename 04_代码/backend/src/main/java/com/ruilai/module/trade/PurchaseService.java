@@ -80,6 +80,10 @@ public class PurchaseService {
         if (row == null) {
             throw new BizException(ErrCode.NOT_FOUND, "采购单不存在");
         }
+        LoginUser user = AuthUtil.current();
+        if (!user.isAdmin() && !java.util.Objects.equals(user.getAgentId(), row.getL1Id())) {
+            throw new BizException(ErrCode.FORBIDDEN, "无权查看该采购单");
+        }
         enrich(row);
         return row;
     }
@@ -112,6 +116,11 @@ public class PurchaseService {
 
     @Transactional
     public PurchaseOrder cosign(String id, Map<String, Object> segments) {
+        return cosign(id, segments, null);
+    }
+
+    @Transactional
+    public PurchaseOrder cosign(String id, Map<String, Object> segments, List<Map<String, Object>> customLines) {
         AuthUtil.requireAdminPerm(RolePerms.ALL);
         PurchaseOrder po = get(id);
         if ("approved".equals(po.getStatus()) || "rejected".equals(po.getStatus())) {
@@ -126,6 +135,17 @@ public class PurchaseService {
         cosign.put(key + "At", ChinaTime.now().toString());
         cosign.put(key + "By", AuthUtil.current().getUsername());
         po.setCosign(cosign);
+        if (customLines != null) {
+            for (Map<String, Object> line : customLines) {
+                if (!StringUtils.hasText(str(line.get("productId"), ""))
+                        || !StringUtils.hasText(str(line.get("size"), ""))
+                        || !StringUtils.hasText(str(line.get("belt"), ""))
+                        || lineQty(List.of(line)) <= 0) {
+                    throw new BizException(ErrCode.BAD_REQUEST, "非标品须选择商品、弹力带、腰带并填写正数数量");
+                }
+            }
+            po.setCustomLines(customLines);
+        }
         if (segments != null && !segments.isEmpty()) {
             po.setSegments(segments);
         }
@@ -137,7 +157,8 @@ public class PurchaseService {
         boolean both = Boolean.TRUE.equals(cosign.get("admin1")) && Boolean.TRUE.equals(cosign.get("admin2"));
         if (both) {
             int inbound = inbound(po);
-            if (inbound <= 0) {
+            int need = lineQty(po.getLines()) + lineQty(po.getCustomLines());
+            if (need > 0 && inbound <= 0) {
                 throw new BizException(ErrCode.BAD_REQUEST, "双人会签完成前请填写有效 SN 号段");
             }
             po.setStatus("approved");
@@ -153,7 +174,11 @@ public class PurchaseService {
     public void reject(String id, String reason) {
         AuthUtil.requireAdminPerm(RolePerms.ALL);
         PurchaseOrder po = get(id);
+        if ("approved".equals(po.getStatus()) || "rejected".equals(po.getStatus())) {
+            throw BizException.state("当前状态不可驳回");
+        }
         po.setStatus("rejected");
+        po.setRejectReason(StringUtils.hasText(reason) ? reason.trim() : null);
         poMapper.updateById(po);
         logService.record("驳回采购 " + po.getNo() + " " + (reason == null ? "" : reason), "op", true);
     }

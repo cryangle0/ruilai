@@ -78,8 +78,8 @@ import KpiCards, { type KpiItem } from '@/components/common/KpiCards.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
 import { RETURN_REASONS } from '@/utils/format'
-import { applyListDatesWide, routeQ } from '@/utils/detailJump'
-import { dateTimeFormatter } from '@/utils/dates'
+import { applyListDates, routeQ } from '@/utils/detailJump'
+import { dateTimeFormatter, monthStart, todayDate } from '@/utils/dates'
 
 const KIND_ALIAS: Record<string, string> = {
   factory: 'l1_to_factory',
@@ -189,7 +189,7 @@ async function load() {
 }
 function reset() {
   query.l1Id = ''; query.l2Id = ''; query.reasonType = ''
-  query.from = ''; query.to = ''
+  query.from = monthStart(); query.to = todayDate()
   kind.value = 'l1_to_factory'; statusTab.value = 'all'
   resetPage(); load()
 }
@@ -220,7 +220,7 @@ onMounted(async () => {
   const statusQ = routeQ(route.query, 'status')
   if (statusQ && statusQ !== 'all') statusTab.value = statusQ
   if (!showAuditUi.value) statusTab.value = 'all'
-  applyListDatesWide(query, route.query)
+  applyListDates(query, route.query)
   ready.value = true
   load()
 })

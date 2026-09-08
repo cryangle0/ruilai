@@ -3,7 +3,7 @@
     <div class="page-header is-compact">
       <div>
         <h2>采购单管理</h2>
-        <p>一站式审核：标准/非标/配件 + 段号起止 + 双人会签即完成（下单仅一级小程序）</p>
+        <p>一站式审核：标准/非标/单品 + 段号起止 + 双人会签即完成（下单仅一级小程序）</p>
       </div>
       <div class="page-actions">
         <BackToDetailButton />
@@ -30,7 +30,7 @@
       <el-table-column label="一级" min-width="120"><template #default="{row}">{{ nameOf(row.l1Id) }}</template></el-table-column>
       <el-table-column label="标准行" min-width="140"><template #default="{row}">{{ fmtLines(row.lines) }}</template></el-table-column>
       <el-table-column label="非标" min-width="140"><template #default="{row}">{{ fmtCustom(row.customLines) }}</template></el-table-column>
-      <el-table-column label="配件" min-width="160">
+      <el-table-column label="单品" min-width="160">
         <template #default="{row}">{{ fmtParts(row.parts) }}</template>
       </el-table-column>
       <el-table-column label="状态" width="90">
@@ -58,8 +58,8 @@ import BackToDetailButton from '@/components/common/BackToDetailButton.vue'
 import KpiCards from '@/components/common/KpiCards.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
-import { applyListDatesWide, routeQ } from '@/utils/detailJump'
-import { dateTimeFormatter } from '@/utils/dates'
+import { applyListDates, routeQ } from '@/utils/detailJump'
+import { dateTimeFormatter, monthStart, todayDate } from '@/utils/dates'
 
 const route = useRoute()
 const { page, pageSize, total, loading, list, query, resetPage } = usePager()
@@ -115,20 +115,26 @@ async function load() {
     })
     list.value = res.list
     total.value = res.total
-    const liveRes = await api.purchases({ page: 1, pageSize: 200 })
+    const [liveRes, pendingRes, cosigningRes, approvedRes, rejectedRes] = await Promise.all([
+      api.purchases({ page: 1, pageSize: 200 }),
+      api.purchases({ page: 1, pageSize: 1, status: 'pending' }),
+      api.purchases({ page: 1, pageSize: 1, status: 'cosigning' }),
+      api.purchases({ page: 1, pageSize: 1, status: 'approved' }),
+      api.purchases({ page: 1, pageSize: 1, status: 'rejected' }),
+    ])
     const live = liveRes.list || []
-    counts.all = live.length
-    counts.pending = live.filter((p: any) => p.status === 'pending').length
-    counts.cosigning = live.filter((p: any) => p.status === 'cosigning').length
-    counts.approved = live.filter((p: any) => p.status === 'approved').length
-    counts.rejected = live.filter((p: any) => p.status === 'rejected').length
+    counts.all = liveRes.total
+    counts.pending = pendingRes.total
+    counts.cosigning = cosigningRes.total
+    counts.approved = approvedRes.total
+    counts.rejected = rejectedRes.total
     const poScope = live.filter((p: any) => p.status !== 'rejected' && (!query.l1Id || p.l1Id === query.l1Id))
     metrics.histQty = poScope.reduce((n: number, p: any) => n + poNeedQty(p), 0)
     metrics.rangeQty = poScope.filter((p: any) => inRange(p.createdAt, query.from, query.to)).reduce((n: number, p: any) => n + poNeedQty(p), 0)
   } finally { loading.value = false }
 }
 function reset() {
-  query.l1Id = ''; query.from = ''; query.to = ''; tab.value = 'all'
+  query.l1Id = ''; query.from = monthStart(); query.to = todayDate(); tab.value = 'all'
   resetPage(); load()
 }
 function fmtLines(lines?: any[]) {
@@ -159,7 +165,7 @@ onMounted(async () => {
   products.value = (await api.products({ page: 1, pageSize: 200 })).list || []
   if (routeQ(route.query, 'l1Id')) query.l1Id = routeQ(route.query, 'l1Id')
   if (routeQ(route.query, 'tab')) tab.value = routeQ(route.query, 'tab')
-  applyListDatesWide(query, route.query)
+  applyListDates(query, route.query)
   load()
 })
 </script>
