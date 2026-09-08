@@ -1,0 +1,1320 @@
+{
+  "source": "https://doc.weixin.qq.com/sheet/e3_AXwAFAYYAHoCNd0r367mETBGD1tjM?tab=hoj4ui",
+  "title": "锐涞经销商管理系统开发任务清单和排期计划V2",
+  "sheet": "问题修改清单",
+  "exportedAt": "2026-09-08T11:35:50.110Z",
+  "issues": [
+    {
+      "id": 1,
+      "sheetRow": 2,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "工作台",
+      "description": "1、去掉“查看全部待办”按钮\n2、调整待办事项卡片宽度，右边不要有空白",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_6300_KaVbGTq6yc9wAbE9_1788774662?w=1920&h=953"
+      ],
+      "files": [
+        "issue-001-img1.png"
+      ]
+    },
+    {
+      "id": 2,
+      "sheetRow": 3,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "一级代理/二级代理/待分配",
+      "description": "一级代理、二级代理、待分配详情里选择省市的范围需要改成完整的全国的，现在都只有一部分",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_738666_nEc19pHmr0epRcOY_1788775064?w=1920&h=953"
+      ],
+      "files": [
+        "issue-002-img1.png"
+      ]
+    },
+    {
+      "id": 3,
+      "sheetRow": 4,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "一级代理/二级代理",
+      "description": "状态列往右边移一点，列宽调小点",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_12241_1dMyDW_32VTb447-_1788775429?w=1920&h=953"
+      ],
+      "files": [
+        "issue-003-img1.png"
+      ]
+    },
+    {
+      "id": 4,
+      "sheetRow": 5,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "二级代理",
+      "description": "二级代理编辑页面样式布局要改成和一级代理一样的",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_772301_yg_6ARdA3nZgeI4c_1788775234?w=1920&h=953",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_110048_U46fr99Ny0mjZyFs_1788775242?w=1920&h=953"
+      ],
+      "files": [
+        "issue-004-img1.png",
+        "issue-004-img2.png"
+      ]
+    },
+    {
+      "id": 5,
+      "sheetRow": 6,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "二级审核",
+      "description": "1、登录账号未显示\n2、去掉“合作协议”字段",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_566728_qlslz31ds9ocMUwd_1788775883?w=1920&h=953"
+      ],
+      "files": [
+        "issue-005-img1.png"
+      ]
+    },
+    {
+      "id": 6,
+      "sheetRow": 7,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "二级审核",
+      "description": "弹窗改成横向的，且下面不要留这么多空白。",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_173927_7sDKxf89aVVNDH_m_1788775567?w=1920&h=953"
+      ],
+      "files": [
+        "issue-006-img1.png"
+      ]
+    },
+    {
+      "id": 7,
+      "sheetRow": 8,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "二级审核/待分配/采购单管理",
+      "description": "待审核、已通过、已驳回、全部必须要右上角的数字",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_341846_CYtuZemE4UX8n-U4_1788775937?w=1920&h=953"
+      ],
+      "files": [
+        "issue-007-img1.png"
+      ]
+    },
+    {
+      "id": 8,
+      "sheetRow": 9,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "二级审核/待分配/采购单管理",
+      "description": "左侧菜单只有当有需要待办事项的时候才显示数字图标，待办已全部处理了则不需要显示",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_66688_jvvzfYYdKD2rUtwD_1788776101?w=1920&h=953"
+      ],
+      "files": [
+        "issue-008-img1.png"
+      ]
+    },
+    {
+      "id": 9,
+      "sheetRow": 10,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "待分配",
+      "description": "详情的弹窗改成横向的，且下面不要留这么多空白。",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_759764_0_bJlVr1UmofdUpF_1788776000?w=1920&h=953"
+      ],
+      "files": [
+        "issue-009-img1.png"
+      ]
+    },
+    {
+      "id": 10,
+      "sheetRow": 11,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "待分配",
+      "description": "重新绑定的弹窗改成横向的，且下面不要留这么多空白。",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_993907_Nn90QVuNVmCWgtLC_1788776041?w=1920&h=953"
+      ],
+      "files": [
+        "issue-010-img1.png"
+      ]
+    },
+    {
+      "id": 11,
+      "sheetRow": 12,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "SN码库",
+      "description": "去掉“系统生成SN”按钮",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_507713_dP7W34l2LZD7f-1t_1788774005?w=1920&h=953"
+      ],
+      "files": [
+        "issue-011-img1.png"
+      ]
+    },
+    {
+      "id": 12,
+      "sheetRow": 13,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "SN码库",
+      "description": "起止日期不要换行",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_271812_nyZaUmhoexdiBZel_1788774298?w=1920&h=953"
+      ],
+      "files": [
+        "issue-012-img1.png"
+      ]
+    },
+    {
+      "id": 13,
+      "sheetRow": 14,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "SN码库",
+      "description": "列宽调整：SN、商品、尺寸列宽太大了，后面几列列宽太小，需要调整平衡一点",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_874613_gPYNYr53AHMn_7-V_1788774413?w=1920&h=953"
+      ],
+      "files": [
+        "issue-013-img1.png"
+      ]
+    },
+    {
+      "id": 14,
+      "sheetRow": 15,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "SN码库",
+      "description": "商品编码改成输入框，搜索的编码，现在下拉框选择的是商品名称",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_680120_A3J4G42ejeGHfwfG_1788833510?w=1920&h=953"
+      ],
+      "files": [
+        "issue-014-img1.png"
+      ]
+    },
+    {
+      "id": 15,
+      "sheetRow": 16,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "SN码库",
+      "description": "1、标签筛选下拉框选项去掉“个性化”，增加再入库\n2、去掉标签“修理过”、“个性化”",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_7383_nFbZH0utAussucKT_1788833606?w=1920&h=953",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_298872_lUQTHgBZZofZFbit_1788833690?w=1920&h=953"
+      ],
+      "files": [
+        "issue-015-img1.png",
+        "issue-015-img2.png"
+      ]
+    },
+    {
+      "id": 16,
+      "sheetRow": 17,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "SN码库",
+      "description": "出厂日期是怎么算的",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_135740_0nEmhRJzxFlWgOU1_1788833742?w=1920&h=953"
+      ],
+      "files": [
+        "issue-016-img1.png"
+      ]
+    },
+    {
+      "id": 17,
+      "sheetRow": 18,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "SN码库",
+      "description": "状态已销售，但没有流转事件",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_884756_8jlirxNB1G2wRDt6_1788833790?w=1920&h=953"
+      ],
+      "files": [
+        "issue-017-img1.png"
+      ]
+    },
+    {
+      "id": 18,
+      "sheetRow": 19,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "SN码库",
+      "description": "1、修改页面情况说明和处理说明内容和原型不一致，缺少填写日期\n2、所属二级（调库）不要换行",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_409832_XNda_65npIjCoIEd_1788848635?w=3840&h=953"
+      ],
+      "files": [
+        "issue-018-img1.png"
+      ]
+    },
+    {
+      "id": 19,
+      "sheetRow": 20,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "商品库",
+      "description": "套件和单品修改/新建页面“取消全选”按钮和填写新增的输入框都没对齐，且还分别和前后的框粘连了",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_539829_k1zZCEuxC0SusO8r_1788834653?w=1920&h=953"
+      ],
+      "files": [
+        "issue-019-img1.png"
+      ]
+    },
+    {
+      "id": 20,
+      "sheetRow": 21,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "商品库",
+      "description": "单品下面大片空白去掉",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_37975__Uec9J3PcdkhevNr_1788834852?w=1920&h=953"
+      ],
+      "files": [
+        "issue-020-img1.png"
+      ]
+    },
+    {
+      "id": 21,
+      "sheetRow": 22,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "采购单管理/销售单管理/库存管理/返货管理/异常管理/销售客户",
+      "description": "筛选和数据汇总区域样式和设计稿不统一",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_604326_i-N3NPTtGi-ec34r_1788836630?w=3725&h=944"
+      ],
+      "files": [
+        "issue-021-img1.png"
+      ]
+    },
+    {
+      "id": 22,
+      "sheetRow": 23,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "采购单管理/返货管理/异常管理/销售客户",
+      "description": "下单起止时间默认选中当前月份",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_27524_NA3f1hQ2b2HKTFqA_1788836978?w=1920&h=953"
+      ],
+      "files": [
+        "issue-022-img1.png"
+      ]
+    },
+    {
+      "id": 23,
+      "sheetRow": 24,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "采购单管理",
+      "description": "配件改成单品",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_602667_hK92gSnURLbj_bv8_1788838692?w=1920&h=953"
+      ],
+      "files": [
+        "issue-023-img1.png"
+      ]
+    },
+    {
+      "id": 24,
+      "sheetRow": 25,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "采购单管理",
+      "description": "非标品始终显示SS+腰带SS，怎么选择其他规格",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_10397_jxoCK2AsepCPl5-4_1788838890?w=1920&h=953"
+      ],
+      "files": [
+        "issue-024-img1.png"
+      ]
+    },
+    {
+      "id": 25,
+      "sheetRow": 26,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "采购单管理",
+      "description": "已填写号段显示为10，但是无法确认保存，提示已填0",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_89342_zuLIVEisHjR6Lq8K_1788839175?w=1920&h=953"
+      ],
+      "files": [
+        "issue-025-img1.png"
+      ]
+    },
+    {
+      "id": 26,
+      "sheetRow": 27,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "采购单管理",
+      "description": "已完成后面增加已驳回的状态标签切换",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_528123_urvzCJZYYaGVnHC7_1788839422?w=1920&h=953"
+      ],
+      "files": [
+        "issue-026-img1.png"
+      ]
+    },
+    {
+      "id": 27,
+      "sheetRow": 28,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "采购单管理",
+      "description": "当状态是已驳回，增加一个字段：驳回原因（就是驳回时候弹窗填写的内容）",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_478149_pfVUrrWl-8aGhT4s_1788839462?w=1920&h=953",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_362540_-fbfwjcVpwnIW3KO_1788839513?w=1920&h=953"
+      ],
+      "files": [
+        "issue-027-img1.png",
+        "issue-027-img2.png"
+      ]
+    },
+    {
+      "id": 28,
+      "sheetRow": 29,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "销售单管理",
+      "description": "标签上的数字去掉",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_379215_zsPZs2qQyh5JUToY_1788845453?w=1920&h=953"
+      ],
+      "files": [
+        "issue-028-img1.png"
+      ]
+    },
+    {
+      "id": 29,
+      "sheetRow": 30,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "销售单管理",
+      "description": "时间筛选前面加文字下单时间",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_966872_AD5pLnU1DxcOLVKt_1788838733?w=1920&h=953"
+      ],
+      "files": [
+        "issue-029-img1.png"
+      ]
+    },
+    {
+      "id": 30,
+      "sheetRow": 31,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "销售单管理",
+      "description": "详情下面大片空白去掉",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_246308_veetYjcjssQhIEEi_1788845632?w=1920&h=953"
+      ],
+      "files": [
+        "issue-030-img1.png"
+      ]
+    },
+    {
+      "id": 31,
+      "sheetRow": 32,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "库存管理",
+      "description": "标签上的数字去掉",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_429760_QN015xd2-rgvErDp_1788845714?w=1920&h=953"
+      ],
+      "files": [
+        "issue-031-img1.png"
+      ]
+    },
+    {
+      "id": 32,
+      "sheetRow": 33,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "库存管理",
+      "description": "库存流水没有记录",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_151815_AJcYg8rmBFjH43dp_1788845857?w=1920&h=953"
+      ],
+      "files": [
+        "issue-032-img1.png"
+      ]
+    },
+    {
+      "id": 33,
+      "sheetRow": 34,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "返货管理",
+      "description": "只有当一级代理退原厂有需要审核的时候，一级代理退原厂这里才会有上标数字，其他的标签的上标数字都去掉",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_354948_V82pewutALTaxoYp_1788845891?w=1920&h=953"
+      ],
+      "files": [
+        "issue-033-img1.png"
+      ]
+    },
+    {
+      "id": 34,
+      "sheetRow": 35,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "返货管理",
+      "description": "这2种描述是同一个类型，描述应该统一：终端退货",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_338397_y_AmgNRfSs8evdvy_1788846112?w=1920&h=953"
+      ],
+      "files": [
+        "issue-034-img1.png"
+      ]
+    },
+    {
+      "id": 35,
+      "sheetRow": 36,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "返货管理",
+      "description": "1、文字修改：处理改成驳回，审核通过改成通过\n2、点击审核通过或者驳回之后，需要加二次确认的弹窗",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_638816_01F29oyxc2chdRIP_1788848019?w=1920&h=953"
+      ],
+      "files": [
+        "issue-035-img1.png"
+      ]
+    },
+    {
+      "id": 36,
+      "sheetRow": 37,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "返货管理",
+      "description": "列表上的状态和标签切换的状态对不上，标签上已处理改成已驳回；列表上的已处理改成已通过",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_599502_1-plJBjP1MqoPqcV_1788848130?w=1920&h=953"
+      ],
+      "files": [
+        "issue-036-img1.png"
+      ]
+    },
+    {
+      "id": 37,
+      "sheetRow": 38,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "返货管理/SN码库",
+      "description": "RL202608010041 该SN商品已发生售后，但SN码库里没有状态流转；且驳回时候填写的处理说明未在SN码库中同步显示；\n在SN码库中编辑的情况说明在返货管理里也没有同步显示；",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_555035_Zyh20LdyDnWUw6Uq_1788848398?w=1920&h=953",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_438102_mnMQT8t0GmTZ20kS_1788848474?w=1920&h=953",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_967764_QAH5Ds7VFJZ7tjGG_1788848526?w=1920&h=953"
+      ],
+      "files": [
+        "issue-037-img1.png",
+        "issue-037-img2.png",
+        "issue-037-img3.png"
+      ]
+    },
+    {
+      "id": 38,
+      "sheetRow": 39,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "异常管理",
+      "description": "这是什么意思 有什么功能",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_146455_jvWLEK65QvtoMTNT_1788849376?w=1920&h=953"
+      ],
+      "files": [
+        "issue-038-img1.png"
+      ]
+    },
+    {
+      "id": 39,
+      "sheetRow": 40,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "异常管理",
+      "description": "1、异常标准配置的超量比和周转倍数去掉\n2、下方大片空白去掉",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_31277_w4P6tHntxYsxUL8n_1788849314?w=1920&h=953"
+      ],
+      "files": [
+        "issue-039-img1.png"
+      ]
+    },
+    {
+      "id": 40,
+      "sheetRow": 41,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "异常管理",
+      "description": "销售库存异常里的一级代理未显示",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_885906_nKPN8lfBLkii8bkD_1788849266?w=1920&h=953"
+      ],
+      "files": [
+        "issue-040-img1.png"
+      ]
+    },
+    {
+      "id": 41,
+      "sheetRow": 42,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "异常管理",
+      "description": "同一笔订单里两件商品不应该报重复异常",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_430088_pG06-wCyo2uTG-oA_1788848931?w=1920&h=953",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_937437_fpVnWwfd26zF3Tgg_1788848921?w=1920&h=953"
+      ],
+      "files": [
+        "issue-041-img1.png",
+        "issue-041-img2.png"
+      ]
+    },
+    {
+      "id": 42,
+      "sheetRow": 43,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "异常管理",
+      "description": "分销激活异常和直售激活异常的功能是一样的，区别在于直售激活异常是一级代理销售给C端用户时的激活异常，分销激活异常是指二级代理销售给C端用户时的激活异常。异常类型为：归属地异常、客户信息重复、IP异常",
+      "status": "待处理",
+      "note": "",
+      "images": [],
+      "files": []
+    },
+    {
+      "id": 43,
+      "sheetRow": 44,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "异常管理",
+      "description": "时间筛选前面加文字报警时间",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_556432_CJxqpWRrUMmDCJ2p_1788838779?w=1920&h=953"
+      ],
+      "files": [
+        "issue-043-img1.png"
+      ]
+    },
+    {
+      "id": 44,
+      "sheetRow": 45,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "异常管理",
+      "description": "弹窗提示下面大片空白去掉",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_220808_FXs18n6sCNNoPmYk_1788838630?w=1920&h=953"
+      ],
+      "files": [
+        "issue-044-img1.png"
+      ]
+    },
+    {
+      "id": 45,
+      "sheetRow": 46,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "销售客户",
+      "description": "时间筛选未生效，只有第一条是9月的，其他都是8月的",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_111658_uhuixFcnbFikL-yB_1788849675?w=1920&h=953"
+      ],
+      "files": [
+        "issue-045-img1.png"
+      ]
+    },
+    {
+      "id": 46,
+      "sheetRow": 47,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "销售客户",
+      "description": "1、筛选的标记下拉框应该是重复地址、重复手机号，去掉仅重复\n2、因为小程序上无法输入地址，暂时无法验证当手机号也重复时会怎么提示。需要系统自己验证下，正确效果是同时显示重复手机号和重复地址两个标签并列",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_693819_DnoIetHmXDRD9M2g_1788850323?w=1920&h=953"
+      ],
+      "files": [
+        "issue-046-img1.png"
+      ]
+    },
+    {
+      "id": 47,
+      "sheetRow": 48,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "数据统计",
+      "description": "1、区间激活数换行放到累计激活数前面\n2、每个卡片宽度调整，平铺满",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_43853_3Asv2Uf9DFdEWB5I_1788851236?w=1920&h=953"
+      ],
+      "files": [
+        "issue-047-img1.png"
+      ]
+    },
+    {
+      "id": 48,
+      "sheetRow": 49,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "数据统计",
+      "description": "二级代理应该不存在直售数，直售是指一级代理直接销售给C端用户",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_570290_3REScbfAtivl8f7L_1788851533?w=1920&h=953"
+      ],
+      "files": [
+        "issue-048-img1.png"
+      ]
+    },
+    {
+      "id": 49,
+      "sheetRow": 50,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "数据统计",
+      "description": "1、本级销售构成改成销售渠道\n2、缺少一级代理排行\n3、累计激活数这一排的卡片和下面的图表中间缺少间隔\n4、下面图表布局调整成和设计稿一样",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_814026_QLzIEBknz4XYJj7t_1788851701?w=3770&h=953"
+      ],
+      "files": [
+        "issue-049-img1.png"
+      ]
+    },
+    {
+      "id": 50,
+      "sheetRow": 51,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "角色与权限",
+      "description": "创建角色时选的这些是什么意思，没看懂",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_174219_m7hXYmZP1fmtmgMi_1788851954?w=1920&h=953"
+      ],
+      "files": [
+        "issue-050-img1.png"
+      ]
+    },
+    {
+      "id": 51,
+      "sheetRow": 52,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "角色与权限",
+      "description": "角色操作这里增加删除按钮，可以删除没有绑定过账号的角色",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_930818_VXBESLRh-FjsAX-9_1788852024?w=1920&h=953"
+      ],
+      "files": [
+        "issue-051-img1.png"
+      ]
+    },
+    {
+      "id": 52,
+      "sheetRow": 53,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "角色与权限",
+      "description": "账号要可以修改密码",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_14356_SoVbSxOIWXTw8AR5_1788852081?w=1920&h=953"
+      ],
+      "files": [
+        "issue-052-img1.png"
+      ]
+    },
+    {
+      "id": 53,
+      "sheetRow": 54,
+      "date": "9月7日",
+      "platform": "管理端",
+      "module": "通知",
+      "description": "点击之后跳转至列表页",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_471770_xhAGwIrShKHYw7Kp_1788845321?w=1920&h=953"
+      ],
+      "files": [
+        "issue-053-img1.png"
+      ]
+    },
+    {
+      "id": 54,
+      "sheetRow": 55,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "数据",
+      "description": "1、日期选择区域样式调整成设计稿那样\n2、当前在库数放到图表上方\n3、下面图表数据用左右切换的，移动端可以左右滑动交互效果",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_394070_sOGtaYFcPAdoE6eb_1788852983?w=806&h=821"
+      ],
+      "files": [
+        "issue-054-img1.png"
+      ]
+    },
+    {
+      "id": 55,
+      "sheetRow": 56,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "数据",
+      "description": "在手机上图表遮挡了菜单",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_228498_ARK1EDn-NOIGZYZN_1788858649?w=1280&h=2781"
+      ],
+      "files": [
+        "issue-055-img1.jpg"
+      ]
+    },
+    {
+      "id": 56,
+      "sheetRow": 57,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "扫码",
+      "description": "1、去掉查询扫码\n2、卡片调整到合适宽度\n3、按钮上下间隙调大一点\n4、下方待扫描的缺少商品名称、进度",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_383161_8oLWkhdDqoAEncuc_1788853428?w=816&h=788"
+      ],
+      "files": [
+        "issue-056-img1.png"
+      ]
+    },
+    {
+      "id": 57,
+      "sheetRow": 58,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "扫码",
+      "description": "1、缺少输入sn码的框\n2、缺少下一步填写客户信息",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_237783_Z8lFCX77kpaeMgM7_1788854927?w=772&h=672"
+      ],
+      "files": [
+        "issue-057-img1.png"
+      ]
+    },
+    {
+      "id": 58,
+      "sheetRow": 59,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "扫码",
+      "description": "应该可以一单扫码/输入多个SN码",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_922332_BfliRPIXMmmUOQSk_1788850536?w=414&h=780"
+      ],
+      "files": [
+        "issue-058-img1.png"
+      ]
+    },
+    {
+      "id": 59,
+      "sheetRow": 60,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "扫码",
+      "description": "输入不进去，填写没反应",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_51532_e58hoO0HnpHWRSiq_1788850619?w=414&h=780"
+      ],
+      "files": [
+        "issue-059-img1.png"
+      ]
+    },
+    {
+      "id": 60,
+      "sheetRow": 61,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "扫码",
+      "description": "地址的样式改成  [省 ▼] [市 ▼] [区 ▼]    [____路] [____号/弄] [____室]\n，省市区是下拉框且联动的，路号室是输入框",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_882538_fR8QWsMexMKkMvpU_1788850671?w=414&h=780"
+      ],
+      "files": [
+        "issue-060-img1.png"
+      ]
+    },
+    {
+      "id": 61,
+      "sheetRow": 62,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "业务-采购",
+      "description": "1、标签上只显示待处理和会签中的数字，已完成和全部的不需要显示上标\n2、已完成后面增加标签已驳回\n3、列表上缺少号段",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_87812_qDRzs4FRKQq5iBgR_1788855332?w=414&h=780",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_194412_BvyX5TYl-Aa6BZZX_1788855415?w=414&h=780",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_758719_KsHwQ50QsTxqWIIC_1788856375?w=900&h=696"
+      ],
+      "files": [
+        "issue-061-img1.png",
+        "issue-061-img2.png",
+        "issue-061-img3.png"
+      ]
+    },
+    {
+      "id": 62,
+      "sheetRow": 63,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "业务-采购",
+      "description": "1、详情信息和原型不匹配\n2、号段不要有代码",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_591396_M9GB9JcYsJd9C7sb_1788855535?w=1033&h=812",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_361794_SvxKLPFDTVia8tWt_1788856021?w=402&h=276"
+      ],
+      "files": [
+        "issue-062-img1.png",
+        "issue-062-img2.png"
+      ]
+    },
+    {
+      "id": 63,
+      "sheetRow": 64,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "业务-采购",
+      "description": "创建采购单页面重新做",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_814792_FLw83ZhLC7OLK4mk_1788855939?w=1490&h=845"
+      ],
+      "files": [
+        "issue-063-img1.png"
+      ]
+    },
+    {
+      "id": 64,
+      "sheetRow": 65,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "业务-销售",
+      "description": "缺少号段",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_772736_y94ufF9dAmfC2PBo_1788856401?w=917&h=754"
+      ],
+      "files": [
+        "issue-064-img1.png"
+      ]
+    },
+    {
+      "id": 65,
+      "sheetRow": 66,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "业务-销售",
+      "description": "详情信息和原型不匹配",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_75673_nZCuV3gKFUfs_4np_1788856448?w=999&h=810"
+      ],
+      "files": [
+        "issue-065-img1.png"
+      ]
+    },
+    {
+      "id": 66,
+      "sheetRow": 67,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "业务-销售",
+      "description": "创建销售单页面重新做",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_385431_mqWfg5ZCcdmE0_vP_1788856514?w=1045&h=862"
+      ],
+      "files": [
+        "issue-066-img1.png"
+      ]
+    },
+    {
+      "id": 67,
+      "sheetRow": 68,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "业务-C端订单",
+      "description": "详情信息和原型不匹配",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_998688_5dHtVuDF077dO1ZX_1788856600?w=1009&h=749"
+      ],
+      "files": [
+        "issue-067-img1.png"
+      ]
+    },
+    {
+      "id": 68,
+      "sheetRow": 69,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "库存",
+      "description": "去掉标签上的数字",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_782826_h52sgrMuKUoNsTX0_1788856694?w=414&h=780"
+      ],
+      "files": [
+        "issue-068-img1.png"
+      ]
+    },
+    {
+      "id": 69,
+      "sheetRow": 70,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "库存-在库SN",
+      "description": "详情信息和原型不匹配\n流转样式和PC的流转样式保持统一",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_916478_J9Qs4CHaa_ncV7cP_1788856858?w=1062&h=824",
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_208801_Xj1Zh-7VQR6w53aG_1788857004?w=363&h=475"
+      ],
+      "files": [
+        "issue-069-img1.png",
+        "issue-069-img2.png"
+      ]
+    },
+    {
+      "id": 70,
+      "sheetRow": 71,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "库存-商品",
+      "description": "当前开发的页面点击详情后直接跳转到在库SN列表页了，缺少详情页",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_679140_3MxpmKqaUBq3PwsH_1788857113?w=1481&h=834"
+      ],
+      "files": [
+        "issue-070-img1.png"
+      ]
+    },
+    {
+      "id": 71,
+      "sheetRow": 72,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "售后",
+      "description": "1、详情信息和原型不匹配\n2、样式调整成设计稿那样",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_935092_KQfw1fX-_ma4RO20_1788857293?w=1478&h=957"
+      ],
+      "files": [
+        "issue-071-img1.png"
+      ]
+    },
+    {
+      "id": 72,
+      "sheetRow": 73,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "售后",
+      "description": "列表上标签没有加样式",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_230965_3SUKgmvJbO9TNa-f_1788857381?w=1376&h=775"
+      ],
+      "files": [
+        "issue-072-img1.png"
+      ]
+    },
+    {
+      "id": 73,
+      "sheetRow": 74,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "售后",
+      "description": "去掉标签上的数字，仅显示待处理的数字",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_930371_vigSSOUrWvSz5mhI_1788857423?w=414&h=887"
+      ],
+      "files": [
+        "issue-073-img1.png"
+      ]
+    },
+    {
+      "id": 74,
+      "sheetRow": 75,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "售后",
+      "description": "输入不进去，填写没反应",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_953342_Dp7Pq3l3vr4gwPII_1788847591?w=414&h=780"
+      ],
+      "files": [
+        "issue-074-img1.png"
+      ]
+    },
+    {
+      "id": 75,
+      "sheetRow": 76,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "售后",
+      "description": "填写二级退一级/填写终端退货单/申请退原厂的SN都只能填一个，应该要可以填写多个或者扫描多个",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_91989_YZP5HXCGZqmcd9L2_1788857782?w=414&h=887"
+      ],
+      "files": [
+        "issue-075-img1.png"
+      ]
+    },
+    {
+      "id": 76,
+      "sheetRow": 77,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "售后",
+      "description": "列表上的状态和标签切换的状态对不上，标签上已处理改成已驳回；列表上的已处理改成已通过",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_294393_58sTrSfRK4QpTuN7_1788857977?w=414&h=887"
+      ],
+      "files": [
+        "issue-076-img1.png"
+      ]
+    },
+    {
+      "id": 77,
+      "sheetRow": 78,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "售后",
+      "description": "去掉标签上的数字，仅显示待审核的数字",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_956384_wBBrYloBfao-iUla_1788858033?w=414&h=887"
+      ],
+      "files": [
+        "issue-077-img1.png"
+      ]
+    },
+    {
+      "id": 78,
+      "sheetRow": 79,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "异常",
+      "description": "缺少客户信息",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_809604_AvxKCQaj72fTDpz8_1788859113?w=1016&h=591"
+      ],
+      "files": [
+        "issue-078-img1.png"
+      ]
+    },
+    {
+      "id": 79,
+      "sheetRow": 80,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "异常",
+      "description": "分销激活异常和直售激活异常的功能是一样的，区别在于直售激活异常是一级代理销售给C端用户时的激活异常，分销激活异常是指二级代理销售给C端用户时的激活异常。异常类型为：归属地异常、客户信息重复、IP异常",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_342213_LZiYNu1eRsInrQ0A_1788859138?w=894&h=674"
+      ],
+      "files": [
+        "issue-079-img1.png"
+      ]
+    },
+    {
+      "id": 80,
+      "sheetRow": 81,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "异常",
+      "description": "筛选项增加二级代理下拉框",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_626898_mX-qCsemsd9FgRke_1788859215?w=414&h=887"
+      ],
+      "files": [
+        "issue-080-img1.png"
+      ]
+    },
+    {
+      "id": 81,
+      "sheetRow": 82,
+      "date": "9月7日",
+      "platform": "小程序",
+      "module": "异常",
+      "description": "PC有数据，但小程序上未显示",
+      "status": "待处理",
+      "note": "",
+      "images": [
+        "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_265575_52RiFiCggGlCSQBt_1788859307?w=1920&h=953"
+      ],
+      "files": [
+        "issue-081-img1.png"
+      ]
+    }
+  ]
+}
