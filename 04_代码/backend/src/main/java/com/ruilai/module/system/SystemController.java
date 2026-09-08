@@ -1,5 +1,6 @@
 package com.ruilai.module.system;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruilai.common.security.AuthUtil;
@@ -218,14 +219,20 @@ public class SystemController {
 
     @GetMapping("/notifications")
     public R<List<Notification>> notifications() {
-        return R.ok(notificationMapper.selectList(Wrappers.<Notification>lambdaQuery()
+        return R.ok(notificationMapper.selectList(notificationScope()
                 .orderByDesc(Notification::getOccurredAt).last("limit 50")));
+    }
+
+    @GetMapping("/notifications/unread-count")
+    public R<Long> unreadNotificationCount() {
+        return R.ok(notificationMapper.selectCount(notificationScope()
+                .eq(Notification::getReadFlag, 0)));
     }
 
     @PostMapping("/notifications/{id}/read")
     public R<Void> read(@PathVariable String id) {
         Notification n = notificationMapper.selectById(id);
-        if (n != null) {
+        if (n != null && canReceiveNotification(n)) {
             n.setReadFlag(1);
             notificationMapper.updateById(n);
         }
@@ -234,12 +241,32 @@ public class SystemController {
 
     @PostMapping("/notifications/read-all")
     public R<Void> readAll() {
-        List<Notification> list = notificationMapper.selectList(Wrappers.<Notification>lambdaQuery().eq(Notification::getReadFlag, 0));
+        List<Notification> list = notificationMapper.selectList(notificationScope()
+                .eq(Notification::getReadFlag, 0));
         for (Notification n : list) {
             n.setReadFlag(1);
             notificationMapper.updateById(n);
         }
         return R.ok();
+    }
+
+    private LambdaQueryWrapper<Notification> notificationScope() {
+        String audience = notificationAudience();
+        return Wrappers.<Notification>lambdaQuery()
+                .and(w -> w.isNull(Notification::getToRole).or().like(Notification::getToRole, audience));
+    }
+
+    private boolean canReceiveNotification(Notification n) {
+        return n.getToRole() == null || n.getToRole().contains(notificationAudience());
+    }
+
+    private String notificationAudience() {
+        return switch (AuthUtil.current().getRoleCode()) {
+            case "ADMIN" -> "原厂";
+            case "L1", "SUB" -> "一级";
+            case "L2" -> "二级";
+            default -> "__NO_NOTIFICATION_AUDIENCE__";
+        };
     }
 
     @GetMapping("/settings/exception")

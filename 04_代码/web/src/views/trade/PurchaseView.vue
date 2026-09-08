@@ -115,12 +115,13 @@ async function load() {
     })
     list.value = res.list
     total.value = res.total
+    const countScope = { l1Id: query.l1Id, from: query.from, to: query.to }
     const [liveRes, pendingRes, cosigningRes, approvedRes, rejectedRes] = await Promise.all([
-      api.purchases({ page: 1, pageSize: 200 }),
-      api.purchases({ page: 1, pageSize: 1, status: 'pending' }),
-      api.purchases({ page: 1, pageSize: 1, status: 'cosigning' }),
-      api.purchases({ page: 1, pageSize: 1, status: 'approved' }),
-      api.purchases({ page: 1, pageSize: 1, status: 'rejected' }),
+      api.purchases({ page: 1, pageSize: 200, ...countScope }),
+      api.purchases({ page: 1, pageSize: 1, status: 'pending', ...countScope }),
+      api.purchases({ page: 1, pageSize: 1, status: 'cosigning', ...countScope }),
+      api.purchases({ page: 1, pageSize: 1, status: 'approved', ...countScope }),
+      api.purchases({ page: 1, pageSize: 1, status: 'rejected', ...countScope }),
     ])
     const live = liveRes.list || []
     counts.all = liveRes.total
@@ -128,6 +129,9 @@ async function load() {
     counts.cosigning = cosigningRes.total
     counts.approved = approvedRes.total
     counts.rejected = rejectedRes.total
+    window.dispatchEvent(new CustomEvent('ruilai:badges-changed', {
+      detail: { pendingPo: counts.pending + counts.cosigning },
+    }))
     const poScope = live.filter((p: any) => p.status !== 'rejected' && (!query.l1Id || p.l1Id === query.l1Id))
     metrics.histQty = poScope.reduce((n: number, p: any) => n + poNeedQty(p), 0)
     metrics.rangeQty = poScope.filter((p: any) => inRange(p.createdAt, query.from, query.to)).reduce((n: number, p: any) => n + poNeedQty(p), 0)

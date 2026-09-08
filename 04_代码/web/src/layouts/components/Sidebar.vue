@@ -66,6 +66,16 @@ async function loadBadges() {
     const c = await api.exceptionCounts({ from: monthStart(), to: todayDate() })
     badges.openEx = (c['activate-direct'] || 0) + (c['activate-dist'] || 0) + (c.stock || 0)
   } catch { /* */ }
+  try {
+    const scope = { page: 1, pageSize: 1, from: monthStart(), to: todayDate() }
+    const [pending, cosigning, returns] = await Promise.all([
+      api.purchases({ ...scope, status: 'pending' }),
+      api.purchases({ ...scope, status: 'cosigning' }),
+      api.returns({ ...scope, status: 'pending', type: 'l1_to_factory' }),
+    ])
+    badges.pendingPo = pending.total + cosigning.total
+    badges.pendingReturn = returns.total
+  } catch { /* */ }
 }
 function onBadgesChanged(event: Event) {
   const detail = (event as CustomEvent<Record<string, number>>).detail

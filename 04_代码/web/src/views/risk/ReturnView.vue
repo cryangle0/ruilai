@@ -160,21 +160,22 @@ async function load() {
     const res = await api.returns({ page: page.value, pageSize: pageSize.value, ...q })
     list.value = res.list
     total.value = res.total
-    const scoped = await api.returns({
-      page: 1,
-      pageSize: 200,
-      l1Id: q.l1Id,
-      l2Id: q.l2Id,
-      from: q.from,
-      to: q.to,
-      reasonType: q.reasonType,
-    })
+    const countScope = {
+      l1Id: q.l1Id, l2Id: q.l2Id, from: q.from, to: q.to, reasonType: q.reasonType,
+    }
+    const [scoped, factoryPending] = await Promise.all([
+      api.returns({ page: 1, pageSize: 200, ...countScope }),
+      api.returns({ page: 1, pageSize: 1, status: 'pending', type: 'l1_to_factory', ...countScope }),
+    ])
     const rows = scoped.list || []
     kindCounts.factory = rows.filter((r: any) => r.type === 'l1_to_factory').length
-    kindCounts.factoryPending = rows.filter((r: any) => r.type === 'l1_to_factory' && r.status === 'pending').length
+    kindCounts.factoryPending = factoryPending.total
     kindCounts.l2 = rows.filter((r: any) => r.type === 'l2_to_l1').length
     kindCounts.user = rows.filter((r: any) => r.type === 'user').length
     kindCounts.all = rows.length
+    window.dispatchEvent(new CustomEvent('ruilai:badges-changed', {
+      detail: { pendingReturn: kindCounts.factoryPending },
+    }))
     const shown = kind.value === 'all' ? rows : rows.filter((r: any) => r.type === kind.value)
     metrics.rangeQty = shown.reduce((n: number, r: any) => n + ((r.sns || []).length), 0)
     metrics.pending = shown.filter((r: any) => r.status === 'pending').length

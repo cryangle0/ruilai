@@ -101,6 +101,7 @@ export const api = {
   changeAccountPassword: (id: number | string, password: string) => post(`/api/accounts/${id}/password`, { password }),
   logs: (params?: object) => get<PageResult<any>>('/api/logs', { params }),
   notifications: () => get<any[]>('/api/notifications'),
+  unreadNotificationCount: () => get<number>('/api/notifications/unread-count'),
   readNotify: (id: string) => post(`/api/notifications/${id}/read`),
   readAllNotify: () => post('/api/notifications/read-all'),
   upload: (file: File) => {

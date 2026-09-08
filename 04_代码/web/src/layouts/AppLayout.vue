@@ -86,7 +86,7 @@ const disableDlg = ref(false)
 
 const displayName = computed(() => auth.user?.name || auth.user?.username || '用户')
 const avatarText = computed(() => displayName.value.slice(0, 1))
-const unread = computed(() => notes.value.filter((n) => !n.readFlag).length)
+const unread = ref(0)
 
 function closePanels() {
   menuOpen.value = false
@@ -100,8 +100,10 @@ async function toggleNotify() {
 }
 
 async function readOne(n: any) {
+  const wasUnread = !n.readFlag
   await api.readNotify(n.id)
   n.readFlag = 1
+  if (wasUnread) unread.value = Math.max(0, unread.value - 1)
   notifyOpen.value = false
   await router.push(n.route || notificationRoute(n))
 }
@@ -119,6 +121,7 @@ function notificationRoute(n: any) {
 async function markAll() {
   await api.readAllNotify()
   notes.value.forEach((n) => { n.readFlag = 1 })
+  unread.value = 0
 }
 
 async function onLogout() {
@@ -160,7 +163,12 @@ function onSigned() {
 onMounted(() => {
   if (auth.isLoggedIn) {
     auth.fetchMe().catch(() => {})
-    api.notifications().then((list) => (notes.value = list)).catch(() => {})
+    Promise.all([api.notifications(), api.unreadNotificationCount()])
+      .then(([list, count]) => {
+        notes.value = list
+        unread.value = count
+      })
+      .catch(() => {})
     maybePromptDisable()
   }
   document.addEventListener('click', closePanels)

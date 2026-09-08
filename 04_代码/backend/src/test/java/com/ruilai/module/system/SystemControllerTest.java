@@ -11,6 +11,7 @@ import com.ruilai.module.agent.mapper.AgentL1Mapper;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
 import com.ruilai.module.system.mapper.NotificationMapper;
 import com.ruilai.module.system.mapper.OpLogMapper;
+import com.ruilai.module.system.entity.Notification;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -88,5 +90,30 @@ class SystemControllerTest {
 
         assertThat(account.getPasswordHash()).isEqualTo("HASH");
         verify(accountMapper).updateById(account);
+    }
+
+    @Test
+    void countsAllUnreadNotificationsBeyondVisibleListLimit() {
+        when(notificationMapper.selectCount(any())).thenReturn(73L);
+
+        assertThat(controller.unreadNotificationCount().data()).isEqualTo(73L);
+    }
+
+    @Test
+    void cannotReadNotificationForAnotherAudience() {
+        LoginUser user = new LoginUser();
+        user.setRoleCode("L2");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, List.of()));
+        Notification notification = new Notification();
+        notification.setId("N1");
+        notification.setToRole("原厂");
+        notification.setReadFlag(0);
+        when(notificationMapper.selectById("N1")).thenReturn(notification);
+
+        controller.read("N1");
+
+        verify(notificationMapper, never()).updateById(notification);
+        assertThat(notification.getReadFlag()).isZero();
     }
 }
