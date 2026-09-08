@@ -1,7 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   aggregateStockRows,
+  compactSnRanges,
   collectAllPages,
   consumeNavigationIntent,
   createNavigationIntent,
@@ -11,7 +13,9 @@ import {
   exceptionCountForTab,
   fetchNextPage,
   mergePage,
+  purchaseSegmentText,
   salesScanSummary,
+  statusBadge,
   sortStockSns,
 } from '../src/utils/miniPages.ts'
 
@@ -73,6 +77,28 @@ test('sales scan cards show product and progress', () => {
     scanned: ['S1'],
     planTotal: 2,
   }), { product: '锐涞套件/M×2', progress: '1/2' })
+})
+
+test('business tabs expose only actionable badges and readable SN ranges', () => {
+  assert.equal(statusBadge('pending', 3, ['pending', 'cosigning']), 3)
+  assert.equal(statusBadge('approved', 9, ['pending', 'cosigning']), undefined)
+  assert.equal(purchaseSegmentText({ segments: { M: ['RL100-RL102'] } }), '号段：RL100-RL102')
+  assert.deepEqual(compactSnRanges(['RL100', 'RL101', 'RL103']), ['RL100-RL101', 'RL103'])
+})
+
+test('batch seven pages keep redesigned order and stock detail contracts', () => {
+  const biz = readFileSync(new URL('../src/pages/biz/index.vue', import.meta.url), 'utf8')
+  const detail = readFileSync(new URL('../src/pkg/detail/index.vue', import.meta.url), 'utf8')
+  const purchase = readFileSync(new URL('../src/pkg/purchase/index.vue', import.meta.url), 'utf8')
+  const stock = readFileSync(new URL('../src/pages/stock/index.vue', import.meta.url), 'utf8')
+  assert.match(biz, /title: '已驳回'/)
+  assert.match(biz, /purchaseSegmentText\(r\)/)
+  assert.doesNotMatch(stock, /title: '在库SN', badge:/)
+  assert.match(detail, /标准商品/)
+  assert.match(detail, /class="timeline"/)
+  assert.match(detail, /在库 SN（/)
+  assert.match(purchase, /加入销售明细/)
+  assert.match(purchase, /lines: saleLines\.value/)
 })
 
 test('complete paging keeps page size stable and removes repeated rows', async () => {

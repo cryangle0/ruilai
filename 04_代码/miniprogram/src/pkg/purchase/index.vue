@@ -22,7 +22,12 @@
             <text>{{ belt }} ›</text>
           </view>
           <FieldRow v-model="qty" label="数量" type="number" />
-          <button class="btn-p sales-submit" @click="submitSale">提交</button>
+          <button class="add-line" @click="addSaleLine">+ 加入销售明细</button>
+          <view v-for="(line,index) in saleLines" :key="`${line.productId}-${line.size}-${line.belt}`" class="sale-line">
+            <view><text>{{ line.productName }}</text><text class="sale-spec">{{ line.size }} + {{ line.belt || '无腰带' }} ×{{ line.qty }}</text></view>
+            <text class="delete-link" @click="saleLines.splice(index,1)">删除</text>
+          </view>
+          <button class="btn-p sales-submit" :disabled="!saleLines.length" @click="submitSale">创建并开始扫码（{{ saleTotal }}件）</button>
         </view>
       </view>
     </template>
@@ -189,8 +194,10 @@ const customQty = ref('1')
 const customBeltIndex = ref(0)
 const customBandIndex = ref(0)
 const bundleQty = ref<Record<string, Record<string, number>>>({})
+const saleLines = ref<Array<Record<string, any>>>([])
 
 const orderableProducts = computed(() => products.value.filter((p) => ['kit', 'single', 'part'].includes(p.type)))
+const saleProducts = computed(() => products.value.filter((p) => ['kit', 'single'].includes(p.type)))
 const productNames = computed(() => orderableProducts.value.map((p) => p.name))
 const productIndex = computed(() => Math.max(0, orderableProducts.value.findIndex((p) => p.id === productId.value)))
 const selectedProduct = computed(() => orderableProducts.value.find((p) => p.id === productId.value) || orderableProducts.value[0])
@@ -257,7 +264,8 @@ async function loadProducts() {
   loadError.value = ''
   try {
     products.value = (await miniApi.products()).data || []
-    const hit = orderableProducts.value.find((p) => p.id === productId.value) || orderableProducts.value[0]
+    const candidates = kind.value === 'sales' ? saleProducts.value : orderableProducts.value
+    const hit = candidates.find((p) => p.id === productId.value) || candidates[0]
     if (hit) productId.value = hit.id
     resetPurchaseDraft()
   } catch (error: any) {
@@ -268,13 +276,24 @@ async function loadProducts() {
 }
 
 function pickProduct() {
-  const list = orderableProducts.value
+  const list = kind.value === 'sales' ? saleProducts.value : orderableProducts.value
   const names = list.map((p) => p.name)
   if (!names.length) { uni.showToast({ title: '暂无商品', icon: 'none' }); return }
   uni.showActionSheet({ itemList: names, success: (r) => {
     const p = list[r.tapIndex]
     productId.value = p.id
   } })
+}
+
+const saleTotal = computed(() => saleLines.value.reduce((sum, line) => sum + Number(line.qty || 0), 0))
+function addSaleLine() {
+  const n = Math.floor(Number(qty.value) || 0)
+  const product = saleProducts.value.find((p) => p.id === productId.value)
+  if (!product || n <= 0) { uni.showToast({ title: '请选择商品并填写数量', icon: 'none' }); return }
+  const line = saleLines.value.find((item) => item.productId === product.id && item.size === size.value && item.belt === belt.value)
+  if (line) line.qty += n
+  else saleLines.value.push({ productId: product.id, productName: product.name, size: size.value, belt: product.type === 'single' ? '' : belt.value, qty: n })
+  qty.value = '1'
 }
 function pickL2() {
   const names = l2s.value.map((a) => a.name)
@@ -359,16 +378,13 @@ function cancel() {
 }
 
 async function submitSale() {
-  const n = Number(qty.value) || 0
-  if (n <= 0) { uni.showToast({ title: '数量须大于 0', icon: 'none' }); return }
+  if (!saleLines.value.length) { uni.showToast({ title: '请先加入销售明细', icon: 'none' }); return }
   if (!l2Id.value) { uni.showToast({ title: '请选择二级', icon: 'none' }); return }
   const created = await miniApi.createSale({
     channel: 'distribute',
     l2Id: l2Id.value,
-    productId: productId.value,
-    planTotal: n,
-    planBySize: { [size.value]: n },
-    belt: belt.value,
+    lines: saleLines.value,
+    planTotal: saleTotal.value,
   })
   const soId = (created.data as any)?.id
   uni.showToast({ title: '已创建销售单', icon: 'success' })
@@ -659,4 +675,9 @@ async function submitPurchase() {
 .btn-p { margin-top: 16rpx; border-radius: 16rpx; font-weight: 600; height: 84rpx; line-height: 84rpx; }
 .btn-p { background: linear-gradient(135deg, #2B7BF0, #1A68D7); color: #fff; }
 .btn-p::after { border: 0; }
+.add-line { height: 68rpx; margin: 8rpx 0 18rpx; border: 2rpx solid #BFD4F2; border-radius: 14rpx; background: #F5F9FF; color: #1A68D7; font-size: 23rpx; line-height: 64rpx; }
+.add-line::after { border: 0; }
+.sale-line { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; padding: 18rpx 4rpx; border-top: 1rpx solid #E9EEF5; color: #1A2B4A; font-size: 24rpx; }
+.sale-spec { display: block; margin-top: 6rpx; color: #7A879C; font-size: 21rpx; }
+.delete-link { color: #DE4B4B; font-size: 22rpx; }
 </style>

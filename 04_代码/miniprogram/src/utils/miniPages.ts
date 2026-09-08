@@ -70,6 +70,35 @@ export function salesScanSummary(row: Record<string, any>) {
   return { product, progress: `${scanned}/${total}` }
 }
 
+export function statusBadge(status: string, count: unknown, visible: readonly string[]) {
+  if (!visible.includes(status)) return undefined
+  return Number(count) || undefined
+}
+
+export function compactSnRanges(values: unknown[]) {
+  const sns = values.map(String).filter(Boolean).sort()
+  const out: string[] = []
+  for (let i = 0; i < sns.length;) {
+    let end = i
+    const match = sns[i].match(/^(.*?)(\d+)$/)
+    while (match && end + 1 < sns.length) {
+      const next = sns[end + 1].match(/^(.*?)(\d+)$/)
+      if (!next || next[1] !== match[1] || Number(next[2]) !== Number(match[2]) + end - i + 1) break
+      end++
+    }
+    out.push(end > i ? `${sns[i]}-${sns[end]}` : sns[i])
+    i = end + 1
+  }
+  return out
+}
+
+export function purchaseSegmentText(row: Record<string, any>) {
+  const values = Object.values(row.segments || {})
+    .flatMap((value: any) => Array.isArray(value) ? value : [value])
+    .map(String).filter(Boolean)
+  return values.length ? `号段：${values.join('、')}` : '暂无号段'
+}
+
 export function aggregateStockRows(rows: Array<Record<string, any>>) {
   const grouped = new Map<string, Record<string, any>>()
   for (const row of rows) {

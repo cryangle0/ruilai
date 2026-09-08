@@ -140,9 +140,9 @@ const rangeQty = computed(() => filteredLogs.value.reduce((n, h) => {
   return n + (d > 0 ? d : 0)
 }, 0))
 const segs = computed(() => [
-  { id: 'product', title: '商品', badge: filteredProducts.value.length || undefined },
-  { id: 'sn', title: '在库SN', badge: snTotal.value || filteredSns.value.length || undefined },
-  { id: 'flow', title: '库存流水', badge: filteredLogs.value.length || undefined },
+  { id: 'product', title: '商品' },
+  { id: 'sn', title: '在库SN' },
+  { id: 'flow', title: '库存流水' },
 ])
 const scopeOptions = computed(() => [
   { label: '本级仓库', value: 'self' },

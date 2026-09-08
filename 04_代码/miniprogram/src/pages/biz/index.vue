@@ -67,7 +67,7 @@ import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { PO_STATUS, SO_STATUS } from '@/utils/constants'
 import { formatDateTime, matchesQuery } from '@/utils/dates'
-import { consumeNavigationIntent, mergePage } from '@/utils/miniPages'
+import { compactSnRanges, consumeNavigationIntent, mergePage, purchaseSegmentText, statusBadge } from '@/utils/miniPages'
 
 const user = useUserStore()
 const tab = ref('purchase')
@@ -96,11 +96,11 @@ const poCounts = computed(() => {
   return { all: total.value || list.length, pending: n('pending'), cosigning: n('cosigning'), approved: n('approved'), rejected: n('rejected') }
 })
 const poSegs = computed(() => [
-  { id: 'all', title: '全部', badge: poCounts.value.all || undefined },
-  { id: 'pending', title: '待处理', badge: poCounts.value.pending || undefined },
-  { id: 'cosigning', title: '会签中', badge: poCounts.value.cosigning || undefined },
-  { id: 'approved', title: '已完成', badge: poCounts.value.approved || undefined },
-  { id: 'rejected', title: '已驳回', badge: poCounts.value.rejected || undefined },
+  { id: 'all', title: '全部' },
+  { id: 'pending', title: '待处理', badge: statusBadge('pending', poCounts.value.pending, ['pending', 'cosigning']) },
+  { id: 'cosigning', title: '会签中', badge: statusBadge('cosigning', poCounts.value.cosigning, ['pending', 'cosigning']) },
+  { id: 'approved', title: '已完成' },
+  { id: 'rejected', title: '已驳回' },
 ])
 const rows = computed(() => {
   let list = all.value
@@ -216,10 +216,9 @@ function warnText(r: any) {
   return typeof r.warnEx === 'string' ? r.warnEx : (r.warnEx.label || r.warnEx.message || '预警倍数异常 · 未处理')
 }
 function snText(r: any) {
-  const values = tab.value === 'purchase'
-    ? Object.values(r.segments || {}).flatMap((v: any) => Array.isArray(v) ? v : [v])
-    : (r.scanned || r.sns || [])
-  return values.filter(Boolean).join(' ') || '暂无 SN / 号段'
+  if (tab.value === 'purchase') return purchaseSegmentText(r)
+  const ranges = compactSnRanges(r.scanned || r.sns || [])
+  return ranges.length ? `号段：${ranges.join('、')}` : '暂无号段'
 }
 function goForm(kind: string) { uni.navigateTo({ url: `/pkg/purchase/index?kind=${kind}` }) }
 function open(r: any) {
@@ -245,5 +244,5 @@ function open(r: any) {
 .detail-row { display: flex; align-items: center; gap: 14rpx; margin-top: 10rpx; color: #5B6472; font-size: 21rpx; }
 .chip { padding: 4rpx 12rpx; border-radius: 9rpx; background: #EAF2FD; color: #1A68D7; font-weight: 600; }
 .warn-row { margin-top: 10rpx; padding: 8rpx 12rpx; border-radius: 9rpx; background: #FCEBEB; color: #DE4B4B; font-size: 20rpx; font-weight: 600; }
-.sn-row { display: block; margin-top: 12rpx; color: #9AA4B2; font-family: Consolas, monospace; font-size: 20rpx; line-height: 1.55; word-break: break-all; }
+.sn-row { display: block; margin-top: 12rpx; color: #7A879C; font-size: 20rpx; line-height: 1.55; word-break: break-all; }
 </style>

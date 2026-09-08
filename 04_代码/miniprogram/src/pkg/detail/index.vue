@@ -16,6 +16,16 @@
           <button class="ok" @click="saveExplain">提交说明</button>
         </view>
         <button v-if="kind==='sales' && data.status==='scanning' && user.role!=='SUB'" class="ok" @click="goScan">继续扫码</button>
+        <view v-if="kind==='stock'" class="detail-section">
+          <text class="h2">在库 SN（{{ (data.snRows||[]).length }}）</text>
+          <view v-for="row in (data.snRows||[])" :key="row.sn" class="detail-line" @click="openSn(row.sn)">
+            <text>{{ row.sn }}</text><text>{{ row.sizeCode || '—' }} / {{ row.belt || '—' }} ›</text>
+          </view>
+          <text class="h2 flow-title">库存流水</text>
+          <view v-for="row in (data.logs||[])" :key="row.id" class="detail-line">
+            <text>{{ formatDateTime(row.occurredAt) }}</text><text>{{ row.delta > 0 ? '+' : '' }}{{ row.delta }} · {{ row.reason }}</text>
+          </view>
+        </view>
         <view v-if="kind==='sn' && events.length" class="timeline">
           <text class="h2">流转时间线</text>
           <view v-for="(e, i) in events" :key="i" class="ev">
@@ -39,7 +49,7 @@ import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { PO_STATUS, SO_STATUS, RT_STATUS, SN_STATUS } from '@/utils/constants'
 import { formatDateTime } from '@/utils/dates'
-import { aggregateStockRows } from '@/utils/miniPages'
+import { aggregateStockRows, compactSnRanges, purchaseSegmentText } from '@/utils/miniPages'
 
 const user = useUserStore()
 const kind = ref('sales')
@@ -67,9 +77,13 @@ const fields = computed(() => {
   if (kind.value === 'purchase') {
     return [
       { k: '状态', v: PO_STATUS[d.status] || d.status },
-      { k: '一级', v: d.l1Id },
-      { k: '明细', v: (d.lines || []).map((l: any) => `${l.productName || l.productId}/${l.size}×${l.qty}`).join('，') },
-      { k: '号段', v: JSON.stringify(d.segments || {}) },
+      { k: '采购单号', v: d.no || '—' },
+      { k: '一级代理', v: d.l1Name || d.l1Id || '—' },
+      { k: '标准商品', v: lineSummary(d.lines) },
+      { k: '非标商品', v: lineSummary(d.customLines) },
+      { k: '单品/配件', v: lineSummary(d.parts) },
+      { k: 'SN号段', v: purchaseSegmentText(d).replace(/^号段：/, '') },
+      { k: '驳回原因', v: d.rejectReason || '—' },
       { k: '时间', v: formatDateTime(d.createdAt) },
     ]
   }
@@ -80,7 +94,7 @@ const fields = computed(() => {
       { k: '二级', v: d.l2Id || '—' },
       { k: '计划', v: `${(d.scanned||[]).length}/${d.planTotal || 0}` },
       { k: '商品明细', v: d.productDetail || (d.snRows || []).map((r: any) => `${r.productName || r.sn}/${r.size || ''}`).join('，') || '—' },
-      { k: 'SN', v: (d.scanned || []).join(' ') || '—' },
+      { k: 'SN号段', v: compactSnRanges(d.scanned || []).join('、') || '—' },
       { k: '客户', v: d.customer ? `${d.customer.phone || ''} ${d.customer.addr || ''}` : '—' },
       { k: '时间', v: formatDateTime(d.createdAt) },
     ]
@@ -108,14 +122,23 @@ const fields = computed(() => {
     ]
   }
   return [
+    { k: 'SN', v: d.sn || id.value },
     { k: '商品', v: d.productName || d.productId },
     { k: '规格', v: `${d.sizeCode || ''} + ${d.belt || ''}` },
     { k: '状态', v: SN_STATUS[d.status] || d.status },
+    { k: '出厂日期', v: formatDateTime(d.factoryAt) },
     { k: '一级', v: d.l1Id || '—' },
     { k: '二级', v: d.l2Id || '—' },
     { k: '客户', v: snCustomer(d) },
   ]
 })
+
+function lineSummary(lines: any) {
+  if (!Array.isArray(lines) || !lines.length) return '—'
+  return lines.map((line: any) =>
+    `${line.productName || line.name || line.productId || line.partId || '商品'}`
+    + `${line.size ? `/${line.size}` : ''}×${line.qty || 0}`).join('，')
+}
 
 function snCustomer(d: any) {
   const tags: string[] = d.tags || []
@@ -147,10 +170,28 @@ async function load() {
       else if (scope.value === 'all') params.agentType = 'all'
       else if (scope.value === 'self') params.agentType = 'l1'
       else { params.agentType = 'l2'; params.agentId = scope.value }
-      const rows = aggregateStockRows((await miniApi.stock(params)).data || [])
-      data.value = rows.find((row) => row.productId === id.value
-        && row.size === size.value
-        && row.belt === belt.value) || {}
+      const snParams: Record<string, unknown> = {
+        pageSize: 100, productId: id.value, size: size.value, belt: belt.value,
+      }
+      if (user.role === 'L2') snParams.status = 'l2'
+      else if (scope.value === 'all') snParams.status = 'l1,l2'
+      else if (scope.value === 'self') snParams.status = 'l1'
+      else { snParams.status = 'l2'; snParams.l2Id = scope.value }
+      const [stockRes, snRes, logRes] = await Promise.all([
+        miniApi.stock(params),
+        miniApi.sns(snParams),
+        miniApi.stockLogs(params),
+      ])
+      const rows = aggregateStockRows(stockRes.data || [])
+      const summary = rows.find((row) => row.productId === id.value
+        && row.size === size.value && row.belt === belt.value) || {}
+      data.value = {
+        ...summary,
+        snRows: (snRes.data.list || []).filter((row: any) => row.productId === id.value
+          && (!size.value || row.sizeCode === size.value) && (!belt.value || row.belt === belt.value)),
+        logs: (logRes.data || []).filter((row: any) => row.productId === id.value
+          && (!size.value || row.sizeCode === size.value)),
+      }
     } else if (kind.value === 'purchase') data.value = (await miniApi.purchase(id.value)).data
     else if (kind.value === 'return') data.value = (await miniApi.returnOne(id.value)).data
     else if (kind.value === 'exception') data.value = (await miniApi.exception(id.value)).data
@@ -172,6 +213,7 @@ async function saveExplain() {
   load()
 }
 function goScan() { uni.navigateTo({ url: `/pkg/scan/index?mode=ship&soId=${id.value}` }) }
+function openSn(sn: string) { uni.navigateTo({ url: `/pkg/detail/index?kind=sn&id=${encodeURIComponent(sn)}` }) }
 </script>
 <style scoped>
 .pad { padding: 22rpx 32rpx; }
@@ -203,8 +245,12 @@ function goScan() { uni.navigateTo({ url: `/pkg/scan/index?mode=ship&soId=${id.v
 .ok::after, .no::after { border: 0; }
 .timeline { margin-top: 28rpx; }
 .h2 { display: block; font-weight: 700; margin-bottom: 12rpx; }
-.ev { padding: 16rpx 0; border-bottom: 1rpx solid #F3F5F9; }
+.ev { position: relative; margin-left: 12rpx; padding: 0 0 24rpx 30rpx; border-left: 2rpx solid #DDE6F2; }
+.ev::before { content: ""; position: absolute; left: -8rpx; top: 4rpx; width: 14rpx; height: 14rpx; border-radius: 50%; background: #1A68D7; border: 3rpx solid #EAF2FD; }
 .et { display: block; font-size: 22rpx; color: #8e8e93; }
 .eh { font-weight: 600; }
 .ed { display: block; font-size: 24rpx; color: #636366; }
+.detail-section { margin-top: 28rpx; }
+.detail-line { display: flex; justify-content: space-between; gap: 18rpx; padding: 18rpx 0; border-bottom: 1rpx solid #EEF1F6; color: #5B6472; font-size: 22rpx; }
+.flow-title { margin-top: 26rpx; }
 </style>

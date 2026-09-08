@@ -979,8 +979,8 @@
       "platform": "小程序",
       "module": "业务-采购",
       "description": "1、标签上只显示待处理和会签中的数字，已完成和全部的不需要显示上标\n2、已完成后面增加标签已驳回\n3、列表上缺少号段",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "仅待处理/会签显示角标，补已驳回标签及可读号段。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_87812_qDRzs4FRKQq5iBgR_1788855332?w=414&h=780",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_194412_BvyX5TYl-Aa6BZZX_1788855415?w=414&h=780",
@@ -999,8 +999,8 @@
       "platform": "小程序",
       "module": "业务-采购",
       "description": "1、详情信息和原型不匹配\n2、号段不要有代码",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "采购详情按业务字段分组展示，号段改为文本而非 JSON。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_591396_M9GB9JcYsJd9C7sb_1788855535?w=1033&h=812",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_361794_SvxKLPFDTVia8tWt_1788856021?w=402&h=276"
@@ -1017,8 +1017,8 @@
       "platform": "小程序",
       "module": "业务-采购",
       "description": "创建采购单页面重新做",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "按商品维护规格重做标准、非标、随售单品购物车页面。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_814792_FLw83ZhLC7OLK4mk_1788855939?w=1490&h=845"
       ],
@@ -1033,8 +1033,8 @@
       "platform": "小程序",
       "module": "业务-销售",
       "description": "缺少号段",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "销售列表补充连续 SN 合并后的号段。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_772736_y94ufF9dAmfC2PBo_1788856401?w=917&h=754"
       ],
@@ -1049,8 +1049,8 @@
       "platform": "小程序",
       "module": "业务-销售",
       "description": "详情信息和原型不匹配",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "销售详情补齐渠道、进度、商品、号段、客户和时间。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_75673_nZCuV3gKFUfs_4np_1788856448?w=999&h=810"
       ],
@@ -1065,8 +1065,8 @@
       "platform": "小程序",
       "module": "业务-销售",
       "description": "创建销售单页面重新做",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "创建销售单支持多条商品规格明细并统一进入扫码。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_385431_mqWfg5ZCcdmE0_vP_1788856514?w=1045&h=862"
       ],
@@ -1081,8 +1081,8 @@
       "platform": "小程序",
       "module": "业务-C端订单",
       "description": "详情信息和原型不匹配",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "C端订单详情统一展示客户、商品、激活 SN 与状态。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_998688_5dHtVuDF077dO1ZX_1788856600?w=1009&h=749"
       ],
@@ -1097,8 +1097,8 @@
       "platform": "小程序",
       "module": "库存",
       "description": "去掉标签上的数字",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "库存三个标签已移除数字角标。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_782826_h52sgrMuKUoNsTX0_1788856694?w=414&h=780"
       ],
@@ -1113,8 +1113,8 @@
       "platform": "小程序",
       "module": "库存-在库SN",
       "description": "详情信息和原型不匹配\n流转样式和PC的流转样式保持统一",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "SN 详情补齐出厂及归属字段，流转改为 PC 同类纵向时间线。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_916478_J9Qs4CHaa_ncV7cP_1788856858?w=1062&h=824",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_208801_Xj1Zh-7VQR6w53aG_1788857004?w=363&h=475"
@@ -1131,8 +1131,8 @@
       "platform": "小程序",
       "module": "库存-商品",
       "description": "当前开发的页面点击详情后直接跳转到在库SN列表页了，缺少详情页",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "新增库存商品详情，展示汇总、匹配 SN 和库存流水。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_679140_3MxpmKqaUBq3PwsH_1788857113?w=1481&h=834"
       ],
