@@ -33,6 +33,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api'
 import type { MenuItem } from '@/config/menu'
+import { monthStart, todayDate } from '@/utils/dates'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,9 +62,15 @@ async function loadBadges() {
     const b = await api.badges()
     Object.assign(badges, b)
   } catch { /* */ }
+  try {
+    const c = await api.exceptionCounts({ from: monthStart(), to: todayDate() })
+    badges.openEx = (c['activate-direct'] || 0) + (c['activate-dist'] || 0) + (c.stock || 0)
+  } catch { /* */ }
 }
-function onBadgesChanged() {
-  loadBadges()
+function onBadgesChanged(event: Event) {
+  const detail = (event as CustomEvent<Record<string, number>>).detail
+  if (detail) Object.assign(badges, detail)
+  else loadBadges()
 }
 
 watch(() => route.fullPath, loadBadges)

@@ -227,6 +227,8 @@ async function load() {
     Object.assign(counts, c)
     counts.hist = res.total
     counts.open = counts[dimTab.value] || 0
+    const openEx = (counts['activate-direct'] || 0) + (counts['activate-dist'] || 0) + (counts.stock || 0)
+    window.dispatchEvent(new CustomEvent('ruilai:badges-changed', { detail: { openEx } }))
   } finally { loading.value = false }
 }
 function reset() {

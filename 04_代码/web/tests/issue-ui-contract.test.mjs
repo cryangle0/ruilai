@@ -176,6 +176,7 @@ test('issues 38 through 40 explain stock scans and fill parent agents', () => {
 
 test('issues 41 through 46 separate activation channels and customer filters', () => {
   const exceptions = source('src/views/risk/ExceptionView.vue')
+  const sidebar = source('src/layouts/components/Sidebar.vue')
   const exceptionService = source('../backend/src/main/java/com/ruilai/module/risk/ExceptionService.java')
   const customers = source('src/views/risk/CustomerView.vue')
   const customerService = source('../backend/src/main/java/com/ruilai/module/customer/CustomerService.java')
@@ -186,6 +187,8 @@ test('issues 41 through 46 separate activation channels and customer filters', (
   assert.doesNotMatch(exceptions, /counts\['activate-dist'\]\s*\|\|\s*counts\.scan/)
   assert.match(exceptions, /api\.exceptionCounts\(\{\s*l1Id:\s*query\.l1Id,\s*l2Id:\s*query\.l2Id,\s*from:\s*query\.from,\s*to:\s*query\.to/)
   assert.match(exceptions, /counts\.open\s*=\s*counts\[dimTab\.value\]\s*\|\|\s*0/)
+  assert.match(exceptions, /CustomEvent\('ruilai:badges-changed',\s*\{\s*detail:\s*\{\s*openEx/)
+  assert.match(sidebar, /badges\.openEx\s*=\s*\(c\['activate-direct'\].*c\['activate-dist'\].*c\.stock/)
   assert.match(salesService, /sameCustomerIdentity/)
   assert.match(customers, /label="重复手机号"\s+value="phone"/)
   assert.match(customers, /label="重复地址"\s+value="addr"/)
