@@ -1307,8 +1307,8 @@
       "platform": "小程序",
       "module": "异常",
       "description": "PC有数据，但小程序上未显示",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "修正分销激活维度映射为activate并按l2归属筛选，小程序与PC读取同一异常数据。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_265575_52RiFiCggGlCSQBt_1788859307?w=1920&h=953"
       ],
