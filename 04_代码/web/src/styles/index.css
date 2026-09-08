@@ -750,7 +750,7 @@ button.metric-card, button.metric { cursor: pointer; font-family: inherit; }
   .kit-form-dlg .form-grid .el-select { max-width: none; }
   .el-overlay-dialog { padding: 12px !important; }
   .el-dialog {
-    height: min(88vh, calc(100vh - 24px));
+    height: auto;
     max-height: calc(100vh - 24px);
   }
   .el-dialog.kit-form-dlg {

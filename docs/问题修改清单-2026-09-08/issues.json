@@ -11,8 +11,8 @@
       "platform": "管理端",
       "module": "工作台",
       "description": "1、去掉“查看全部待办”按钮\n2、调整待办事项卡片宽度，右边不要有空白",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：移除冗余入口并铺满待办卡片；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_6300_KaVbGTq6yc9wAbE9_1788774662?w=1920&h=953"
       ],
@@ -27,8 +27,8 @@
       "platform": "管理端",
       "module": "一级代理/二级代理/待分配",
       "description": "一级代理、二级代理、待分配详情里选择省市的范围需要改成完整的全国的，现在都只有一部分",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：全国城市完整展示，父级未授权城市禁选；未放宽业务范围约束",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_738666_nEc19pHmr0epRcOY_1788775064?w=1920&h=953"
       ],
@@ -43,8 +43,8 @@
       "platform": "管理端",
       "module": "一级代理/二级代理",
       "description": "状态列往右边移一点，列宽调小点",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：一级/二级状态列统一缩窄为150px；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_12241_1dMyDW_32VTb447-_1788775429?w=1920&h=953"
       ],
@@ -59,8 +59,8 @@
       "platform": "管理端",
       "module": "二级代理",
       "description": "二级代理编辑页面样式布局要改成和一级代理一样的",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：二级编辑对照一级改为1040px分区三列表单；Web构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_772301_yg_6ARdA3nZgeI4c_1788775234?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_110048_U46fr99Ny0mjZyFs_1788775242?w=1920&h=953"
@@ -77,8 +77,8 @@
       "platform": "管理端",
       "module": "二级审核",
       "description": "1、登录账号未显示\n2、去掉“合作协议”字段",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：审核详情移除合作协议，后端列表/详情填充登录账号；后端编译通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_566728_qlslz31ds9ocMUwd_1788775883?w=1920&h=953"
       ],
@@ -93,8 +93,8 @@
       "platform": "管理端",
       "module": "二级审核",
       "description": "弹窗改成横向的，且下面不要留这么多空白。",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：审核弹窗改900px横向且按内容自适应；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_173927_7sDKxf89aVVNDH_m_1788775567?w=1920&h=953"
       ],
@@ -109,8 +109,8 @@
       "platform": "管理端",
       "module": "二级审核/待分配/采购单管理",
       "description": "待审核、已通过、已驳回、全部必须要右上角的数字",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：审核/采购页签显示数字含0，采购补已驳回页签；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_341846_CYtuZemE4UX8n-U4_1788775937?w=1920&h=953"
       ],
@@ -125,8 +125,8 @@
       "platform": "管理端",
       "module": "二级审核/待分配/采购单管理",
       "description": "左侧菜单只有当有需要待办事项的时候才显示数字图标，待办已全部处理了则不需要显示",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：侧栏仅非零显示，处理动作后主动刷新待办角标；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_66688_jvvzfYYdKD2rUtwD_1788776101?w=1920&h=953"
       ],
@@ -141,8 +141,8 @@
       "platform": "管理端",
       "module": "待分配",
       "description": "详情的弹窗改成横向的，且下面不要留这么多空白。",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：待分配详情改820px横向自适应弹窗；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_759764_0_bJlVr1UmofdUpF_1788776000?w=1920&h=953"
       ],
@@ -157,8 +157,8 @@
       "platform": "管理端",
       "module": "待分配",
       "description": "重新绑定的弹窗改成横向的，且下面不要留这么多空白。",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：重新绑定改920px横向自适应弹窗；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_993907_Nn90QVuNVmCWgtLC_1788776041?w=1920&h=953"
       ],

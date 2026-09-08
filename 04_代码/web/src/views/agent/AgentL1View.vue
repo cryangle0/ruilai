@@ -26,7 +26,7 @@
         <el-table-column label="主授权区域" min-width="120"><template #default="{row}">{{ join(row.mainAreas) }}</template></el-table-column>
         <el-table-column label="可销售范围" min-width="120"><template #default="{row}">{{ join(row.saleAreas) }}</template></el-table-column>
         <el-table-column label="直销范围" min-width="120"><template #default="{row}">{{ join(row.directAreas) }}</template></el-table-column>
-        <el-table-column label="状态" min-width="188">
+        <el-table-column label="状态" width="150">
           <template #default="{row}">
             <div class="status-stack">
               <div class="status-tags">
@@ -170,10 +170,12 @@
         <ChipSelect v-model="form.saleAreas" :items="PROVINCES" label="可销售范围" all-label="全选" />
         <CitySearchPicker
           v-model="form.directAreas"
-          :options="directCityOpts"
+          :options="ALL_CITIES"
+          :disabled-options="directDisabledCities"
           label="直销范围（城市）"
           all-label="全选当前可售城市"
           empty-text="请先选择可销售范围，再搜索/全选直销城市"
+          note="展示全国城市；不在当前可销售范围内的城市不可选"
         />
       </div>
       <template #footer>
@@ -194,7 +196,7 @@ import ChipSelect from '@/components/common/ChipSelect.vue'
 import CitySearchPicker from '@/components/common/CitySearchPicker.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
-import { PROVINCES, citiesOf } from '@/utils/regions'
+import { ALL_CITIES, PROVINCES, citiesOf } from '@/utils/regions'
 import { l1Exception, l1Purchase, l1Return, l1Sales, l1Stock } from '@/utils/detailJump'
 
 const route = useRoute()
@@ -205,6 +207,10 @@ const form = ref<any>({ ent: {} })
 const detail = ref<any>(null)
 const allL1s = ref<any[]>([])
 const directCityOpts = computed(() => citiesOf(form.value.saleAreas || form.value.mainAreas || []))
+const directDisabledCities = computed(() => {
+  const allowed = new Set(directCityOpts.value)
+  return ALL_CITIES.filter((city) => !allowed.has(city))
+})
 const occupiedMain = computed(() => {
   const set = new Set<string>()
   allL1s.value.filter((a) => a.id !== form.value.id && a.status === '启用').forEach((a) => {

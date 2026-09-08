@@ -217,7 +217,10 @@ public class AgentService {
         q.orderByDesc(AgentL2::getCreatedAt);
         PageResult<AgentL2> result = PageResult.of(l2Mapper.selectPage(Page.of(page, size), q));
         if (result.list() != null) {
-            result.list().forEach(this::enrichL2);
+            result.list().forEach(row -> {
+                enrichL2(row);
+                fillLogin(row);
+            });
         }
         return result;
     }

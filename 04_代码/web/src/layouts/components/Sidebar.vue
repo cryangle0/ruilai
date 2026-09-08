@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api'
@@ -52,7 +52,7 @@ function badgeOf(item: MenuItem) {
   return badges[item.badgeKey] || 0
 }
 
-onMounted(async () => {
+async function loadBadges() {
   try {
     const d = await api.dashboard()
     Object.assign(badges, d)
@@ -61,7 +61,17 @@ onMounted(async () => {
     const b = await api.badges()
     Object.assign(badges, b)
   } catch { /* */ }
+}
+function onBadgesChanged() {
+  loadBadges()
+}
+
+watch(() => route.fullPath, loadBadges)
+onMounted(() => {
+  window.addEventListener('ruilai:badges-changed', onBadgesChanged)
+  loadBadges()
 })
+onUnmounted(() => window.removeEventListener('ruilai:badges-changed', onBadgesChanged))
 </script>
 
 <style scoped>

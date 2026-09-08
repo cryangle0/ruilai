@@ -35,7 +35,7 @@
       </el-table-column>
       <el-table-column label="状态" width="90">
         <template #default="{row}">
-          <span class="tag" :class="row.status==='approved'?'tag-green':row.status==='pending'?'tag-orange':'tag-blue'">{{ poStatus(row.status) }}</span>
+          <span class="tag" :class="row.status==='approved'?'tag-green':row.status==='pending'?'tag-orange':row.status==='rejected'?'tag-red':'tag-blue'">{{ poStatus(row.status) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="会签" width="90">
@@ -44,7 +44,7 @@
       <el-table-column label="预警倍数异常" width="130"><template #default="{row}">{{ row.warnEx?.label || '—' }}</template></el-table-column>
       <el-table-column prop="createdAt" label="时间" width="170" :formatter="dateTimeFormatter" />
     </DataTableShell>
-    <PurchaseDrawer v-model="drawer" :row="current" :l1s="l1s" @saved="load" />
+    <PurchaseDrawer v-model="drawer" :row="current" :l1s="l1s" @saved="onSaved" />
   </div>
 </template>
 <script setup lang="ts">
@@ -68,17 +68,18 @@ const l1s = ref<any[]>([])
 const products = ref<any[]>([])
 const drawer = ref(false)
 const current = ref<any>(null)
-const counts = reactive({ all: 0, pending: 0, cosigning: 0, approved: 0 })
+const counts = reactive({ all: 0, pending: 0, cosigning: 0, approved: 0, rejected: 0 })
 const metrics = reactive({ rangeQty: 0, histQty: 0 })
 const kpiItems = computed(() => [
   { key: 'range', label: '筛选区间采购量', value: metrics.rangeQty, icon: 'Document', tone: 'blue' as const },
   { key: 'hist', label: '历史采购量', value: metrics.histQty, icon: 'Collection', tone: 'gray' as const },
 ])
 const tabItems = computed(() => [
-  { id: 'all', title: '全部', badge: counts.all },
-  { id: 'pending', title: '待处理', badge: counts.pending },
-  { id: 'cosigning', title: '会签中', badge: counts.cosigning },
-  { id: 'approved', title: '已完成', badge: counts.approved },
+  { id: 'all', title: '全部', badge: counts.all, showZero: true },
+  { id: 'pending', title: '待处理', badge: counts.pending, showZero: true },
+  { id: 'cosigning', title: '会签中', badge: counts.cosigning, showZero: true },
+  { id: 'approved', title: '已完成', badge: counts.approved, showZero: true },
+  { id: 'rejected', title: '已驳回', badge: counts.rejected, showZero: true },
 ])
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
 function prodName(id?: string) { return products.value.find((p) => p.id === id)?.name || id || '—' }
@@ -115,12 +116,13 @@ async function load() {
     list.value = res.list
     total.value = res.total
     const liveRes = await api.purchases({ page: 1, pageSize: 200 })
-    const live = (liveRes.list || []).filter((p: any) => p.status !== 'rejected')
+    const live = liveRes.list || []
     counts.all = live.length
     counts.pending = live.filter((p: any) => p.status === 'pending').length
     counts.cosigning = live.filter((p: any) => p.status === 'cosigning').length
     counts.approved = live.filter((p: any) => p.status === 'approved').length
-    const poScope = live.filter((p: any) => !query.l1Id || p.l1Id === query.l1Id)
+    counts.rejected = live.filter((p: any) => p.status === 'rejected').length
+    const poScope = live.filter((p: any) => p.status !== 'rejected' && (!query.l1Id || p.l1Id === query.l1Id))
     metrics.histQty = poScope.reduce((n: number, p: any) => n + poNeedQty(p), 0)
     metrics.rangeQty = poScope.filter((p: any) => inRange(p.createdAt, query.from, query.to)).reduce((n: number, p: any) => n + poNeedQty(p), 0)
   } finally { loading.value = false }
@@ -144,6 +146,10 @@ function fmtParts(parts?: any[]) {
 async function openRow(row: any) {
   current.value = await api.purchase(row.id)
   drawer.value = true
+}
+async function onSaved() {
+  await load()
+  window.dispatchEvent(new Event('ruilai:badges-changed'))
 }
 
 watch([page, pageSize], load)

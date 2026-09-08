@@ -31,15 +31,13 @@
         </template>
       </el-table-column>
     </DataTableShell>
-    <el-dialog v-model="dlg" :title="cur ? `二级审核详情 · ${cur.name}` : '二级审核详情'" width="520px">
+    <el-dialog v-model="dlg" class="issue-wide-dialog" :title="cur ? `二级审核详情 · ${cur.name}` : '二级审核详情'" width="900px">
       <div v-if="cur" class="detail-grid" style="grid-template-columns:1fr 1fr">
         <div><span>编码</span>{{ cur.code }}</div>
         <div><span>类型</span>{{ cur.type }}</div>
         <div><span>申请一级</span>{{ cur.parentName || nameOf(cur.parentId) }}</div>
         <div class="span-2"><span>城市</span>{{ (cur.areas||[]).join('、') }}</div>
         <div><span>登录账号</span>{{ cur.loginUsername || '—' }}</div>
-        <div v-if="cur.extra?.protocolUrl" class="span-2"><span>合作协议</span><a :href="cur.extra.protocolUrl" target="_blank">查看文件</a></div>
-        <div v-else class="span-2"><span>合作协议</span>{{ cur.protocolOk ? '已标记' : '未上传' }}</div>
         <div><span>状态</span>
           <span class="tag" :class="cur.auditStatus==='pending'?'tag-orange':cur.auditStatus==='rejected'?'tag-red':'tag-green'">
             {{ cur.auditStatus==='pending'?'待审核':cur.auditStatus==='rejected'?'已驳回':'已通过' }}
@@ -82,10 +80,10 @@ const l1s = ref<any[]>([])
 const dlg = ref(false)
 const cur = ref<any>(null)
 const tabItems = computed(() => [
-  { id: 'pending', title: '待审核', badge: counts.value.pending },
-  { id: 'approved', title: '已通过', badge: counts.value.approved },
-  { id: 'rejected', title: '已驳回', badge: counts.value.rejected },
-  { id: 'all', title: '全部', badge: counts.value.pending + counts.value.approved + counts.value.rejected },
+  { id: 'pending', title: '待审核', badge: counts.value.pending, showZero: true },
+  { id: 'approved', title: '已通过', badge: counts.value.approved, showZero: true },
+  { id: 'rejected', title: '已驳回', badge: counts.value.rejected, showZero: true },
+  { id: 'all', title: '全部', badge: counts.value.pending + counts.value.approved + counts.value.rejected, showZero: true },
 ])
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
 
@@ -153,7 +151,8 @@ async function audit(pass: boolean) {
   }
   await api.auditL2(cur.value.id, pass)
   dlg.value = false
-  load()
+  await load()
+  window.dispatchEvent(new Event('ruilai:badges-changed'))
 }
 watch([page, pageSize], load)
 watch(tab, () => { resetPage(); load() })
