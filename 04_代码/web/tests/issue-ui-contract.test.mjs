@@ -184,6 +184,8 @@ test('issues 41 through 46 separate activation channels and customer filters', (
   assert.match(exceptionService, /applyActivationChannel\(q,\s*distributed\)/)
   assert.match(exceptions, /class="muted-label">报警时间/)
   assert.doesNotMatch(exceptions, /counts\['activate-dist'\]\s*\|\|\s*counts\.scan/)
+  assert.match(exceptions, /api\.exceptionCounts\(\{\s*l1Id:\s*query\.l1Id,\s*l2Id:\s*query\.l2Id,\s*from:\s*query\.from,\s*to:\s*query\.to/)
+  assert.match(exceptions, /counts\.open\s*=\s*counts\[dimTab\.value\]\s*\|\|\s*0/)
   assert.match(salesService, /sameCustomerIdentity/)
   assert.match(customers, /label="重复手机号"\s+value="phone"/)
   assert.match(customers, /label="重复地址"\s+value="addr"/)

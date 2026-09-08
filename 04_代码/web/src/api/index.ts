@@ -77,7 +77,7 @@ export const api = {
     post(`/api/returns/${id}/decide`, { pass, processNote }),
   exceptions: (params?: object) => get<PageResult<any>>('/api/exceptions', { params }),
   exception: (id: string) => get<any>(`/api/exceptions/${id}`),
-  exceptionCounts: () => get<Record<string, number>>('/api/exceptions/counts'),
+  exceptionCounts: (params?: object) => get<Record<string, number>>('/api/exceptions/counts', { params }),
   explainEx: (id: string, text: string) => post(`/api/exceptions/${id}/explain`, { text }),
   handleEx: (id: string) => post(`/api/exceptions/${id}/handle`),
   deleteEx: (id: string) => post(`/api/exceptions/${id}/delete`),

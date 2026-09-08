@@ -219,12 +219,14 @@ async function load() {
         dim: query.dim, status: query.status, type: query.type,
         l1Id: query.l1Id, l2Id: query.l2Id, from: query.from, to: query.to,
       }),
-      api.exceptionCounts(),
+      api.exceptionCounts({
+        l1Id: query.l1Id, l2Id: query.l2Id, from: query.from, to: query.to,
+      }),
     ])
     list.value = res.list; total.value = res.total
     Object.assign(counts, c)
     counts.hist = res.total
-    counts.open = (res.list || []).filter((r: any) => isOpen(r)).length
+    counts.open = counts[dimTab.value] || 0
   } finally { loading.value = false }
 }
 function reset() {
