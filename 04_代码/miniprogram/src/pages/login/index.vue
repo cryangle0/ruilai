@@ -105,7 +105,7 @@ async function onLogin() {
   if (loading.value) return
   if (!ensureAgreed()) return
   if (!username.value.trim()) { uni.showToast({ title: '请输入账号', icon: 'none' }); return }
-  if (password.value.length < 4) { uni.showToast({ title: '请输入密码', icon: 'none' }); return }
+  if (!password.value) { uni.showToast({ title: '请输入密码', icon: 'none' }); return }
   loading.value = true
   try {
     await user.login(username.value.trim(), password.value)

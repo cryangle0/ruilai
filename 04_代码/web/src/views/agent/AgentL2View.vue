@@ -88,14 +88,20 @@
           </div>
           <div><span>预警倍数</span>{{ detail.warnMultiplier || 1.5 }}</div>
           <div><span>报警粒度</span>{{ detail.warnMode === 'soft' ? '软报警' : detail.warnMode === 'off' || detail.extra?.exNoAlarm ? '不报警' : '严格' }}</div>
-          <div v-if="detail.extra?.protocolUrl" class="span-2"><span>合作协议</span><a :href="detail.extra.protocolUrl" target="_blank">查看文件</a></div>
           <div><span>本月采购量</span><strong class="num">{{ detail.monthPurchaseQty ?? 0 }}</strong></div>
           <div><span>本月销售量</span><strong class="num">{{ detail.monthSalesQty ?? 0 }}</strong></div>
           <div><span>当前库存总数</span><strong class="num">{{ detail.stockQty ?? 0 }}</strong></div>
         </div>
-        <template v-if="detail.ent?.company">
+        <template v-if="detail.type === '法人'">
           <h4 style="margin-top:16px">企业信息</h4>
-          <div class="detail-grid"><div class="span-2"><span>公司</span>{{ detail.ent.company }}</div></div>
+          <div class="detail-grid">
+            <div class="span-2"><span>企业名称</span>{{ detail.ent?.company || '—' }}</div>
+            <div><span>信用代码</span>{{ detail.ent?.creditCode || '—' }}</div>
+            <div><span>法人</span>{{ detail.ent?.legal || '—' }}</div>
+            <div><span>电话</span>{{ detail.ent?.phone || '—' }}</div>
+            <div class="span-2"><span>地址</span>{{ detail.ent?.addr || '—' }}</div>
+            <div class="span-2"><span>合作协议</span><a v-if="detail.extra?.protocolUrl" :href="detail.extra.protocolUrl" target="_blank">查看文件</a><template v-else>—</template></div>
+          </div>
         </template>
       </div>
       <div class="page-card">
@@ -125,7 +131,7 @@
             </el-select>
           </div>
           <div class="form-item"><label class="form-label">登录用户名</label><el-input v-model="form.loginUsername" /></div>
-          <div class="form-item"><label class="form-label">登录密码</label><el-input v-model="form.loginPassword" /></div>
+          <div class="form-item"><label class="form-label">登录密码</label><el-input v-model="form.loginPassword" type="password" show-password placeholder="至少 6 位" /></div>
           <div class="form-item"><label class="form-label">预警倍数</label><el-input-number v-model="form.warnMultiplier" :min="1" :max="9" :step="0.1" controls-position="right" /></div>
           <div class="form-item">
             <label class="form-label">报警粒度</label>
@@ -251,6 +257,10 @@ function openEdit(row: any) {
   dlg.value = true
 }
 async function save() {
+  if (form.value.loginPassword && form.value.loginPassword !== detail.value?.loginPassword && form.value.loginPassword.length < 6) {
+    ElMessage.error('登录密码至少 6 位')
+    return
+  }
   const saved: any = await api.saveL2({ ...form.value })
   ElMessage.success('已保存'); dlg.value = false
   if (detail.value) detail.value = await api.agentL2(saved.id || detail.value.id)

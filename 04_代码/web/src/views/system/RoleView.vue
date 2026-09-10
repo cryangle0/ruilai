@@ -96,7 +96,7 @@
             <el-option v-for="r in adminRoles" :key="r.id" :label="r.name" :value="r.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="密码"><el-input v-model="accForm.password" /></el-form-item>
+        <el-form-item label="密码"><el-input v-model="accForm.password" type="password" show-password placeholder="至少 6 位" /></el-form-item>
       </el-form>
       <p class="hint">仅创建平台后台账号并指定角色；一级主账号随「新建一级」生成，二级/子账号由一级小程序创建。</p>
       <template #footer>
@@ -159,7 +159,7 @@ const passwordDlg = ref(false)
 const passwordAccount = ref<any>(null)
 const password = ref('')
 const roleForm = ref<any>({ perms: [] as string[] })
-const accForm = reactive({ username: '', name: '', password: 'demo', roleId: 'R1' })
+const accForm = reactive({ username: '', name: '', password: '', roleId: 'R1' })
 const tabItems = computed(() => [
   { id: 'roles', title: '角色', badge: roles.value.length || null },
   { id: 'accounts', title: '账号', badge: accounts.value.length || null },
@@ -209,7 +209,7 @@ function resetRoleForm() {
 function resetAccForm() {
   accForm.username = ''
   accForm.name = ''
-  accForm.password = 'demo'
+  accForm.password = ''
   accForm.roleId = adminRoles.value[0]?.id || 'R1'
 }
 function openCreateRole() {
@@ -236,6 +236,7 @@ async function saveRole() {
 }
 async function createAcc() {
   if (!accForm.username.trim()) { ElMessage.error('请填写用户名'); return }
+  if (accForm.password.length < 6) { ElMessage.error('登录密码至少 6 位'); return }
   await api.createAccount({ ...accForm })
   ElMessage.success('已创建'); accDlg.value = false
   resetAccForm()

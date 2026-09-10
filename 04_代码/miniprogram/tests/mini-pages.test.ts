@@ -236,11 +236,41 @@ test('input events keep typed text instead of wiping the native value', () => {
   assert.doesNotMatch(profile, /FieldRow/)
   assert.match(profile, /name = eventValue\(\$event, name\)/)
   assert.doesNotMatch(l2, /FieldRow/)
-  assert.match(l2, /loginPassword = 'demo'/)
+  assert.match(l2, /loginPassword = ''/)
+  assert.doesNotMatch(l2, /loginPassword = 'demo'/)
   assert.match(l2, /cityAllowed/)
   assert.doesNotMatch(sub, /FieldRow/)
   assert.doesNotMatch(detail, /FieldRow/)
   assert.match(detail, /explain = eventValue\(\$event, explain\)/)
+})
+
+test('mini agent creation shows and enforces the six-character password rule', () => {
+  const l2 = readFileSync(new URL('../src/pkg/mine-l2/index.vue', import.meta.url), 'utf8')
+  const sub = readFileSync(new URL('../src/pkg/mine-sub/index.vue', import.meta.url), 'utf8')
+  const profile = readFileSync(new URL('../src/pkg/mine-profile/index.vue', import.meta.url), 'utf8')
+  for (const page of [l2, sub, profile]) {
+    assert.match(page, /至少 6 位/)
+  }
+  assert.match(l2, /form\.loginPassword\.length < 6/)
+  assert.match(sub, /form\.password\.length < 6/)
+  assert.match(profile, /password\.value\.length < 6/)
+})
+
+test('mini L2 creation submits complete enterprise contract and permitted cities', () => {
+  const l2 = readFileSync(new URL('../src/pkg/mine-l2/index.vue', import.meta.url), 'utf8')
+  for (const field of ['company', 'creditCode', 'legal', 'phone', 'addr']) {
+    assert.match(l2, new RegExp(`form\\.ent\\.${field}`))
+  }
+  assert.match(l2, /v-for="city in allowedCities"/)
+  assert.match(l2, /selectedCities/)
+  assert.match(l2, /ent:\s*\{\s*\.\.\.form\.ent\s*\}/)
+  assert.match(l2, /protocolUrl/)
+})
+
+test('historical short passwords reach authentication unchanged', () => {
+  const login = readFileSync(new URL('../src/pages/login/index.vue', import.meta.url), 'utf8')
+  assert.doesNotMatch(login, /password\.value\.length < [46]/)
+  assert.match(login, /await user\.login\(username\.value\.trim\(\), password\.value\)/)
 })
 
 test('corner badges sit at the top-right instead of inline', () => {

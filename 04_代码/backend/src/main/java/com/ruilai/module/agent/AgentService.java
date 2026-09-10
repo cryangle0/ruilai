@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruilai.common.security.AuthUtil;
 import com.ruilai.common.security.DataScope;
+import com.ruilai.common.security.PasswordPolicy;
 import com.ruilai.common.security.RolePerms;
 import com.ruilai.common.thirdparty.RegionNames;
 import com.ruilai.common.time.ChinaTime;
@@ -96,13 +97,18 @@ public class AgentService {
 
     public AgentL1 saveL1(AgentL1 body) {
         AuthUtil.requireAdminPerm(RolePerms.ALL);
-        String loginUser = body.getLoginUsername();
+        boolean creating = !StringUtils.hasText(body.getId());
+        String loginUser = trimToNull(body.getLoginUsername());
         String loginPwd = body.getLoginPassword();
+        validateAgentBasics(body.getName(), loginUser, loginPwd, creating);
+        if (creating && (body.getMainAreas() == null || body.getMainAreas().isEmpty())) {
+            throw new BizException(ErrCode.BAD_REQUEST, "请选择主授权区域");
+        }
         body.setExtra(persistDemoPassword(body.getExtra(), loginPwd));
         if (StringUtils.hasText(loginUser)) {
             assertUsernameAvailable(loginUser, body.getId(), "L1", null);
         }
-        if (!StringUtils.hasText(body.getId())) {
+        if (creating) {
             body.setId(Ids.next("L1"));
             if (!StringUtils.hasText(body.getCode())) {
                 body.setCode("AG-L1-" + body.getId().substring(2));
@@ -245,8 +251,10 @@ public class AgentService {
         if (!u.isAdmin() && !"L1".equals(u.getRoleCode())) {
             throw new BizException(ErrCode.FORBIDDEN, "仅一级可维护二级代理");
         }
-        String loginUser = firstNonBlank(body.getLoginUsername(), takeExtra(body, "loginUsername"));
+        boolean creating = !StringUtils.hasText(body.getId());
+        String loginUser = trimToNull(firstNonBlank(body.getLoginUsername(), takeExtra(body, "loginUsername")));
         String loginPwd = firstNonBlank(body.getLoginPassword(), takeExtra(body, "loginPassword"));
+        validateAgentBasics(body.getName(), loginUser, loginPwd, creating);
         body.setExtra(persistDemoPassword(body.getExtra(), loginPwd));
         if (!DataScope.isAdmin()) {
             body.setParentId(DataScope.agentIdOrNull());
@@ -266,7 +274,7 @@ public class AgentService {
         if (StringUtils.hasText(loginUser)) {
             assertUsernameAvailable(loginUser, body.getId(), "L2", null);
         }
-        if (!StringUtils.hasText(body.getId())) {
+        if (creating) {
             body.setId(Ids.next("L2"));
             if (!StringUtils.hasText(body.getCode())) {
                 body.setCode("AG-L2-" + body.getId().substring(2));
@@ -424,9 +432,20 @@ public class AgentService {
         if (!StringUtils.hasText(body.getStatus())) {
             body.setStatus("启用");
         }
-        if (!StringUtils.hasText(body.getId())) {
+        boolean creating = !StringUtils.hasText(body.getId());
+        if (creating) {
             body.setId(Ids.next("SUB"));
         }
+        if (!StringUtils.hasText(body.getUsername())) {
+            throw new BizException(ErrCode.BAD_REQUEST, "请填写登录用户名");
+        }
+        if (!StringUtils.hasText(body.getName())) {
+            throw new BizException(ErrCode.BAD_REQUEST, "请填写姓名");
+        }
+        if (creating) {
+            PasswordPolicy.requireNewAccountPassword(rawPassword);
+        }
+        body.setUsername(body.getUsername().trim());
         assertUsernameAvailable(body.getUsername(), body.getL1Id(), "SUB", body.getId());
         SubAccount existing = subMapper.selectById(body.getId());
         if (existing == null) {
@@ -634,6 +653,22 @@ public class AgentService {
         return StringUtils.hasText(b) ? b : null;
     }
 
+    private static String trimToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private static void validateAgentBasics(String name, String loginUser, String loginPassword, boolean creating) {
+        if (!StringUtils.hasText(name)) {
+            throw new BizException(ErrCode.BAD_REQUEST, "请填写代理名称");
+        }
+        if (creating && !StringUtils.hasText(loginUser)) {
+            throw new BizException(ErrCode.BAD_REQUEST, "请填写登录用户名");
+        }
+        if (creating) {
+            PasswordPolicy.requireNewAccountPassword(loginPassword);
+        }
+    }
+
     private String takeExtra(AgentL2 body, String key) {
         Map<String, Object> extra = body.getExtra();
         if (extra == null || extra.get(key) == null) {
@@ -673,12 +708,14 @@ public class AgentService {
     }
 
     private void upsertLogin(String username, String rawPassword, String name, String role, String agentId) {
+        username = username.trim();
         SysAccount exist = accountMapper.selectOne(Wrappers.<SysAccount>lambdaQuery()
                 .eq(SysAccount::getUsername, username).last("limit 1"));
         if (exist == null) {
+            PasswordPolicy.requireNewAccountPassword(rawPassword);
             SysAccount a = new SysAccount();
             a.setUsername(username);
-            a.setPasswordHash(passwordEncoder.encode(StringUtils.hasText(rawPassword) ? rawPassword : "demo"));
+            a.setPasswordHash(passwordEncoder.encode(rawPassword));
             a.setName(name);
             a.setRoleCode(role);
             a.setRoleId(RolePerms.defaultRoleId(role));
@@ -695,7 +732,12 @@ public class AgentService {
         exist.setRoleCode(role);
         exist.setRoleId(RolePerms.defaultRoleId(role));
         if (StringUtils.hasText(rawPassword)) {
-            exist.setPasswordHash(passwordEncoder.encode(rawPassword));
+            boolean unchangedHistoricalPassword = StringUtils.hasText(exist.getPasswordHash())
+                    && passwordEncoder.matches(rawPassword, exist.getPasswordHash());
+            if (!unchangedHistoricalPassword) {
+                PasswordPolicy.requireChangedPassword(rawPassword);
+                exist.setPasswordHash(passwordEncoder.encode(rawPassword));
+            }
         }
         accountMapper.updateById(exist);
     }
@@ -719,6 +761,7 @@ public class AgentService {
 
     private void enrichL1(AgentL1 a) {
         String id = a.getId();
+        a.setSaleCities(RegionNames.citiesOf(a.getSaleAreas()));
         java.time.LocalDateTime monthStart = ChinaTime.today().withDayOfMonth(1).atStartOfDay();
         a.setMonthPurchaseQty(sumPoQty(poMapper.selectList(Wrappers.<PurchaseOrder>lambdaQuery()
                 .eq(PurchaseOrder::getL1Id, id).ge(PurchaseOrder::getCreatedAt, monthStart)

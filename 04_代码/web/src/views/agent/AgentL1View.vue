@@ -26,7 +26,7 @@
         <el-table-column label="主授权区域" min-width="120"><template #default="{row}">{{ join(row.mainAreas) }}</template></el-table-column>
         <el-table-column label="可销售范围" min-width="120"><template #default="{row}">{{ join(row.saleAreas) }}</template></el-table-column>
         <el-table-column label="直销范围" min-width="120"><template #default="{row}">{{ join(row.directAreas) }}</template></el-table-column>
-        <el-table-column label="状态" width="150">
+        <el-table-column label="状态" width="190">
           <template #default="{row}">
             <div class="status-stack">
               <div class="status-tags">
@@ -41,9 +41,9 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="本月采购量" width="100" align="right"><template #default="{row}">{{ row.monthPurchaseQty ?? 0 }}</template></el-table-column>
-        <el-table-column label="本月销售量" width="100" align="right"><template #default="{row}">{{ row.monthSalesQty ?? 0 }}</template></el-table-column>
-        <el-table-column label="当前库存总数" width="110" align="right"><template #default="{row}">{{ row.stockQty ?? 0 }}</template></el-table-column>
+        <el-table-column label="本月采购量" width="100" align="left"><template #default="{row}">{{ row.monthPurchaseQty ?? 0 }}</template></el-table-column>
+        <el-table-column label="本月销售量" width="100" align="left"><template #default="{row}">{{ row.monthSalesQty ?? 0 }}</template></el-table-column>
+        <el-table-column label="当前库存总数" width="110" align="left"><template #default="{row}">{{ row.stockQty ?? 0 }}</template></el-table-column>
         <el-table-column label="自定义倍数" width="100">
           <template #default="{row}">
             <span v-if="customMult(row)" class="tag tag-orange">{{ customMult(row) }}</span>
@@ -129,7 +129,8 @@
           </div>
           <div class="form-item">
             <label class="form-label">登录密码</label>
-            <el-input v-model="form.loginPassword" placeholder="明文保存，用于演示登录" />
+            <el-input v-model="form.loginPassword" type="password" show-password placeholder="至少 6 位" />
+            <small class="form-hint">新建或修改密码时至少 6 位</small>
           </div>
           <div class="form-item">
             <label class="form-label">预警倍数</label>
@@ -256,12 +257,27 @@ function openEdit(row: any) {
   dlg.value = true
 }
 async function save() {
+  const error = validateNewAgentAccount(form.value)
+  if (error) {
+    ElMessage.error(error)
+    return
+  }
   const saved: any = await api.saveL1(form.value)
   ElMessage.success('已保存')
   dlg.value = false
   allL1s.value = (await api.agentsL1({ page: 1, pageSize: 200 })).list || []
   if (detail.value) detail.value = await api.agentL1(saved.id || detail.value.id)
   load()
+}
+function validateNewAgentAccount(value: any) {
+  if (!String(value.name || '').trim()) return '请填写代理名称'
+  if (!value.id && !String(value.loginUsername || '').trim()) return '请填写登录用户名'
+  if (!value.id && String(value.loginPassword || '').length < 6) return '登录密码至少 6 位'
+  if (!value.id && !(value.mainAreas || []).length) return '请选择主授权区域'
+  const username = String(value.loginUsername || '').trim()
+  const occupied = allL1s.value.some((row) => row.id !== value.id && row.loginUsername === username)
+  if (username && occupied) return '用户名已存在'
+  return ''
 }
 async function disable() {
   const row = await api.disableL1(detail.value.id) as any

@@ -21,7 +21,8 @@
       </view>
       <view class="field">
         <text class="lab">初始密码</text>
-        <input class="inp" :value="form.password" password placeholder="至少 4 位" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.password = eventValue($event, form.password)" />
+        <text class="rule">密码规则：至少 6 位</text>
+        <input class="inp" :value="form.password" password placeholder="至少 6 位" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.password = eventValue($event, form.password)" />
       </view>
       <template #footer>
         <view class="btn-p" @click="create">保存</view>
@@ -57,7 +58,7 @@ function openCreate() {
 
 async function create() {
   if (!form.username.trim()) { uni.showToast({ title: '填写账号', icon: 'none' }); return }
-  if (form.password.length < 4) { uni.showToast({ title: '初始密码至少 4 位', icon: 'none' }); return }
+  if (form.password.length < 6) { uni.showToast({ title: '初始密码至少 6 位', icon: 'none' }); return }
   await miniApi.saveSub({ username: form.username.trim(), name: form.name.trim(), password: form.password })
   creating.value = false
   load()
@@ -76,6 +77,7 @@ async function toggle(s: any) {
 .btn-p { background: #1A68D7; color: #fff; border-radius: 999rpx; font-weight: 700; margin-bottom: 12rpx; height: 80rpx; line-height: 80rpx; text-align: center; }
 .field { padding: 18rpx 0; border-bottom: 1rpx solid rgba(60,60,67,.12); }
 .lab { display: block; color: #8e8e93; font-size: 22rpx; }
+.rule { display: block; margin-top: 8rpx; color: #8e8e93; font-size: 22rpx; }
 .inp {
   display: block;
   width: 100%;

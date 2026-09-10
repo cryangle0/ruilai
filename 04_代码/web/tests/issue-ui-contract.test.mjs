@@ -35,7 +35,7 @@ test('issue 1 removes the redundant todo action and fills the row', () => {
   assert.match(view, /grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/)
 })
 
-test('issues 2 through 5 keep nationwide provinces and only selectable fence cities', () => {
+test('agent enterprise and contract data stay complete across detail audit and assignment views', () => {
   const regions = source('src/utils/regions.ts')
   const cityPicker = source('src/components/common/CitySearchPicker.vue')
   const l1 = source('src/views/agent/AgentL1View.vue')
@@ -60,8 +60,28 @@ test('issues 2 through 5 keep nationwide provinces and only selectable fence cit
   assert.match(pending, /:options="cityOpts"/)
   assert.doesNotMatch(pending, /:options="ALL_CITIES"/)
   assert.match(audit, /登录账号/)
-  assert.doesNotMatch(audit, /合作协议/)
+  for (const view of [l2, audit, pending]) {
+    assert.match(view, /企业名称/)
+    assert.match(view, /信用代码/)
+    assert.match(view, /法人/)
+    assert.match(view, /电话/)
+    assert.match(view, /地址/)
+    assert.match(view, /合作协议/)
+  }
   assert.match(service, /enrichL2\(row\);\s*fillLogin\(row\);/)
+})
+
+test('L1 account creation validates precise fields and keeps labels left aligned', () => {
+  const l1 = source('src/views/agent/AgentL1View.vue')
+  const http = source('src/api/http.ts')
+  assert.match(l1, /validateNewAgentAccount/)
+  assert.match(l1, /登录密码至少 6 位/)
+  assert.match(l1, /label="本月采购量"[^>]*align="left"/)
+  assert.match(l1, /label="本月销售量"[^>]*align="left"/)
+  assert.match(l1, /label="当前库存总数"[^>]*align="left"/)
+  assert.match(l1, /label="状态" width="190"/)
+  assert.match(http, /payload\.message \|\| '请求失败'/)
+  assert.match(http, /error\.response\?\.data\?\.message/)
 })
 
 test('issues 6 through 10 use content-height dialogs and live badges', () => {

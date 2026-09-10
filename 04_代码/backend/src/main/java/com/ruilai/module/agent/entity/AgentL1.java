@@ -51,4 +51,6 @@ public class AgentL1 extends StringEntity {
     private String loginUsername;
     @TableField(exist = false)
     private String loginPassword;
+    @TableField(exist = false)
+    private List<String> saleCities;
 }

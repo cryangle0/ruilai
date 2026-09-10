@@ -47,11 +47,12 @@
         </view>
         <view class="field">
           <text class="lab">新密码（不改请留空）</text>
+          <text class="rule">密码规则：至少 6 位</text>
           <input
             class="inp"
             :value="password"
             password
-            placeholder="至少 4 位"
+            placeholder="至少 6 位"
             placeholder-class="ph"
             confirm-type="done"
             :adjust-position="true"
@@ -100,7 +101,7 @@ async function save() {
   if (!n) { uni.showToast({ title: '请填写显示名称', icon: 'none' }); return }
   const p = phone.value.trim()
   if (p && !/^1[3-9]\d{9}$/.test(p)) { uni.showToast({ title: '请输入正确手机号', icon: 'none' }); return }
-  if (password.value && password.value.length < 4) { uni.showToast({ title: '新密码至少 4 位', icon: 'none' }); return }
+  if (password.value && password.value.length < 6) { uni.showToast({ title: '新密码至少 6 位', icon: 'none' }); return }
   saving.value = true
   try {
     await user.updateProfile({
@@ -128,6 +129,7 @@ async function save() {
   border-bottom: 1rpx solid rgba(60, 60, 67, 0.12);
 }
 .lab { font-size: 22rpx; color: #9AA4B2; }
+.rule { display: block; margin-top: 8rpx; color: #9AA4B2; font-size: 22rpx; }
 .val { font-size: 30rpx; color: #1B2430; }
 .field { padding: 18rpx 0; border-bottom: 1rpx solid rgba(60, 60, 67, 0.12); }
 .inp {

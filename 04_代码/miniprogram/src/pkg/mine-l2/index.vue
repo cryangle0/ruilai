@@ -29,8 +29,11 @@
         <text class="lab">类型</text><text class="pick-val">{{ form.type }} ›</text>
       </view>
       <view class="field">
-        <text class="lab">城市（逗号分隔）</text>
-        <input class="inp" :value="form.areas" :placeholder="areaHint" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.areas = eventValue($event, form.areas)" />
+        <text class="lab">授权城市（限一级可销售范围）</text>
+        <text v-if="!allowedCities.length" class="rule">一级暂无可选销售城市</text>
+        <view v-else class="city-grid">
+          <text v-for="city in allowedCities" :key="city" class="city-chip" :class="{ on: selectedCities.includes(city) }" @click="toggleCity(city)">{{ city }}</text>
+        </view>
       </view>
       <view class="field">
         <text class="lab">登录账号</text>
@@ -38,7 +41,16 @@
       </view>
       <view class="field">
         <text class="lab">初始密码</text>
-        <input class="inp" :value="form.loginPassword" password placeholder="至少 4 位" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.loginPassword = eventValue($event, form.loginPassword)" />
+        <text class="rule">密码规则：至少 6 位</text>
+        <input class="inp" :value="form.loginPassword" password placeholder="至少 6 位" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.loginPassword = eventValue($event, form.loginPassword)" />
+      </view>
+      <view v-if="form.type === '法人'" class="section">
+        <text class="section-title">企业信息</text>
+        <view class="field"><text class="lab">企业名称</text><input class="inp" :value="form.ent.company" placeholder="企业全称" placeholder-class="ph" @input="form.ent.company = eventValue($event, form.ent.company)" /></view>
+        <view class="field"><text class="lab">统一社会信用代码</text><input class="inp" :value="form.ent.creditCode" placeholder="信用代码" placeholder-class="ph" @input="form.ent.creditCode = eventValue($event, form.ent.creditCode)" /></view>
+        <view class="field"><text class="lab">法人</text><input class="inp" :value="form.ent.legal" placeholder="法人姓名" placeholder-class="ph" @input="form.ent.legal = eventValue($event, form.ent.legal)" /></view>
+        <view class="field"><text class="lab">电话</text><input class="inp" :value="form.ent.phone" placeholder="企业联系电话" placeholder-class="ph" @input="form.ent.phone = eventValue($event, form.ent.phone)" /></view>
+        <view class="field"><text class="lab">地址</text><input class="inp" :value="form.ent.addr" placeholder="企业地址" placeholder-class="ph" @input="form.ent.addr = eventValue($event, form.ent.addr)" /></view>
       </view>
       <view class="ghost" @click="pickProtocol">上传合作协议{{ protocolUrl ? '（已选）' : '' }}</view>
       <template #footer>
@@ -64,10 +76,16 @@ const user = useUserStore()
 const rows = ref<any[]>([])
 const q = ref('')
 const creating = ref(false)
-const form = reactive({ name: '', type: '法人', areas: '', loginUsername: '', loginPassword: '' })
+const form = reactive({
+  name: '',
+  type: '法人',
+  loginUsername: '',
+  loginPassword: '',
+  ent: { company: '', creditCode: '', legal: '', phone: '', addr: '' },
+})
 const protocolUrl = ref('')
 const allowedCities = ref<string[]>([])
-const areaHint = computed(() => allowedCities.value.length ? `须在 ${allowedCities.value.slice(0, 4).join('、')} 等范围内` : '杭州市')
+const selectedCities = ref<string[]>([])
 const filtered = computed(() => {
   const k = q.value.trim().toLowerCase()
   if (!k) return rows.value
@@ -90,9 +108,10 @@ onShow(() => { if (user.ensureRole(['L1'])) { load(); loadParent() } })
 function openCreate() {
   form.name = ''
   form.type = '法人'
-  form.areas = ''
   form.loginUsername = ''
-  form.loginPassword = 'demo'
+  form.loginPassword = ''
+  Object.assign(form.ent, { company: '', creditCode: '', legal: '', phone: '', addr: '' })
+  selectedCities.value = []
   protocolUrl.value = ''
   creating.value = true
 }
@@ -102,11 +121,16 @@ async function loadParent() {
   if (!id) return
   try {
     const a = (await miniApi.agentL1(id)).data
+    const saleCities = Array.isArray(a.saleCities) ? a.saleCities.filter(Boolean) : []
     const direct = Array.isArray(a.directAreas) ? a.directAreas.filter(Boolean) : []
-    const sale = Array.isArray(a.saleAreas) ? a.saleAreas.filter(Boolean) : []
-    const looksCity = (s: string) => /[市州盟区]$/.test(s)
-    allowedCities.value = direct.length ? direct : sale.filter(looksCity)
+    allowedCities.value = saleCities.length ? saleCities : direct
   } catch { allowedCities.value = [] }
+}
+
+function toggleCity(city: string) {
+  selectedCities.value = selectedCities.value.includes(city)
+    ? selectedCities.value.filter((item) => item !== city)
+    : [...selectedCities.value, city]
 }
 
 async function pickProtocol() {
@@ -136,16 +160,19 @@ async function pickProtocol() {
 async function create() {
   if (!form.name.trim()) { uni.showToast({ title: '请填写名称', icon: 'none' }); return }
   if (!form.loginUsername.trim()) { uni.showToast({ title: '请填写登录账号', icon: 'none' }); return }
-  if (form.loginPassword.length < 4) { uni.showToast({ title: '初始密码至少 4 位', icon: 'none' }); return }
-  const areas = form.areas.split(/[,，\s]+/).filter(Boolean)
+  if (form.loginPassword.length < 6) { uni.showToast({ title: '初始密码至少 6 位', icon: 'none' }); return }
+  const areas = [...selectedCities.value]
+  if (!areas.length) { uni.showToast({ title: '请选择授权城市', icon: 'none' }); return }
   if (allowedCities.value.length && areas.some((c) => !cityAllowed(c, allowedCities.value))) {
     uni.showToast({ title: '城市须在一级授权范围内', icon: 'none' }); return
   }
+  if (form.type === '法人' && !form.ent.company.trim()) { uni.showToast({ title: '请填写企业名称', icon: 'none' }); return }
   try {
     await miniApi.saveL2({
       name: form.name.trim(),
       type: form.type,
       areas,
+      ent: { ...form.ent },
       extra: {
         loginUsername: form.loginUsername.trim(),
         loginPassword: form.loginPassword,
@@ -193,6 +220,12 @@ async function remove(a: any) {
   border-bottom: 1rpx solid rgba(60,60,67,.12);
 }
 .lab { flex: none; color: #8e8e93; font-size: 22rpx; }
+.rule { display: block; margin-top: 8rpx; color: #8e8e93; font-size: 22rpx; }
+.section { margin-top: 24rpx; }
+.section-title { display: block; color: #1A2B4A; font-size: 28rpx; font-weight: 700; }
+.city-grid { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 14rpx; }
+.city-chip { padding: 10rpx 18rpx; border: 1rpx solid #D8DEE8; border-radius: 10rpx; color: #596579; font-size: 22rpx; }
+.city-chip.on { border-color: #1A68D7; background: rgba(26,104,215,.08); color: #1A68D7; }
 .field { padding: 18rpx 0; border-bottom: 1rpx solid rgba(60,60,67,.12); }
 .inp {
   display: block;

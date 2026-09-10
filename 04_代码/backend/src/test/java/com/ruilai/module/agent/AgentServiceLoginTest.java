@@ -1,6 +1,7 @@
 package com.ruilai.module.agent;
 
 import com.ruilai.common.web.BizException;
+import com.ruilai.common.security.LoginUser;
 import com.ruilai.module.account.entity.SysAccount;
 import com.ruilai.module.account.mapper.SysAccountMapper;
 import com.ruilai.module.agent.entity.SubAccount;
@@ -15,11 +16,18 @@ import com.ruilai.module.trade.mapper.PurchaseOrderMapper;
 import com.ruilai.module.trade.mapper.ReturnOrderMapper;
 import com.ruilai.module.trade.mapper.SalesOrderMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,6 +49,20 @@ class AgentServiceLoginTest {
     @Mock ExceptionTicketMapper exMapper;
     @Mock ReturnOrderMapper rtMapper;
     @InjectMocks AgentService service;
+
+    @BeforeEach
+    void loginAdmin() {
+        LoginUser user = new LoginUser();
+        user.setRoleCode("ADMIN");
+        user.setPermissions(Set.of("all"));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, List.of()));
+    }
+
+    @AfterEach
+    void clearLogin() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void rejectsUsernameOwnedByAnotherAgent() {
@@ -70,6 +92,30 @@ class AgentServiceLoginTest {
         assertThatThrownBy(() -> service.assertUsernameAvailable("agent_hd", "L1A", "SUB", "SUB2"))
                 .isInstanceOf(BizException.class)
                 .hasMessage("用户名已存在");
+    }
+
+    @Test
+    void rejectsShortPasswordWhenCreatingAgentAccount() {
+        var row = new com.ruilai.module.agent.entity.AgentL1();
+        row.setName("华东代理");
+        row.setLoginUsername("agent_east");
+        row.setLoginPassword("12345");
+
+        assertThatThrownBy(() -> service.saveL1(row))
+                .isInstanceOf(BizException.class)
+                .hasMessage("登录密码至少 6 位");
+    }
+
+    @Test
+    void rejectsShortPasswordWhenCreatingSubAccount() {
+        SubAccount row = new SubAccount();
+        row.setL1Id("L1A");
+        row.setUsername("scan_01");
+        row.setName("扫码员");
+
+        assertThatThrownBy(() -> service.saveSub(row, "12345"))
+                .isInstanceOf(BizException.class)
+                .hasMessage("登录密码至少 6 位");
     }
 
     private SysAccount account(String username, String agentId, String role) {

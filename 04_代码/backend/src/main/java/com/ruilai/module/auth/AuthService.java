@@ -5,6 +5,7 @@ import com.ruilai.common.config.RedisKeys;
 import com.ruilai.common.security.AuthUtil;
 import com.ruilai.common.security.JwtService;
 import com.ruilai.common.security.LoginUser;
+import com.ruilai.common.security.PasswordPolicy;
 import com.ruilai.common.security.RolePerms;
 import com.ruilai.common.web.BizException;
 import com.ruilai.common.web.ErrCode;
@@ -165,8 +166,8 @@ public class AuthService {
             }
         }
         String password = req.password();
-        if (StringUtils.hasText(password) && password.length() < 4) {
-            throw new BizException(ErrCode.BAD_REQUEST, "新密码至少 4 位");
+        if (StringUtils.hasText(password)) {
+            PasswordPolicy.requireChangedPassword(password);
         }
         account.setName(name);
         account.setPhone(StringUtils.hasText(phone) ? phone : null);

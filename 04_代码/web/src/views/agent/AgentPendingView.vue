@@ -24,6 +24,17 @@
         <div class="span-2"><span>原城市</span>{{ (cur.prevAreas||[]).join('、') || '—' }}</div>
         <div><span>状态</span><span class="tag tag-orange">待分配</span></div>
       </div>
+      <template v-if="cur?.type === '法人'">
+        <h4 style="margin-top:12px">企业信息</h4>
+        <div class="detail-grid" style="grid-template-columns:1fr 1fr">
+          <div class="span-2"><span>企业名称</span>{{ cur.ent?.company || '—' }}</div>
+          <div><span>信用代码</span>{{ cur.ent?.creditCode || '—' }}</div>
+          <div><span>法人</span>{{ cur.ent?.legal || '—' }}</div>
+          <div><span>电话</span>{{ cur.ent?.phone || '—' }}</div>
+          <div class="span-2"><span>地址</span>{{ cur.ent?.addr || '—' }}</div>
+          <div class="span-2"><span>合作协议</span><a v-if="cur.extra?.protocolUrl" :href="cur.extra.protocolUrl" target="_blank">查看文件</a><template v-else>—</template></div>
+        </div>
+      </template>
       <template #footer>
         <el-button @click="viewDlg=false">关闭</el-button>
         <el-button type="primary" @click="openRebind">重新绑定</el-button>

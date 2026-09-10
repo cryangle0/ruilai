@@ -105,6 +105,18 @@ class SystemControllerTest {
     }
 
     @Test
+    void rejectsShortPasswordWhenCreatingPlatformAccount() {
+        assertThatThrownBy(() -> controller.createAccount(Map.of(
+                "username", "operator",
+                "name", "操作员",
+                "password", "12345",
+                "roleId", "R1"
+        ))).isInstanceOf(BizException.class)
+                .hasMessage("登录密码至少 6 位");
+        verify(accountMapper, never()).insert(any(SysAccount.class));
+    }
+
+    @Test
     void countsAllUnreadNotificationsBeyondVisibleListLimit() {
         when(notificationMapper.selectCount(any())).thenReturn(73L);
 

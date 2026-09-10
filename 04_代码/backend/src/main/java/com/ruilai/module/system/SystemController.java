@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruilai.common.security.AuthUtil;
+import com.ruilai.common.security.PasswordPolicy;
 import com.ruilai.common.security.RolePerms;
 import com.ruilai.common.storage.StorageService;
 import com.ruilai.common.util.Ids;
@@ -138,6 +139,7 @@ public class SystemController {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(name)) {
             throw new BizException(ErrCode.BAD_REQUEST, "请填写用户名和姓名");
         }
+        PasswordPolicy.requireNewAccountPassword(password);
         SysRole role = roleMapper.selectById(roleId);
         if (role == null) {
             throw new BizException(ErrCode.BAD_REQUEST, "请选择有效角色");
@@ -188,9 +190,7 @@ public class SystemController {
             throw new BizException(ErrCode.NOT_FOUND, "账号不存在");
         }
         String password = String.valueOf(body.getOrDefault("password", "")).trim();
-        if (password.length() < 6) {
-            throw new BizException(ErrCode.BAD_REQUEST, "新密码至少 6 位");
-        }
+        PasswordPolicy.requireChangedPassword(password);
         account.setPasswordHash(passwordEncoder.encode(password));
         accountMapper.updateById(account);
         logService.record("修改账号密码 " + account.getUsername(), "op", true);

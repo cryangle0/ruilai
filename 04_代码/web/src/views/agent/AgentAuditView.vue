@@ -52,6 +52,7 @@
           <div><span>法人</span>{{ cur.ent.legal || '—' }}</div>
           <div><span>电话</span>{{ cur.ent.phone || '—' }}</div>
           <div class="span-2"><span>地址</span>{{ cur.ent.addr || '—' }}</div>
+          <div class="span-2"><span>合作协议</span><a v-if="cur.extra?.protocolUrl" :href="cur.extra.protocolUrl" target="_blank">查看文件</a><template v-else>—</template></div>
         </div>
       </template>
       <template #footer>
