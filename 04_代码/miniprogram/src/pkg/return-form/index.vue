@@ -54,7 +54,12 @@
           />
         </view>
         <view class="ghost" @click="pickPhoto">上传退货凭证</view>
-        <image v-for="(u, i) in photos" :key="i" :src="u" class="photo" mode="aspectFill" />
+        <view v-if="photos.length" class="proof-grid">
+          <view v-for="(u, i) in photos" :key="u" class="proof-item">
+            <image :src="u" class="photo" mode="aspectFill" />
+            <view class="photo-delete" role="button" :aria-label="`删除第 ${i + 1} 张凭证`" @click.stop="removePhoto(i)">×</view>
+          </view>
+        </view>
         <view class="btn-p" @click="submit">提交退货单</view>
       </view>
     </view>
@@ -69,6 +74,7 @@ import { miniApi } from '@/service'
 import { scanOrPrompt } from '@/utils/scan'
 import { API_BASE_URL, STORAGE_KEYS } from '@/config'
 import { inputEventValue } from '@/utils/inputValue'
+import { removePhotoAt } from '@/utils/miniPages'
 
 const REASONS = ['质量问题', '尺码不符', '客户退货', '外观损坏', '其他']
 const user = useUserStore()
@@ -133,6 +139,9 @@ async function scanAdd() {
 }
 function removeSn(sn: string) {
   snsText.value = sns.value.filter((item) => item !== sn).join('\n')
+}
+function removePhoto(index: number) {
+  photos.value = removePhotoAt(photos.value, index)
 }
 function pickReason() {
   uni.showActionSheet({ itemList: REASONS, success: (r) => { reasonType.value = REASONS[r.tapIndex] } })
@@ -231,5 +240,23 @@ async function submit() {
 .sn-chips { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 14rpx; }
 .sn-chip { display: flex; align-items: center; gap: 10rpx; padding: 8rpx 12rpx; border-radius: 10rpx; background: #EAF2FD; color: #1A68D7; font-size: 21rpx; }
 .sn-remove { color: #DE4B4B; font-size: 28rpx; line-height: 1; }
-.photo { width: 160rpx; height: 160rpx; border-radius: 16rpx; margin: 12rpx 12rpx 0 0; }
+.proof-grid { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
+.proof-item { position: relative; width: 160rpx; height: 160rpx; }
+.photo { width: 160rpx; height: 160rpx; border-radius: 16rpx; }
+.photo-delete {
+  position: absolute;
+  top: -12rpx;
+  right: -12rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border: 4rpx solid #fff;
+  border-radius: 50%;
+  background: #DE4B4B;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 38rpx;
+  text-align: center;
+  box-shadow: 0 4rpx 10rpx rgba(148, 31, 31, .24);
+}
 </style>

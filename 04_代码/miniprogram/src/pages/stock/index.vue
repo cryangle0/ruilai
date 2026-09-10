@@ -36,17 +36,30 @@
           <SearchBar v-model="q" placeholder="搜 SN" />
           <SpecFilter v-model:size="size" v-model:belt="belt" />
           <view v-if="!filteredSns.length"><Empty text="无 SN" /></view>
-          <ListCard
+          <view
             v-for="s in sortedSns"
             :key="s.sn"
+            class="sn-card glass"
             :class="{ marked: markedSn(s.sn) }"
-            :title="s.sn"
-            :sub="`${s.productName || s.productId} · ${s.sizeCode}+${s.belt || '—'}`"
+            hover-class="sn-card--pressed"
             @click="openSn(s.sn)"
           >
-            <template #tag><StatusTag :value="s.status" :map="SN_STATUS" /></template>
+            <view class="sn-card__head">
+              <text class="sn-card__code">{{ s.sn }}</text>
+              <StatusTag :value="s.status" :map="SN_STATUS" />
+            </view>
+            <view class="sn-card__grid">
+              <view class="sn-card__field">
+                <text class="sn-card__label">商品</text>
+                <text class="sn-card__value">{{ s.productName || s.productId || '—' }}</text>
+              </view>
+              <view class="sn-card__field">
+                <text class="sn-card__label">规格</text>
+                <text class="sn-card__value">{{ stockSpecText(s.sizeCode, s.belt) }}</text>
+              </view>
+            </view>
             <text v-if="markedSn(s.sn)" class="ex-mark">未处理异常</text>
-          </ListCard>
+          </view>
           <view v-if="loadMoreError" class="load-more-error">
             <text>{{ loadMoreError }}</text>
             <button @click="loadMoreSns">重试</button>
@@ -90,7 +103,7 @@ import { datePresetRange, formatDateTime, inDateRange } from '@/utils/dates'
 import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { SN_STATUS } from '@/utils/constants'
-import { aggregateStockRows, consumeStockFilter, fetchNextPage, isOpenException, mergePage, saveStockDraft, sortStockSns, stockExceptionSnSet } from '@/utils/miniPages'
+import { aggregateStockRows, consumeStockFilter, fetchNextPage, isOpenException, mergePage, saveStockDraft, sortStockSns, stockExceptionSnSet, stockSpecText } from '@/utils/miniPages'
 
 const user = useUserStore()
 const tab = ref('product')
@@ -270,6 +283,26 @@ function markedSn(sn: string) { return markedSns.value.has(sn) }
 .kpis { display: flex; gap: 12rpx; margin: 16rpx 0; }
 .kpi { flex: 1; padding: 20rpx; border-radius: 20rpx; display: flex; flex-direction: column; gap: 8rpx; }
 .n { display: block; font-size: 36rpx; font-weight: 800; color: #1559BC; }
+.sn-card {
+  margin-top: 16rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  transition: opacity .15s ease;
+}
+.sn-card--pressed { opacity: .72; }
+.sn-card__head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.sn-card__code {
+  min-width: 0;
+  color: $rl-primary;
+  font-family: Consolas, 'SFMono-Regular', monospace;
+  font-size: 25rpx;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.sn-card__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18rpx; margin-top: 18rpx; }
+.sn-card__field { min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.sn-card__label { color: $rl-text-placeholder; font-size: 20rpx; }
+.sn-card__value { color: $rl-text; font-size: 23rpx; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
 .marked { border-color: $rl-danger-border; background: #FFF9F9; }
 .ex-mark {
   @include rl-fit-tag;

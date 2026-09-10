@@ -442,7 +442,10 @@ public class SnService {
         List<Map<String, Object>> events = row.getEvents() == null
                 ? new ArrayList<>()
                 : new ArrayList<>(row.getEvents());
-        if (events.isEmpty() && row.getFactoryAt() != null) {
+        boolean hasFactoryOrigin = events.stream().anyMatch(e -> "import".equals(e.get("type"))
+                || String.valueOf(e.getOrDefault("title", "")).contains("生成")
+                || String.valueOf(e.getOrDefault("title", "")).contains("导入码库"));
+        if (!hasFactoryOrigin && row.getFactoryAt() != null) {
             events.add(event(row.getFactoryAt(), "生成并导入码库",
                     nz(row.getProductName()) + " / " + nz(row.getSizeCode()) + "+" + nz(row.getBelt()), "import"));
         }

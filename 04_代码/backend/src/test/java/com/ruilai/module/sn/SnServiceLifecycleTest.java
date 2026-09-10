@@ -47,6 +47,30 @@ class SnServiceLifecycleTest {
     }
 
     @Test
+    void existingLifecycleStillIncludesFactoryOriginForDisplay() {
+        SnCodeMapper mapper = mock(SnCodeMapper.class);
+        SnCode row = new SnCode();
+        row.setSn("RL202608030001");
+        row.setProductName("锐涞经典款套件");
+        row.setSizeCode("M");
+        row.setBelt("腰带M");
+        row.setEvents(List.of(Map.of(
+                "time", "2026-08-03 16:00:00",
+                "title", "销售到C端",
+                "desc", "13800138000",
+                "type", "bind")));
+        when(mapper.selectById(row.getSn())).thenReturn(row);
+        ReturnOrderMapper returnMapper = mock(ReturnOrderMapper.class);
+        when(returnMapper.selectList(any())).thenReturn(List.of());
+
+        SnCode result = serviceOf(mapper, returnMapper).get(row.getSn());
+
+        assertThat(result.getEvents()).anySatisfy(event -> assertThat(event)
+                .containsEntry("title", "生成并导入码库")
+                .containsEntry("type", "import"));
+    }
+
+    @Test
     void factoryDateIsFilledFromSnPrefixWhenStoredValueIsMissing() {
         SnCodeMapper mapper = mock(SnCodeMapper.class);
         SnCode row = new SnCode();

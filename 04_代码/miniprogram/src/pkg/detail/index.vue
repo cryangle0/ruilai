@@ -144,10 +144,7 @@
                 <StatusTag :value="returnTypeText" tone="info" dot />
               </template>
               <template #value-reason>
-                <view>
-                  <text class="reason-text">{{ data.reasonType || '其他' }}</text>
-                  <text v-if="data.reason" class="reason-sub">{{ data.reason }}</text>
-                </view>
+                <text class="reason-text">{{ data.reasonType || '其他' }}</text>
               </template>
               <template #value-status>
                 <StatusTag :value="data.status" :map="RT_STATUS" dot />
@@ -245,12 +242,12 @@ import { PO_STATUS, SO_STATUS, RT_STATUS, SN_STATUS } from '@/utils/constants'
 import { formatDateTime } from '@/utils/dates'
 import {
   agentDisplay,
+  buildStockDetail,
   canExplainException,
   cendCustomer,
   consumeStockDraft,
   decodeQueryValue,
   peekStockDraft,
-  snRowMatches,
   exceptionDimLabel,
   exceptionExplainLabel,
   exceptionExplainText,
@@ -259,12 +256,12 @@ import {
   purchaseLineRows,
   purchasePartRows,
   returnProductRows,
+  returnDetailItems,
   returnTypeLabel,
   saleProductRows,
   saleProductSections,
   saveStockFilter,
   stockLevelLabel,
-  stockRowMatches,
   stockSpecText,
   timelineTone,
   visibleSnTags,
@@ -483,13 +480,7 @@ const returnProcessNote = computed(() => data.value.processNote
   || (data.value.status === 'rejected' ? '退货申请已驳回'
     : data.value.status === 'done' || data.value.status === 'approved' ? '退货申请已通过并完成入库'
       : '等待审核处理'))
-const returnKv = computed(() => [
-  { key: 'type', label: '类型', value: returnTypeText.value },
-  { key: 'reason', label: '理由', value: data.value.reasonType || '其他', tone: 'warning' as const },
-  { key: 'from', label: '来源', value: data.value.fromName || data.value.fromId || '—' },
-  { key: 'status', label: '状态', value: RT_STATUS[data.value.status] || data.value.status },
-  { key: 'time', label: '时间', value: formatDateTime(data.value.createdAt), full: true, code: true },
-])
+const returnKv = computed(() => returnDetailItems(data.value, formatDateTime))
 const returnSitCols = [
   { key: 'sn', title: 'SN', code: true, wrap: true },
   { key: 'situation', title: '情况说明', wrap: true },
@@ -609,35 +600,13 @@ async function load() {
         miniApi.sns(snParams),
         miniApi.stockLogs(params),
       ])
-      const matched = (stockRes.data || []).filter((row: any) => stockRowMatches(row, id.value, size.value, belt.value))
-      const summary = matched.length
-        ? {
-            ...matched[0],
-            qty: matched.reduce((n: number, row: any) => n + (Number(row.qty) || 0), 0),
-            sns: [...new Set(matched.flatMap((row: any) => Array.isArray(row.sns) ? row.sns : []))],
-          }
-        : { ...data.value }
-      const snRows = (snRes.data.list || []).filter((row: any) => snRowMatches(row, id.value, size.value, belt.value))
-      const fallbackSns = (summary.sns || []).filter((sn: string) => !snRows.some((row: any) => row.sn === sn))
-        .map((sn: string) => ({
-          sn,
-          productId: id.value,
-          sizeCode: size.value,
-          belt: belt.value,
-          status: summary.status || (summary.agentType === 'l2' ? 'l2' : 'l1'),
-          tags: [],
-        }))
-      const tags = [...new Set(snRows.flatMap((row: any) => visibleSnTags(row.tags)))]
-      data.value = {
-        ...summary,
-        productName: summary.productName || data.value.productName,
-        size: size.value || summary.size,
-        belt: belt.value || summary.belt,
-        tags,
-        snRows: [...snRows, ...fallbackSns],
-        logs: (logRes.data || []).filter((row: any) => row.productId === id.value
-          && (!size.value || row.sizeCode === size.value)),
-      }
+      data.value = buildStockDetail(
+        { productId: id.value, size: size.value, belt: belt.value },
+        stockRes.data || [],
+        snRes.data.list || [],
+        logRes.data || [],
+        data.value,
+      )
       consumeStockDraft()
     } else if (kind.value === 'purchase') data.value = (await miniApi.purchase(id.value)).data
     else if (kind.value === 'return') data.value = (await miniApi.returnOne(id.value)).data

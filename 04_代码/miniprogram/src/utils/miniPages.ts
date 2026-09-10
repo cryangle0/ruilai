@@ -357,6 +357,24 @@ export function returnTypeLabel(type?: string, fallback?: string) {
   } as Record<string, string>)[String(type || '')] || fallback || type || '退货'
 }
 
+export function returnDetailItems(
+  row: Record<string, any>,
+  formatTime: (value: string) => string,
+) {
+  return [
+    { key: 'type', label: '类型', value: returnTypeLabel(row.type, row.typeLabel) },
+    { key: 'reason', label: '理由', value: row.reasonType || '其他', tone: 'warning' as const },
+    { key: 'afterSaleNote', label: '售后说明', value: row.reason || '—', full: true },
+    { key: 'from', label: '来源', value: row.fromName || row.fromId || '—' },
+    { key: 'status', label: '状态', value: row.status || '—' },
+    { key: 'time', label: '时间', value: formatTime(row.createdAt), full: true, code: true },
+  ]
+}
+
+export function removePhotoAt(photos: readonly string[], index: number) {
+  return photos.filter((_, photoIndex) => photoIndex !== index)
+}
+
 export function returnProductRows(snDetail: unknown) {
   if (!Array.isArray(snDetail)) return []
   const grouped = new Map<string, { product: string; spec: string; qty: number }>()
@@ -434,6 +452,47 @@ export function consumeStockFilter() {
     return row && typeof row === 'object' ? row as Record<string, any> : null
   } catch {
     return null
+  }
+}
+
+export function buildStockDetail(
+  query: { productId: string; size: string; belt: string },
+  stockRows: Array<Record<string, any>>,
+  snRows: Array<Record<string, any>>,
+  logs: Array<Record<string, any>>,
+  _draft: Record<string, any> = {},
+) {
+  const productId = decodeQueryValue(query.productId)
+  const size = decodeQueryValue(query.size)
+  const belt = decodeQueryValue(query.belt)
+  const matched = stockRows.filter((row) => stockRowMatches(row, productId, size, belt))
+  if (!matched.length) return {}
+
+  const summary: Record<string, any> & { sns: string[] } = {
+    ...matched[0],
+    productId,
+    size,
+    belt,
+    qty: matched.reduce((total, row) => total + (Number(row.qty) || 0), 0),
+    sns: [...new Set(matched.flatMap((row) => Array.isArray(row.sns) ? row.sns.map(String) : []))],
+  }
+  const matchedSns = snRows.filter((row) => snRowMatches(row, productId, size, belt))
+  const fallbackSns = summary.sns
+    .filter((sn) => !matchedSns.some((row) => String(row.sn) === sn))
+    .map((sn) => ({
+      sn,
+      productId,
+      sizeCode: size,
+      belt,
+      status: summary.status || (summary.agentType === 'l2' ? 'l2' : 'l1'),
+      tags: [],
+    }))
+
+  return {
+    ...summary,
+    tags: [...new Set(matchedSns.flatMap((row) => visibleSnTags(row.tags)))],
+    snRows: [...matchedSns, ...fallbackSns],
+    logs: logs.filter((row) => row.productId === productId && (!size || row.sizeCode === size)),
   }
 }
 

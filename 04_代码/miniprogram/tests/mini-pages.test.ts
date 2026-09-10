@@ -353,7 +353,7 @@ test('stock detail query puts belt in the URL and decodes leftover encodings', (
   assert.match(stock, /belt=\$\{encodeURIComponent/)
   assert.match(stock, /saveStockDraft/)
   assert.match(detail, /peekStockDraft/)
-  assert.match(detail, /stockRowMatches/)
+  assert.match(detail, /buildStockDetail/)
   assert.match(detail, /stockSpecText/)
   assert.match(app, /min-height: 0/)
   assert.doesNotMatch(home, /min-height: 100vh/)
