@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruilai.common.security.AuthUtil;
 import com.ruilai.common.security.LoginUser;
+import com.ruilai.common.geo.AddressMatch;
 import com.ruilai.common.thirdparty.GeoFence;
 import com.ruilai.common.thirdparty.Region;
 import com.ruilai.common.thirdparty.ThirdPartyGateway;
@@ -416,7 +417,7 @@ public class SalesService {
             }
         }
         if (phoneReg.ok() && addrReg.ok() && !gateway.phoneMatchesAddress(phoneReg, addrReg)) {
-            String msg = "异常销售预警：手机归属" + phoneReg.display() + " 与填写地址" + addrReg.display() + "不一致";
+            String msg = "手机归属" + phoneReg.display() + " 与填写地址" + addrReg.display() + "不一致";
             issues.add(msg);
             if (!dryRun) {
                 exceptionService.raise("归属地异常", sn, msg, "activate", warnMode, row.getL2Id());
@@ -435,18 +436,22 @@ public class SalesService {
                 }
             }
         }
-        if (StringUtils.hasText(addr)) {
-            String core = addr.replaceAll("\\s+", "");
-            if (core.length() >= 6) {
-                List<Customer> sameAddr = customerMapper.selectList(Wrappers.<Customer>lambdaQuery()
-                        .ne(Customer::getPhone, phone)
-                        .like(Customer::getAddr, core.substring(0, Math.min(12, core.length()))));
-                if (!sameAddr.isEmpty()) {
-                    String msg = "地址疑似同一地点：已有客户 " + sameAddr.get(0).getPhone();
-                    issues.add(msg);
-                    if (!dryRun) {
-                        exceptionService.raise("客户信息重复", sn, msg, "activate", warnMode, row.getL2Id());
-                    }
+        if (StringUtils.hasText(addr) && AddressMatch.hasStreet(addr)) {
+            var w = Wrappers.<Customer>lambdaQuery().isNotNull(Customer::getAddr);
+            if (StringUtils.hasText(row.getL1Id())) {
+                w.eq(Customer::getL1Id, row.getL1Id());
+            }
+            List<Customer> sameAddr = customerMapper.selectList(w);
+            Customer hit = sameAddr == null ? null : sameAddr.stream()
+                    .filter(existing -> !StringUtils.hasText(phone) || !phone.equals(existing.getPhone()))
+                    .filter(existing -> AddressMatch.likelySame(addr, existing.getAddr()))
+                    .findFirst()
+                    .orElse(null);
+            if (hit != null) {
+                String msg = "地址疑似同一地点：已有客户 " + hit.getPhone();
+                issues.add(msg);
+                if (!dryRun) {
+                    exceptionService.raise("客户信息重复", sn, msg, "activate", warnMode, row.getL2Id());
                 }
             }
         }
@@ -529,8 +534,11 @@ public class SalesService {
             }
         }
         so.setProductDetail(detailOf(so));
-        so.setWarnEx(stockWarnService.warnMeta(
-                so.getL1Id(), "direct".equals(so.getChannel()) ? null : so.getL2Id()));
+        if ("direct".equals(so.getChannel()) || !StringUtils.hasText(so.getL2Id())) {
+            so.setWarnEx(Map.of("has", false, "open", false, "label", "—"));
+        } else {
+            so.setWarnEx(stockWarnService.warnMeta(so.getL1Id(), so.getL2Id()));
+        }
         fillSnRows(so);
     }
 
@@ -680,10 +688,6 @@ public class SalesService {
                 || !containsIfMaintained(extra.get("belts"), belt)) {
             return false;
         }
-        if (extra.get("stdCombos") instanceof List<?> combos && !combos.isEmpty()) {
-            return combos.stream().anyMatch(raw -> raw instanceof Map<?, ?> combo
-                    && size.equals(str(combo.get("size"))) && belt.equals(str(combo.get("belt"))));
-        }
         return true;
     }
 
@@ -723,36 +727,19 @@ public class SalesService {
     }
 
     private void upsertCustomer(Map<String, Object> customer, SnCode row, String sn) {
-        String phone = str(customer.get("phone"));
-        Customer c = null;
-        if (StringUtils.hasText(phone)) {
-            c = customerMapper.selectOne(Wrappers.<Customer>lambdaQuery().eq(Customer::getPhone, phone).last("limit 1"));
-        }
-        if (c == null) {
-            c = new Customer();
-            c.setId(Ids.next("CU"));
-            c.setPhone(phone);
-            c.setName(str(customer.get("name")));
-            c.setGender(str(customer.get("gender")));
-            c.setAge(str(customer.get("age")));
-            c.setPhoneLoc(str(customer.get("phoneLoc")));
-            c.setAddr(str(customer.get("addr")));
-            c.setNote(str(customer.get("note")));
-            c.setSns(new ArrayList<>(List.of(sn)));
-            c.setL1Id(row.getL1Id());
-            c.setL2Id(row.getL2Id());
-            customerMapper.insert(c);
-        } else {
-            List<String> sns = c.getSns() == null ? new ArrayList<>() : new ArrayList<>(c.getSns());
-            if (!sns.contains(sn)) {
-                sns.add(sn);
-            }
-            c.setSns(sns);
-            if (StringUtils.hasText(str(customer.get("phoneLoc")))) {
-                c.setPhoneLoc(str(customer.get("phoneLoc")));
-            }
-            customerMapper.updateById(c);
-        }
+        Customer c = new Customer();
+        c.setId(Ids.next("CU"));
+        c.setPhone(str(customer.get("phone")));
+        c.setName(str(customer.get("name")));
+        c.setGender(str(customer.get("gender")));
+        c.setAge(str(customer.get("age")));
+        c.setPhoneLoc(str(customer.get("phoneLoc")));
+        c.setAddr(str(customer.get("addr")));
+        c.setNote(str(customer.get("note")));
+        c.setSns(new ArrayList<>(List.of(sn)));
+        c.setL1Id(row.getL1Id());
+        c.setL2Id(row.getL2Id());
+        customerMapper.insert(c);
     }
 
     static boolean sameCustomerIdentity(Customer existing, Map<String, Object> incoming) {

@@ -137,18 +137,6 @@
           </div>
         </div>
       </div>
-      <div class="form-sec">
-        <div class="form-sec-title">授权范围</div>
-        <CitySearchPicker
-          v-model="form.areas"
-          :options="ALL_CITIES"
-          :disabled-options="disabledCities"
-          label="围栏城市"
-          all-label="全选当前一级可售城市"
-          empty-text="暂无全国城市数据"
-          note="展示全国城市；不在所属一级可销售范围内的城市不可选"
-        />
-      </div>
       <div v-if="form.type==='法人'" class="form-sec">
         <div class="form-sec-title">企业信息</div>
         <div class="form-grid form-grid-3">
@@ -158,6 +146,16 @@
           <div class="form-item"><label class="form-label">电话</label><el-input v-model="form.ent.phone" /></div>
           <div class="form-item span-2"><label class="form-label">地址</label><el-input v-model="form.ent.addr" /></div>
         </div>
+      </div>
+      <div class="form-sec">
+        <div class="form-sec-title">授权范围</div>
+        <CitySearchPicker
+          v-model="form.areas"
+          :options="cityOpts"
+          label="围栏城市"
+          all-label="全选当前一级可售城市"
+          empty-text="该一级暂无可售城市，请先在一级详情维护可销售范围"
+        />
       </div>
       <template #footer>
         <el-button @click="dlg=false">取消</el-button>
@@ -176,7 +174,7 @@ import DataTableShell from '@/components/common/DataTableShell.vue'
 import CitySearchPicker from '@/components/common/CitySearchPicker.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
-import { ALL_CITIES, citiesOf } from '@/utils/regions'
+import { citiesOf } from '@/utils/regions'
 import { l2Exception, l2Purchase, l2Return, l2Sales, l2Stock } from '@/utils/detailJump'
 import { useAuthStore } from '@/stores/auth'
 
@@ -194,12 +192,7 @@ const selected = ref<any[]>([])
 const l1s = ref<any[]>([])
 const cityOpts = computed(() => {
   const l1 = l1s.value.find((a) => a.id === form.value.parentId)
-  const fromSale = citiesOf(l1?.saleAreas || l1?.mainAreas || [])
-  return fromSale.length ? fromSale : []
-})
-const disabledCities = computed(() => {
-  const allowed = new Set(cityOpts.value)
-  return ALL_CITIES.filter((city) => !allowed.has(city))
+  return citiesOf(l1?.saleAreas || l1?.mainAreas || [])
 })
 
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
@@ -284,6 +277,10 @@ async function setStatus(status: string) {
   load()
 }
 watch([page, pageSize], load)
+watch(() => form.value.parentId, () => {
+  const allow = new Set(cityOpts.value)
+  form.value.areas = (form.value.areas || []).filter((c: string) => allow.has(c))
+})
 watch(() => route.query.id, async (id) => {
   if (id) detail.value = await api.agentL2(String(id))
   else detail.value = null

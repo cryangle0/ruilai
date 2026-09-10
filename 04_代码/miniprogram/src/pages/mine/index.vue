@@ -78,7 +78,6 @@ async function load() {
 
 onShow(async () => {
   if (!user.ensureLogin()) return
-  uni.hideTabBar({ animation: false })
   await load()
 })
 function go(url: string) { uni.navigateTo({ url }) }

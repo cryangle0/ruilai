@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api")
@@ -85,6 +86,9 @@ public class SystemController {
         SysRole role = roleMapper.selectById(id);
         if (role == null) {
             throw new BizException(ErrCode.NOT_FOUND, "角色不存在");
+        }
+        if (Set.of("R1", "R2", "R3", "R4").contains(id)) {
+            throw new BizException(ErrCode.BAD_REQUEST, "系统角色不可删除");
         }
         Long bound = accountMapper.selectCount(
                 Wrappers.<SysAccount>lambdaQuery().eq(SysAccount::getRoleId, id));

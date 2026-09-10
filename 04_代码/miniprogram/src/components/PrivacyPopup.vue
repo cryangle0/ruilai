@@ -18,6 +18,8 @@
 </template>
 <script setup lang="ts">
 import { ref } from 'vue'
+
+const emit = defineEmits<{ agree: [] }>()
 const show = ref(!uni.getStorageSync('rl_privacy_ok'))
 
 const supportsPrivacyAuthorization = typeof uni.canIUse === 'function'
@@ -26,6 +28,7 @@ const supportsPrivacyAuthorization = typeof uni.canIUse === 'function'
 function saveAgreement() {
   uni.setStorageSync('rl_privacy_ok', 1)
   show.value = false
+  emit('agree')
 }
 
 function onAgreePrivacyAuthorization(event: { detail?: { errMsg?: string } }) {

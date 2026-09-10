@@ -33,7 +33,7 @@
       </el-table>
     </template>
     <template v-else-if="form && form.id && mode==='audit'">
-      <div class="alert alert-info">段号数量须等于标准+非标总数；单品不计 SN，可单独成单。两位管理员会签通过后立即完成。号段若已发给其他代理或已售出则判异常；已退回原厂的 SN 可再次出给代理（含原代理）。</div>
+      <div class="alert alert-info">单品不计 SN，可单独成单。两位管理员会签通过后立即完成。号段若已发给其他代理或已售出则判异常；已退回原厂的 SN 可再次出给代理（含原代理）。</div>
       <h4>标准品</h4>
       <div v-for="(line, i) in form.lines" :key="'l'+i" class="audit-line">
         <div class="audit-prod">{{ prodName(line.productId) }} · {{ line.size }}+{{ line.belt }} × {{ line.qty }}</div>
@@ -80,7 +80,6 @@
       <div class="audit-match-live">
         需求 SN：<strong class="num">{{ needQty }}</strong>
         　已填段号：<strong class="num">{{ gotQty }}</strong>
-        　<span class="tag" :class="match ? 'tag-green' : 'tag-orange'">{{ match ? '数量匹配' : '数量不匹配' }}</span>
       </div>
       <p style="margin-top:8px">会签：管理员1 {{ form.cosign?.admin1 ? '✓' : '○' }}　管理员2 {{ form.cosign?.admin2 ? '✓' : '○' }}</p>
     </template>
@@ -101,7 +100,7 @@
       </template>
       <template v-else-if="form?.id && mode==='audit'">
         <el-button type="danger" plain @click="remove">删除</el-button>
-        <el-button type="primary" :disabled="!match" @click="cosign">确认（会签）</el-button>
+        <el-button type="primary" @click="cosign">确认（会签）</el-button>
         <el-button type="danger" plain @click="reject">驳回</el-button>
       </template>
     </template>
@@ -242,12 +241,6 @@ const gotQty = computed(() => {
   }
   return n
 })
-const match = computed(() => {
-  void tick.value
-  const partsOk = (form.value?.parts || []).some((x: any) => Number(x.qty) > 0)
-  if (needQty.value === 0) return partsOk && gotQty.value === 0
-  return gotQty.value === needQty.value
-})
 function lineSummary({ columns, data }: { columns: any[]; data: any[] }) {
   const sums: string[] = []
   columns.forEach((col: any, i: number) => {
@@ -285,11 +278,7 @@ watch(() => [props.modelValue, props.row], async () => {
   }
 }, { immediate: true })
 async function cosign() {
-  if (!match.value) {
-    ElMessage.error(`段号数量须等于标准+非标总数（需求 ${needQty.value}，已填 ${gotQty.value}）`)
-    return
-  }
-  await ElMessageBox.confirm('确认会签并入库？号段数量须与明细一致。', '会签确认', { type: 'warning' })
+  await ElMessageBox.confirm('确认会签并入库？', '会签确认', { type: 'warning' })
   const customLines = form.value.customLines.map(({ productId, size, belt, qty }: any) => ({ productId, size, belt, qty }))
   await api.cosign(form.value.id, segmentsPayload(), customLines)
   ElMessage.success('会签已提交')

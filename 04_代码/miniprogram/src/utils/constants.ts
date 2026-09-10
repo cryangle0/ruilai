@@ -32,10 +32,10 @@ export const RT_STATUS: Record<string, string> = {
 }
 
 export const SN_STATUS: Record<string, string> = {
-  warehouse: '原厂仓',
+  warehouse: '原厂在库',
   l1: '一级在库',
   l2: '二级在库',
-  bound: '已激活',
+  bound: '已销售',
 }
 
 export const ROLE_LABEL: Record<string, string> = {

@@ -40,11 +40,10 @@
         <el-form-item label-width="0">
           <CitySearchPicker
             v-model="areas"
-            :options="ALL_CITIES"
-            :disabled-options="disabledCities"
+            :options="cityOpts"
             label="授权城市（点击多选）"
             all-label="全选当前一级可售城市"
-            empty-text="暂无全国城市数据"
+            empty-text="该一级暂无可售城市，请先在一级详情维护可销售范围"
             :note="droppedNote"
           />
           <p class="muted" style="margin-left:0">切换绑定一级后，可选城市会随一级可销售范围更新</p>
@@ -64,7 +63,7 @@ import DataTableShell from '@/components/common/DataTableShell.vue'
 import CitySearchPicker from '@/components/common/CitySearchPicker.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
-import { ALL_CITIES, citiesOf } from '@/utils/regions'
+import { citiesOf } from '@/utils/regions'
 
 const { page, pageSize, total, loading, list } = usePager()
 const l1s = ref<any[]>([])
@@ -79,15 +78,10 @@ const cityOpts = computed(() => {
   const l1 = l1s.value.find((a) => a.id === parentId.value)
   return citiesOf(l1?.saleAreas || l1?.mainAreas || [])
 })
-const disabledCities = computed(() => {
-  const allowed = new Set(cityOpts.value)
-  return ALL_CITIES.filter((city) => !allowed.has(city))
-})
 const droppedNote = computed(() => {
-  const scope = '展示全国城市；不在当前一级可销售范围内的城市不可选'
   return dropped.value.length
-    ? `原城市「${dropped.value.join('、')}」不在当前一级可售范围内，已取消勾选。${scope}`
-    : scope
+    ? `原城市「${dropped.value.join('、')}」不在当前一级可售范围内，已取消勾选。`
+    : ''
 })
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
 async function load() {

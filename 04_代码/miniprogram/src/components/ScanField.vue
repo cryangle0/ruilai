@@ -6,13 +6,18 @@
     <view class="scan-field__control">
       <input
         class="scan-field__input"
-        :value="modelValue"
+        :value="draft"
         :placeholder="placeholder"
         :disabled="disabled"
         :maxlength="maxlength"
         confirm-type="done"
         placeholder-class="scan-field__placeholder"
-        @input="onInput"
+        :adjust-position="true"
+        :hold-keyboard="true"
+        :always-embed="true"
+        :cursor-spacing="24"
+        data-echo="1"
+        @input="onInput($event)"
         @confirm="$emit('confirm', normalizedValue)"
       />
       <view class="scan-field__divider" />
@@ -25,8 +30,14 @@
   </view>
 </template>
 
+<script lang="ts">
+export default {
+  options: { virtualHost: true },
+}
+</script>
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { inputEventValue } from '@/utils/inputValue'
 import { scanSn } from '@/utils/scan'
 
 const props = withDefaults(defineProps<{
@@ -56,17 +67,23 @@ const emit = defineEmits<{
 }>()
 
 const scanning = ref(false)
-const normalizedValue = computed(() => normalize(props.modelValue))
+const draft = ref(String(props.modelValue || ''))
+const normalizedValue = computed(() => normalize(draft.value))
+
+watch(() => props.modelValue, (value) => {
+  const next = String(value || '')
+  if (next !== draft.value) draft.value = next
+})
 
 function normalize(value: string) {
   const next = String(value || '').trim()
   return props.uppercase ? next.toUpperCase() : next
 }
 
-function onInput(event: any) {
-  const value = props.uppercase
-    ? String(event.detail.value || '').toUpperCase()
-    : String(event.detail.value || '')
+function onInput(event: unknown) {
+  const raw = inputEventValue(event, draft.value)
+  const value = props.uppercase ? raw.toUpperCase() : raw
+  draft.value = value
   emit('update:modelValue', value)
 }
 
@@ -76,6 +93,7 @@ async function scan() {
   try {
     const value = normalize(await scanSn())
     if (!value) return
+    draft.value = value
     emit('update:modelValue', value)
     emit('scan', value)
   } catch (error) {

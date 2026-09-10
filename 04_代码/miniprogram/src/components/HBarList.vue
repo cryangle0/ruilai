@@ -27,7 +27,7 @@ function pct(v: number) {
 </script>
 <style scoped lang="scss">
 @import '@/styles/theme.scss';
-.bars { display: flex; flex-direction: column; gap: 18rpx; padding-top: 4rpx; }
+.bars { display: flex; flex-direction: column; gap: 18rpx; padding-top: 12rpx; }
 .row { display: flex; align-items: center; gap: 16rpx; }
 .lab {
   width: 148rpx;

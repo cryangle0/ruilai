@@ -32,4 +32,6 @@ public class PurchaseOrder extends StringEntity {
     private LocalDateTime approvedAt;
     @TableField(exist = false)
     private Map<String, Object> warnEx;
+    @TableField(exist = false)
+    private String l1Name;
 }

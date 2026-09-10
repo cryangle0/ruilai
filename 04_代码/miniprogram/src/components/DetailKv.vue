@@ -26,7 +26,7 @@ type DetailKvItem = {
   value?: DetailKvValue
   full?: boolean
   code?: boolean
-  tone?: 'default' | 'secondary' | 'primary' | 'success' | 'danger'
+  tone?: 'default' | 'secondary' | 'primary' | 'success' | 'danger' | 'warning'
 }
 
 const props = withDefaults(defineProps<{
@@ -73,9 +73,11 @@ function display(value: DetailKvValue) {
 .detail-kv__value.primary { color: $rl-primary; }
 .detail-kv__value.success { color: $rl-success; }
 .detail-kv__value.danger { color: $rl-danger; }
+.detail-kv__value.warning { color: $rl-warning; }
 .detail-kv__value.code {
   font-family: Consolas, 'SFMono-Regular', monospace;
   font-size: 23rpx;
-  word-break: break-all;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 </style>

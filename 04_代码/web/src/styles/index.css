@@ -664,7 +664,7 @@ button.metric-card, button.metric { cursor: pointer; font-family: inherit; }
   border-radius: 2px;
 }
 .el-dialog__body {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto !important;
   padding: 20px 24px 6px !important;

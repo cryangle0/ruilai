@@ -56,10 +56,10 @@
       <el-table-column label="账号数" width="90" align="right">
         <template #default="{row}">{{ accCount(row) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="180">
+      <el-table-column label="操作" width="220">
         <template #default="{row}">
           <el-button size="small" @click="openEditRole(row)">编辑权限</el-button>
-          <el-button v-if="accCount(row)===0" size="small" type="danger" plain @click="removeRole(row)">删除</el-button>
+          <el-button size="small" type="danger" plain :disabled="!canDeleteRole(row)" @click="removeRole(row)">删除</el-button>
         </template>
       </el-table-column>
     </DataTableShell>
@@ -172,6 +172,10 @@ function accCount(role: any) {
   const mapped: Record<string, string> = { R1: 'ADMIN', R2: 'L1', R3: 'SUB', R4: 'L2' }
   return accounts.value.filter((a) => a.roleId === role.id || (!a.roleId && a.roleCode === mapped[role.id])).length
 }
+function canDeleteRole(role: any) {
+  if (AGENT_ROLE_IDS.includes(role.id) || role.id === 'R1') return false
+  return accCount(role) === 0
+}
 function permOn(p: string) {
   const sel = roleForm.value.perms || []
   return sel.includes('all') || sel.includes(p)
@@ -260,7 +264,10 @@ async function savePassword() {
   passwordDlg.value = false
 }
 async function removeRole(row: any) {
-  if (accCount(row) > 0) { ElMessage.error('该角色已绑定账号，不可删除'); return }
+  if (!canDeleteRole(row)) {
+    ElMessage.error(accCount(row) > 0 ? '该角色已绑定账号，不可删除' : '系统角色不可删除')
+    return
+  }
   try {
     await ElMessageBox.confirm(`确认删除角色「${row.name}」？`, '删除角色', { type: 'warning' })
   } catch { return }

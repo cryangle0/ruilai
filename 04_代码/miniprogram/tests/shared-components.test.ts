@@ -19,6 +19,8 @@ test('mini-program theme exposes the full design palette without dropping legacy
     '$rl-fill-soft: #FBFCFE',
     '$rl-primary-deep:',
     '$rl-glass:',
+    '@mixin rl-fit-tag',
+    '@mixin rl-hug-x',
   ]) {
     assert.match(theme, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
@@ -34,12 +36,15 @@ test('detail building blocks expose section, key-value, and table primitives', (
   assert.match(kv, /columns\?:/)
   assert.match(kv, /<slot\s+:name="`value-\$\{item\.key\}`"/)
   assert.match(kv, /:item="item"/)
+  assert.match(kv, /'warning'/)
   assert.match(table, /columns:/)
   assert.match(table, /rows:/)
   assert.match(table, /emptyText/)
   assert.match(table, /<slot\s+:name="`cell-\$\{column\.key\}`"/)
   assert.match(table, /:row="row"/)
   assert.match(table, /:row-index="rowIndex"/)
+  assert.match(table, /function rowId/)
+  assert.doesNotMatch(table, /\?\?/)
 })
 
 test('form and paging primitives expose disabled, error, busy, and retry states', () => {

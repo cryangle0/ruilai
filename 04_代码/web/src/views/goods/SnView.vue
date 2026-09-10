@@ -66,25 +66,30 @@
       </div>
     </SearchPanel>
     <DataTableShell :data="list" :loading="loading" :total="total" v-model:page="page" v-model:pageSize="pageSize" @row-click="open">
-      <el-table-column prop="sn" label="SN" width="138" />
-      <el-table-column prop="productName" label="商品" min-width="120" />
-      <el-table-column prop="sizeCode" label="尺寸" width="64" />
+      <el-table-column prop="sn" label="SN" width="156" show-overflow-tooltip />
+      <el-table-column prop="productName" label="商品" width="148" show-overflow-tooltip />
+      <el-table-column prop="sizeCode" label="尺寸" width="72" />
       <el-table-column prop="belt" label="腰带" width="96" />
-      <el-table-column label="渠道" width="80">
+      <el-table-column label="渠道" width="76">
         <template #default="{row}">
           <span v-if="row.status==='bound'" class="tag" :class="row.l2Id?'tag-blue':'tag-orange'">{{ row.l2Id ? '分销' : '直售' }}</span>
           <span v-else>—</span>
         </template>
       </el-table-column>
-      <el-table-column label="一级" width="110"><template #default="{row}">{{ nameL1(row.l1Id) }}</template></el-table-column>
-      <el-table-column label="二级" width="110"><template #default="{row}">{{ nameL2(row.l2Id) }}</template></el-table-column>
-      <el-table-column label="状态" width="120">
+      <el-table-column label="一级" min-width="132" show-overflow-tooltip><template #default="{row}">{{ nameL1(row.l1Id) }}</template></el-table-column>
+      <el-table-column label="二级" min-width="132" show-overflow-tooltip><template #default="{row}">{{ nameL2(row.l2Id) }}</template></el-table-column>
+      <el-table-column label="状态" width="168">
         <template #default="{row}">
           <span class="tag" :class="stTone(row.status)">{{ statusLabel(row.status) }}</span>
-          <span v-if="row.frozen" class="tag tag-red">异常未处理</span>
+          <span
+            v-if="row.openException"
+            class="tag tag-red"
+            :title="[row.openExceptionType, row.openExceptionDetail].filter(Boolean).join(' · ')"
+            @click.stop="gotoEx(row.sn)"
+          >异常未处理</span>
         </template>
       </el-table-column>
-      <el-table-column label="标签" min-width="150">
+      <el-table-column label="标签" width="168">
         <template #default="{row}">
           <span v-for="t in visibleTags(row.tags)" :key="t" class="tag tag-orange" style="margin-right:4px">{{ t }}</span>
           <span v-if="!visibleTags(row.tags).length">—</span>
@@ -92,7 +97,7 @@
       </el-table-column>
     </DataTableShell>
 
-    <el-dialog v-model="dlg" :title="(editing?'编辑 SN':'SN 详情') + ' · ' + (cur.sn||'')" width="780px">
+    <el-dialog v-model="dlg" :title="(editing?'编辑 SN':'SN 详情') + ' · ' + (cur.sn||'')" width="920px">
       <div class="detail-split">
         <div>
           <div class="detail-grid" style="grid-template-columns:1fr 1fr">
@@ -100,7 +105,7 @@
             <div><span>状态</span><span class="tag" :class="stTone(cur.status)">{{ statusLabel(cur.status) }}</span>
               <div class="muted" style="margin-top:4px">仅四种：一级在库 / 二级在库 / 已销售 / 原厂在库</div>
             </div>
-            <div class="span-2"><span>出厂日期</span>{{ dateOnly(cur.factoryAt) }}
+            <div class="span-2"><span>出厂日期</span>{{ factoryDateText(cur.sn, cur.factoryAt) }}
               <div class="muted" style="margin-top:4px">取 SN 编码中的 RLyyyyMMdd；非法编码按首次入码库日期</div>
             </div>
             <div><span>商品</span>{{ cur.productName || cur.productId }}</div>
@@ -127,7 +132,7 @@
           <h4 style="margin-top:12px">情况说明</h4>
           <div v-if="editing" class="note-list">
             <div v-for="(n,i) in sitNotes" :key="'s'+i" class="note-row">
-              <el-date-picker v-model="n.date" type="date" value-format="YYYY-MM-DD" placeholder="填写日期" />
+              <el-date-picker v-model="n.date" type="date" value-format="YYYY-MM-DD" placeholder="填写日期" style="width:148px" />
               <el-input v-model="n.text" placeholder="情况说明" />
             </div>
             <el-button size="small" @click="sitNotes.push(newNote())">+ 添加</el-button>
@@ -139,7 +144,7 @@
           <h4 style="margin-top:12px">处理说明</h4>
           <div v-if="editing" class="note-list">
             <div v-for="(n,i) in procNotes" :key="'p'+i" class="note-row">
-              <el-date-picker v-model="n.date" type="date" value-format="YYYY-MM-DD" placeholder="填写日期" />
+              <el-date-picker v-model="n.date" type="date" value-format="YYYY-MM-DD" placeholder="填写日期" style="width:148px" />
               <el-input v-model="n.text" placeholder="处理说明" />
             </div>
             <el-button size="small" @click="procNotes.push(newNote())">+ 添加</el-button>
@@ -268,7 +273,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, genFileId } from 'element-plus'
 import type { UploadFile, UploadInstance, UploadRawFile } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
@@ -284,6 +289,7 @@ const auth = useAuthStore()
 const canManageSn = computed(() => auth.hasPerm('all'))
 const { page, pageSize, total, loading, list, query, resetPage } = usePager()
 const route = useRoute()
+const router = useRouter()
 const dlg = ref(false)
 const editing = ref(false)
 const cur = ref<any>({})
@@ -324,16 +330,51 @@ function noteHasText(note: SnNote) {
 function dateOnly(value?: string) {
   return value ? String(value).slice(0, 10) : '—'
 }
+function factoryDateText(sn?: string, factoryAt?: string) {
+  const m = String(sn || '').match(/^RL(\d{4})(\d{2})(\d{2})/i)
+  if (m) {
+    const stamp = `${m[1]}-${m[2]}-${m[3]}`
+    if (!Number.isNaN(Date.parse(`${stamp}T00:00:00`))) return stamp
+  }
+  return dateOnly(factoryAt)
+}
 function statusLabel(s: string) {
   return ({ warehouse: '原厂在库', l1: '一级在库', l2: '二级在库', bound: '已销售' } as Record<string, string>)[s] || s || '—'
+}
+function gotoEx(sn: string) {
+  if (!sn) return
+  router.push({ path: '/risk/exception', query: { sn } })
 }
 function stTone(s: string) {
   return s === 'bound' ? 'tag-green' : s === 'l2' ? 'tag-blue' : s === 'l1' ? 'tag-green' : 'tag-gray'
 }
 async function load() {
   loading.value = true
-  try { const res = await api.sns({ page: page.value, pageSize: pageSize.value, ...query }); list.value = res.list; total.value = res.total }
-  finally { loading.value = false }
+  try {
+    const productKey = String(query.productId || '').trim()
+    const res = await api.sns({
+      page: page.value,
+      pageSize: pageSize.value,
+      sn: query.sn || undefined,
+      productName: query.productName || undefined,
+      productId: productKey || undefined,
+      l1Id: query.l1Id || undefined,
+      l2Id: query.l2Id || undefined,
+      size: query.size || undefined,
+      belt: query.belt || undefined,
+      channel: query.channel || undefined,
+      status: query.status || undefined,
+      tag: query.tag || undefined,
+      factoryFrom: query.factoryFrom || undefined,
+      factoryTo: query.factoryTo || undefined,
+      soldFrom: query.soldFrom || undefined,
+      soldTo: query.soldTo || undefined,
+      returnFrom: query.returnFrom || undefined,
+      returnTo: query.returnTo || undefined,
+    })
+    list.value = res.list
+    total.value = res.total
+  } finally { loading.value = false }
 }
 function reset() {
   query.sn=''; query.status=''; query.productName=''; query.productId=''; query.l1Id=''; query.l2Id=''
@@ -457,8 +498,16 @@ onMounted(async () => {
 <style scoped>
 .muted-label { font-size: 12px; color: var(--text-3); }
 .date-range-filter { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.note-list { display: flex; flex-direction: column; gap: 8px; }
-.note-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; }
+.note-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.note-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+.note-row :deep(.el-date-editor) { flex: none; width: 148px !important; }
+.note-row :deep(.el-input) { flex: 1 1 auto; min-width: 0; }
 .note-read-list p { margin: 6px 0; }
 .no-wrap-label :deep(.el-form-item__label) { white-space: nowrap; }
 code { font-size: 12px; }

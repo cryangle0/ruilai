@@ -64,9 +64,10 @@ const filtered = computed(() => {
   return props.options.filter((c) => c.toLowerCase().includes(s))
 })
 const shown = computed(() => {
-  if (!q.value.trim()) return filtered.value
-  const extra = selected.value.filter((c) => props.options.includes(c) && !filtered.value.includes(c))
-  return [...extra, ...filtered.value]
+  const extra = q.value.trim()
+    ? selected.value.filter((c) => props.options.includes(c) && !filtered.value.includes(c))
+    : []
+  return [...extra, ...filtered.value].filter((item) => selected.value.includes(item) || !disabledSet.value.has(item))
 })
 const toggleOpts = computed(() => (q.value.trim() ? filtered.value : props.options).filter((item) => !disabledSet.value.has(item)))
 const allOn = computed(() => toggleOpts.value.length > 0 && toggleOpts.value.every((x) => selected.value.includes(x)))

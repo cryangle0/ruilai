@@ -29,6 +29,10 @@
       <el-form-item>
         <el-date-picker v-model="query.to" type="date" value-format="YYYY-MM-DD" placeholder="结束" style="width:140px" />
       </el-form-item>
+      <el-form-item><span class="muted-label">SN</span></el-form-item>
+      <el-form-item>
+        <el-input v-model="query.sn" placeholder="SN" clearable style="width:180px" />
+      </el-form-item>
       <el-form-item>
         <el-select v-model="query.status" placeholder="状态" clearable style="width:120px">
           <el-option v-for="s in statusOpts" :key="s" :label="s" :value="s" />
@@ -48,7 +52,9 @@
       <el-table-column label="一级代理" min-width="110"><template #default="{row}">{{ row.extra?.l1Name || '—' }}</template></el-table-column>
       <el-table-column label="二级代理" min-width="110"><template #default="{row}">{{ dimTab==='activate-direct' ? '—' : (row.extra?.l2Name || '—') }}</template></el-table-column>
       <el-table-column prop="target" label="对象" min-width="120" />
-      <el-table-column prop="detail" label="详情" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="detail" label="详情" min-width="200" show-overflow-tooltip>
+        <template #default="{row}">{{ displayDetail(row.detail) }}</template>
+      </el-table-column>
       <el-table-column :label="explainLabel" min-width="120">
         <template #default="{row}">{{ clip((row.explainTxt || row.explainL2 || '')) }}</template>
       </el-table-column>
@@ -68,7 +74,7 @@
           <div><span>二级代理</span>{{ dimTab==='activate-direct' ? '—' : (cur.extra?.l2Name || '—') }}</div>
           <div><span>对象</span>{{ cur.target }}</div>
           <div><span>状态</span><span class="tag" :class="isOpen(cur)?'tag-orange':'tag-green'">{{ cur.status }}</span></div>
-          <div class="span-2"><span>详情</span>{{ cur.detail }}</div>
+          <div class="span-2"><span>详情</span>{{ displayDetail(cur.detail) }}</div>
           <div class="span-2"><span>{{ explainLabel }}</span>{{ cur.explainTxt || cur.explainL2 || '—' }}</div>
         </div>
         <template v-if="cur.extra?.customer">
@@ -206,6 +212,9 @@ const dimLabel = computed(() => ({ 'activate-direct': '直售激活', 'activate-
 const isSn = computed(() => String(cur.value?.target || '').startsWith('RL'))
 const isDupCust = computed(() => /客户信息重复/.test(String(cur.value?.type || '')))
 function isOpen(row: any) { return row?.status === '待处理' || row?.status === '会签中' }
+function displayDetail(detail?: string) {
+  return String(detail || '').replace(/^异常销售预警：/, '') || '—'
+}
 function rowClass({ row }: { row: any }) { return isOpen(row) ? 'ex-bold' : '' }
 function clip(s: string) { return s.length > 8 ? s.slice(0, 8) + '…' : (s || '—') }
 
@@ -216,8 +225,10 @@ async function load() {
     const [res, c] = await Promise.all([
       api.exceptions({
         page: page.value, pageSize: pageSize.value,
-        dim: query.dim, status: query.status, type: query.type,
-        l1Id: query.l1Id, l2Id: query.l2Id, from: query.from, to: query.to,
+        dim: query.sn ? undefined : query.dim, status: query.status, type: query.type,
+        l1Id: query.l1Id, l2Id: query.l2Id,
+        from: query.sn ? undefined : query.from, to: query.sn ? undefined : query.to,
+        sn: query.sn || undefined,
       }),
       api.exceptionCounts({
         l1Id: query.l1Id, l2Id: query.l2Id, from: query.from, to: query.to,
@@ -232,7 +243,7 @@ async function load() {
   } finally { loading.value = false }
 }
 function reset() {
-  query.status = ''; query.l1Id = ''; query.l2Id = ''
+  query.status = ''; query.l1Id = ''; query.l2Id = ''; query.sn = ''
   query.from = monthStart(); query.to = todayDate()
   resetPage(); load()
 }
@@ -342,6 +353,7 @@ onMounted(async () => {
   rulesSnap = { ...rules }
   if (routeQ(route.query, 'tab')) dimTab.value = routeQ(route.query, 'tab')
   await nextTick()
+  if (routeQ(route.query, 'sn')) query.sn = routeQ(route.query, 'sn')
   if (routeQ(route.query, 'l1Id')) query.l1Id = routeQ(route.query, 'l1Id')
   if (routeQ(route.query, 'l2Id')) query.l2Id = routeQ(route.query, 'l2Id')
   if (routeQ(route.query, 'type')) query.type = routeQ(route.query, 'type')

@@ -5,10 +5,11 @@
       :key="it.id"
       class="btn"
       :class="{ on: modelValue === it.id, disabled: it.disabled }"
+      :data-seg="it.id"
       @click="select(it)"
     >
       <text>{{ it.title }}</text>
-      <text v-if="it.badge != null" class="badge">{{ it.badge }}</text>
+      <view v-if="it.badge != null" class="badge">{{ it.badge }}</view>
     </view>
   </view>
 </template>
@@ -44,7 +45,7 @@ function select(item: SegItem) {
 .seg.is-line .btn {
   flex: none;
   text-align: center;
-  padding: 12rpx 14rpx 16rpx;
+  padding: 12rpx 22rpx 16rpx 14rpx;
   font-size: 27rpx;
   color: $rl-text-secondary;
   font-weight: 500;
@@ -66,20 +67,8 @@ function select(item: SegItem) {
   box-shadow: $rl-shadow-primary;
 }
 .seg.is-line .badge {
-  display: inline-flex;
-  min-width: 22rpx;
-  height: 22rpx;
-  padding: 0 6rpx;
-  margin-left: 6rpx;
-  border-radius: 11rpx;
-  background: $rl-danger;
-  color: #fff;
-  font-size: 15rpx;
-  font-weight: 700;
-  line-height: 22rpx;
-  vertical-align: 2rpx;
-  align-items: center;
-  justify-content: center;
+  @include rl-corner-badge;
+  transform: translate(20%, -20%);
 }
 
 .seg.is-seg {
@@ -108,19 +97,8 @@ function select(item: SegItem) {
   box-shadow: 0 2rpx 6rpx rgba(22, 32, 64, 0.08);
 }
 .seg.is-seg .badge {
-  position: absolute;
+  @include rl-corner-badge;
   top: 2rpx;
   right: 2rpx;
-  min-width: 20rpx;
-  height: 20rpx;
-  padding: 0 5rpx;
-  border-radius: 10rpx;
-  background: $rl-danger;
-  color: #fff;
-  font-size: 15rpx;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 </style>

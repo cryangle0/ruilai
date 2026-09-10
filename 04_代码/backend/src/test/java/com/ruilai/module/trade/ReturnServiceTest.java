@@ -105,6 +105,21 @@ class ReturnServiceTest {
         assertThat(detail.getCustomer()).containsEntry("phone", "13800000000");
     }
 
+    @Test
+    void getFillsTypeLabelForL2Return() {
+        login("ADMIN", null);
+        ReturnOrder row = new ReturnOrder();
+        row.setId("RT1");
+        row.setType("l2_to_l1");
+        row.setFromId("L2A");
+        row.setSns(List.of());
+        when(rtMapper.selectById("RT1")).thenReturn(row);
+
+        ReturnOrder detail = service.get("RT1");
+
+        assertThat(detail.getTypeLabel()).isEqualTo("二级退一级");
+    }
+
     private void login(String role, String agent) {
         LoginUser user = new LoginUser();
         user.setRoleCode(role);

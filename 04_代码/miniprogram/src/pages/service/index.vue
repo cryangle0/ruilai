@@ -31,7 +31,7 @@
             :options="l2Options"
             label="二级代理"
           />
-          <DateBar embedded v-model:from="from" v-model:to="to" v-model:sn="sn" show-sn />
+          <DateBar embedded v-model:from="from" v-model:to="to" v-model:sn="sn" show-sn sn-placeholder="SN" />
         </view>
       </template>
       <PagedState
@@ -77,16 +77,17 @@ import PagedState from '@/components/PagedState.vue'
 import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { RT_STATUS } from '@/utils/constants'
-import { matchesQuery } from '@/utils/dates'
-import { consumeNavigationIntent, createRefreshCycleCache, exceptionApiDimension, exceptionCountForTab, exceptionDimension, mergePage } from '@/utils/miniPages'
+import { datePresetRange, matchesQuery } from '@/utils/dates'
+import { consumeNavigationIntent, compareOpenThenTime, createRefreshCycleCache, exceptionApiDimension, exceptionCountForTab, exceptionDimension, mergePage } from '@/utils/miniPages'
 
 const user = useUserStore()
 const tab = ref('return')
 const rtType = ref('l2_to_l1')
 const rtStatus = ref('all')
 const exDim = ref('activate-direct')
-const from = ref('')
-const to = ref('')
+const month = datePresetRange('month')
+const from = ref(month.from)
+const to = ref(month.to)
 const sn = ref('')
 const allRt = ref<any[]>([])
 const allEx = ref<any[]>([])
@@ -151,7 +152,7 @@ const rows = computed(() => {
     .filter((e) => exceptionDimension(e) === exDim.value)
     .filter((e) => matchesQuery([e.type, e.target, e.detail], sn.value))
     .slice()
-    .sort((a, b) => Number(isExOpen(b)) - Number(isExOpen(a)))
+      .sort(compareOpenThenTime)
 })
 
 const showRequests = createRefreshCycleCache()
@@ -235,13 +236,12 @@ onShow(async () => {
   const intent = consumeNavigationIntent('service')
   if (intent) {
     tab.value = intent.tab === 'exception' ? 'exception' : 'return'
-    from.value = intent.from || ''
-    to.value = intent.to || ''
-    deepL2.value = intent.l2Id || ''
+    if (intent.from !== undefined) from.value = intent.from || ''
+    if (intent.to !== undefined) to.value = intent.to || ''
+    if (intent.l2Id !== undefined) deepL2.value = intent.l2Id || ''
     if (intent.dimension) exDim.value = intent.dimension
     if (intent.status) rtStatus.value = intent.status
   }
-  uni.hideTabBar({ animation: false })
   if (user.role === 'L1') {
     try {
       l2s.value = (await miniApi.agentsL2({ pageSize: 100, auditStatus: 'approved' })).data.list || []
@@ -282,6 +282,11 @@ function dimensionLabel(r: any) {
 .type-chip, .reason-chip, .dimension-badge { display: inline-flex; align-items: center; padding: 5rpx 12rpx; border-radius: 9rpx; font-size: 19rpx; font-weight: 600; }
 .type-chip { color: $rl-primary; background: $rl-primary-soft; }
 .reason-chip { color: $rl-text-2; background: $rl-bg; }
-.dimension-badge { margin-top: 10rpx; color: $rl-danger; background: $rl-danger-bg; }
+.dimension-badge {
+  @include rl-fit-tag;
+  margin-top: 10rpx;
+  color: $rl-danger;
+  background: $rl-danger-bg;
+}
 </style>
 

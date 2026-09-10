@@ -13,6 +13,10 @@ import com.ruilai.common.util.SnRanges;
 import com.ruilai.common.web.BizException;
 import com.ruilai.common.web.ErrCode;
 import com.ruilai.common.web.PageResult;
+import com.ruilai.module.agent.entity.AgentL1;
+import com.ruilai.module.agent.mapper.AgentL1Mapper;
+import com.ruilai.module.product.entity.Product;
+import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.sn.SnEventWriter;
 import com.ruilai.module.sn.SnFactoryDates;
 import com.ruilai.module.sn.SnWriter;
@@ -48,6 +52,8 @@ public class PurchaseService {
     private final SnEventWriter eventWriter;
     private final SnWriter snWriter;
     private final StockWarnService stockWarnService;
+    private final AgentL1Mapper l1Mapper;
+    private final ProductMapper productMapper;
 
     public PageResult<PurchaseOrder> page(long page, long size, String status, String l1Id, String from, String to,
                                           String sn) {
@@ -90,6 +96,40 @@ public class PurchaseService {
 
     private void enrich(PurchaseOrder row) {
         row.setWarnEx(stockWarnService.warnMeta(row.getL1Id(), null));
+        if (StringUtils.hasText(row.getL1Id())) {
+            AgentL1 agent = l1Mapper.selectById(row.getL1Id());
+            row.setL1Name(agent == null ? row.getL1Id() : agent.getName());
+        }
+        nameProductLines(row.getLines());
+        nameProductLines(row.getCustomLines());
+        if (row.getParts() != null) {
+            for (Map<String, Object> part : row.getParts()) {
+                String id = str(part.get("partId"), str(part.get("productId"), ""));
+                if (!StringUtils.hasText(id)) {
+                    continue;
+                }
+                Product product = productMapper.selectById(id);
+                if (product != null) {
+                    part.put("productName", product.getName());
+                }
+            }
+        }
+    }
+
+    private void nameProductLines(List<Map<String, Object>> lines) {
+        if (lines == null) {
+            return;
+        }
+        for (Map<String, Object> line : lines) {
+            String id = str(line.get("productId"), "");
+            if (!StringUtils.hasText(id)) {
+                continue;
+            }
+            Product product = productMapper.selectById(id);
+            if (product != null) {
+                line.put("productName", product.getName());
+            }
+        }
     }
 
     public PurchaseOrder create(PurchaseOrder body) {
@@ -148,11 +188,6 @@ public class PurchaseService {
         }
         if (segments != null && !segments.isEmpty()) {
             po.setSegments(segments);
-        }
-        if (!segmentsMatch(po)) {
-            int need = lineQty(po.getLines()) + lineQty(po.getCustomLines());
-            int got = segmentQty(po.getSegments());
-            throw new BizException(ErrCode.BAD_REQUEST, "段号数量须等于标准+非标总数（需求 " + need + "，已填 " + got + "）");
         }
         boolean both = Boolean.TRUE.equals(cosign.get("admin1")) && Boolean.TRUE.equals(cosign.get("admin2"));
         if (both) {
@@ -328,36 +363,6 @@ public class PurchaseService {
             }
         }
         return n;
-    }
-
-    private int segmentQty(Map<String, Object> segments) {
-        if (segments == null) {
-            return 0;
-        }
-        int n = 0;
-        for (Object v : segments.values()) {
-            n += flattenRanges(v).size();
-        }
-        return n;
-    }
-
-    private boolean segmentsMatch(PurchaseOrder po) {
-        int need = lineQty(po.getLines()) + lineQty(po.getCustomLines());
-        int got = segmentQty(po.getSegments());
-        if (need == 0) {
-            boolean hasParts = false;
-            if (po.getParts() != null) {
-                for (Map<String, Object> p : po.getParts()) {
-                    Object q = p.get("qty");
-                    if (q instanceof Number num && num.intValue() > 0) {
-                        hasParts = true;
-                        break;
-                    }
-                }
-            }
-            return hasParts && got == 0;
-        }
-        return got == need;
     }
 
     private static final class LineHint {

@@ -139,8 +139,14 @@ public class ReturnService {
     }
 
     private void enrich(ReturnOrder r) {
-        if ("user".equals(r.getType())) {
-            r.setTypeLabel("终端退货");
+        if (!StringUtils.hasText(r.getTypeLabel())) {
+            if ("user".equals(r.getType())) r.setTypeLabel("终端退货");
+            else if ("l2_to_l1".equals(r.getType())) r.setTypeLabel("二级退一级");
+            else if ("l1_to_factory".equals(r.getType())) r.setTypeLabel("一级退原厂");
+        }
+        if (!StringUtils.hasText(r.getFromName()) && StringUtils.hasText(r.getFromId())) {
+            AgentL2 from = l2Mapper.selectById(r.getFromId());
+            if (from != null) r.setFromName(from.getName());
         }
         List<String> sns = r.getSns() == null ? List.of() : r.getSns();
         Map<String, Integer> counts = new LinkedHashMap<>();

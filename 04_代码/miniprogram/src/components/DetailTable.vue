@@ -13,7 +13,7 @@
         </view>
         <view
           v-for="(row, rowIndex) in rows"
-          :key="rowKey ? String(row[rowKey] ?? rowIndex) : String(rowIndex)"
+          :key="rowId(row, rowIndex)"
           class="detail-table__row"
           :class="{ clickable }"
           :hover-class="clickable ? 'detail-table__row--pressed' : 'none'"
@@ -23,7 +23,7 @@
             v-for="column in columns"
             :key="column.key"
             class="detail-table__cell detail-table__value"
-            :class="[`align-${column.align || 'left'}`, column.tone || '', { code: column.code }]"
+            :class="[`align-${column.align || 'left'}`, column.tone || '', { code: column.code, wrap: column.wrap }]"
             :style="cellStyle(column)"
           >
             <slot
@@ -50,6 +50,7 @@ type TableColumn = {
   width?: string | number
   align?: 'left' | 'center' | 'right'
   code?: boolean
+  wrap?: boolean
   tone?: 'primary' | 'success' | 'danger' | 'muted'
   emptyText?: string
 }
@@ -68,6 +69,12 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{ 'row-click': [TableRow, number] }>()
+
+function rowId(row: TableRow, rowIndex: number) {
+  if (!props.rowKey) return String(rowIndex)
+  const value = row[props.rowKey]
+  return String(value === null || value === undefined ? rowIndex : value)
+}
 
 function display(value: TableValue, emptyText?: string) {
   if (value === null || value === undefined || value === '') return emptyText || '—'
@@ -113,6 +120,12 @@ function select(row: TableRow, index: number) {
 .detail-table__value.success { color: $rl-success; font-weight: 700; }
 .detail-table__value.danger { color: $rl-danger; font-weight: 600; }
 .detail-table__value.muted { color: $rl-text-disabled; }
+.detail-table__cell.wrap {
+  white-space: normal;
+  overflow: visible;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
 .align-center { text-align: center; }
 .align-right { text-align: right; }
 .detail-table__empty {

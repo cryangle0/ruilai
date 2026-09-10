@@ -1,5 +1,5 @@
 <template>
-  <view class="form-picker" :class="{ 'is-disabled': disabled, 'has-error': !!error }">
+  <view class="form-picker" :class="{ 'is-disabled': disabled, 'has-error': !!error, 'is-compact': compact }">
     <text v-if="label" class="form-picker__label">
       {{ label }}<text v-if="required" class="form-picker__required">*</text>
     </text>
@@ -35,11 +35,13 @@ const props = withDefaults(defineProps<{
   error?: string
   disabled?: boolean
   required?: boolean
+  compact?: boolean
   disabledOptionText?: string
 }>(), {
   placeholder: '请选择',
   disabled: false,
   required: false,
+  compact: false,
   disabledOptionText: '该选项暂不可选择',
 })
 
@@ -74,8 +76,8 @@ function onChange(event: { detail: { value: string | number } }) {
 
 <style scoped lang="scss">
 @import '@/styles/theme.scss';
-.form-picker { width: 100%; }
-.form-picker__native { display: block; width: 100%; }
+.form-picker { width: 100%; max-width: 100%; min-width: 0; }
+.form-picker__native { display: block; width: 100%; max-width: 100%; }
 .form-picker__label {
   display: block;
   margin-bottom: 12rpx;
@@ -85,6 +87,8 @@ function onChange(event: { detail: { value: string | number } }) {
 .form-picker__required { margin-left: 4rpx; color: $rl-danger; }
 .form-picker__box {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: 72rpx;
   padding: 0 22rpx;
   box-sizing: border-box;
@@ -95,9 +99,17 @@ function onChange(event: { detail: { value: string | number } }) {
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
+  overflow: hidden;
   color: $rl-text;
   font-size: 25rpx;
   font-weight: 600;
+}
+.form-picker__box > text:first-child {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .form-picker__placeholder { color: $rl-text-placeholder; font-weight: 400; }
 .form-picker__arrow { flex: none; color: $rl-text-disabled; font-size: 34rpx; line-height: 1; }
@@ -111,4 +123,13 @@ function onChange(event: { detail: { value: string | number } }) {
 .form-picker__hint.error { color: $rl-danger; }
 .has-error .form-picker__box { border-color: $rl-danger-border; background: $rl-danger-bg; }
 .is-disabled { opacity: .55; }
+.is-compact .form-picker__box {
+  height: $rl-filter-control-h;
+  padding: 0 12rpx;
+  border-radius: $rl-radius-sm;
+  background: $rl-fill-soft;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+.is-compact .form-picker__arrow { font-size: 28rpx; }
 </style>

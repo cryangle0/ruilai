@@ -1,0 +1,12 @@
+---
+description: Ruilai WeChat mini program AppID — never upload with an empty or tourist appid
+alwaysApply: true
+---
+
+# 小程序 AppID
+
+权威值写在 `04_代码/miniprogram/APPID`，当前为：
+
+`wx242669dc618156c6`
+
+发体验版、调微信 CLI / 开发者工具、写 `project.config.json` / `manifest.json` 时都用这一份。禁止空 AppID、测试号、tourist。上传脚本从该文件读取，不要手填别的。

@@ -42,6 +42,8 @@ class PurchaseServiceTest {
     @Mock SnEventWriter eventWriter;
     @Mock SnWriter snWriter;
     @Mock StockWarnService stockWarnService;
+    @Mock com.ruilai.module.agent.mapper.AgentL1Mapper l1Mapper;
+    @Mock com.ruilai.module.product.mapper.ProductMapper productMapper;
     @InjectMocks PurchaseService service;
 
     @BeforeEach
@@ -97,6 +99,20 @@ class PurchaseServiceTest {
     }
 
     @Test
+    void getFillsL1DisplayName() {
+        PurchaseOrder po = new PurchaseOrder();
+        po.setId("PO1");
+        po.setL1Id("L1A");
+        when(poMapper.selectById("PO1")).thenReturn(po);
+        com.ruilai.module.agent.entity.AgentL1 agent = new com.ruilai.module.agent.entity.AgentL1();
+        agent.setName("华东锐涞总代");
+        when(l1Mapper.selectById("L1A")).thenReturn(agent);
+        when(stockWarnService.warnMeta("L1A", null)).thenReturn(Map.of());
+
+        assertThat(service.get("PO1").getL1Name()).isEqualTo("华东锐涞总代");
+    }
+
+    @Test
     void cosignPersistsAuditedCustomSpecs() {
         PurchaseOrder po = new PurchaseOrder();
         po.setId("PO2");
@@ -131,6 +147,26 @@ class PurchaseServiceTest {
 
         assertThat(po.getStatus()).isEqualTo("rejected");
         assertThat(po.getRejectReason()).isEqualTo("号段有误");
+        verify(poMapper).updateById(po);
+    }
+
+    @Test
+    void firstCosignDoesNotRequireSegmentQtyMatch() {
+        PurchaseOrder po = new PurchaseOrder();
+        po.setId("PO4");
+        po.setNo("PO-4");
+        po.setL1Id("L1A");
+        po.setStatus("pending");
+        po.setLines(List.of(new HashMap<>(Map.of("productId", "P1", "size", "M", "belt", "腰带M", "qty", 10))));
+        po.setCustomLines(List.of());
+        po.setParts(List.of());
+        po.setSegments(Map.of());
+        po.setCosign(new HashMap<>());
+        when(poMapper.selectById("PO4")).thenReturn(po);
+
+        PurchaseOrder result = service.cosign("PO4", Map.of());
+
+        assertThat(result.getStatus()).isEqualTo("cosigning");
         verify(poMapper).updateById(po);
     }
 }

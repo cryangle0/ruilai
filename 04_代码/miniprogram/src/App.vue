@@ -1,17 +1,11 @@
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
-import PrivacyPopup from '@/components/PrivacyPopup.vue'
 
 onLaunch(() => {
   useUserStore().restore()
-  uni.hideTabBar({ animation: false })
 })
 </script>
-
-<template>
-  <PrivacyPopup />
-</template>
 
 <style lang="scss">
 @import '@/styles/theme.scss';
@@ -20,13 +14,32 @@ page {
   color: $rl-text;
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
   font-size: $rl-font-base;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 ::-webkit-scrollbar { width: 0; height: 0; display: none; }
 view, text, button, input, textarea, picker { box-sizing: border-box; }
+button, input, textarea, picker { max-width: 100%; }
+button {
+  margin-left: 0;
+  margin-right: 0;
+}
 .rl-page {
-  min-height: 100vh;
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  min-height: 0;
+  padding-bottom: calc(128rpx + env(safe-area-inset-bottom));
   background: $rl-bg;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.rl-fit-tag,
+.warn-row,
+.dimension-badge,
+.ex-mark {
+  display: inline-flex !important;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
 }
 .rl-page--form { padding-bottom: calc(124rpx + env(safe-area-inset-bottom)); }
 .rl-page__content { padding: 22rpx $rl-page-gutter 0; }
@@ -81,6 +94,7 @@ view, text, button, input, textarea, picker { box-sizing: border-box; }
   margin: 8rpx 0 0;
 }
 .btn-p, .mini-btn, .submit, .save, .btn-ok {
+  max-width: 100%;
   background: $rl-gradient-primary !important;
   color: #fff !important;
   border: none !important;
@@ -96,7 +110,7 @@ view, text, button, input, textarea, picker { box-sizing: border-box; }
   background: $rl-primary-softer !important;
   color: $rl-primary !important;
 }
-.out, .no {
+button.out, button.no {
   border: 2rpx solid $rl-danger-border !important;
   border-radius: $rl-radius-md !important;
 }

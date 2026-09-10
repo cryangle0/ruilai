@@ -80,10 +80,10 @@ const l1s = ref<any[]>([])
 const dlg = ref(false)
 const cur = ref<any>(null)
 const tabItems = computed(() => [
-  { id: 'pending', title: '待审核', badge: counts.value.pending, showZero: true },
-  { id: 'approved', title: '已通过', badge: counts.value.approved, showZero: true },
-  { id: 'rejected', title: '已驳回', badge: counts.value.rejected, showZero: true },
-  { id: 'all', title: '全部', badge: counts.value.pending + counts.value.approved + counts.value.rejected, showZero: true },
+  { id: 'pending', title: '待审核', badge: counts.value.pending || undefined },
+  { id: 'approved', title: '已通过' },
+  { id: 'rejected', title: '已驳回' },
+  { id: 'all', title: '全部' },
 ])
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
 

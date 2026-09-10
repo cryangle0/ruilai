@@ -4,20 +4,52 @@
     <view class="pad">
       <view v-if="step===1" class="card glass">
         <text class="tip">步骤 1/2：可连续扫描或输入多个 SN，再统一填写客户信息</text>
-        <FieldRow v-model="snInput" label="SN" placeholder="输入 SN 后点“加入”" />
+        <view class="field">
+          <text class="lab">SN</text>
+          <input
+            class="inp"
+            :value="snInput"
+            placeholder="输入 SN 后点“加入”"
+            placeholder-class="ph"
+            confirm-type="done"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="onSnInput($event)"
+          />
+        </view>
         <view class="sn-actions">
-          <button class="ghost" @click="scanFirst">扫码加入</button>
-          <button class="btn-p" :disabled="!snInput.trim()" @click="addInputSn">输入加入</button>
+          <view class="ghost" @click="scanFirst">扫码加入</view>
+          <view class="btn-p" @click="addInputSn">输入加入</view>
         </view>
         <view v-for="(item,index) in snRows" :key="item.sn" class="sn-row">
           <view><text class="sn-code">{{ item.sn }}</text><text class="sn-product">{{ item.productName || item.productId }} / {{ item.sizeCode || '—' }}</text></view>
           <text class="remove" @click="removeSn(index)">移除</text>
         </view>
-        <button class="btn-p next-btn" :disabled="!snRows.length" @click="next">下一步：填写客户（{{ snRows.length }}）</button>
+        <view class="btn-p next-btn" :class="{ disabled: !snRows.length }" @click="next">下一步：填写客户（{{ snRows.length }}）</view>
       </view>
       <view v-else class="card glass">
         <text class="tip">步骤 2/2：为 {{ snRows.length }} 个 SN 填写同一位客户信息</text>
-        <FieldRow v-model="phone" label="客户手机" placeholder="11位手机号" type="number" :maxlength="11" />
+        <view class="field">
+          <text class="lab">客户手机</text>
+          <input
+            class="inp"
+            :value="phone"
+            type="number"
+            :maxlength="11"
+            placeholder="11位手机号"
+            placeholder-class="ph"
+            confirm-type="done"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="phone = eventValue($event, phone)"
+          />
+        </view>
         <text class="field-label">省 / 市 / 区</text>
         <picker mode="region" :value="region" @change="onRegion">
           <view class="region-row">
@@ -27,20 +59,67 @@
           </view>
         </picker>
         <view class="address-row">
-          <input :value="road" placeholder="____路" @input="road=eventValue($event)" />
-          <input :value="number" placeholder="____号/弄" @input="number=eventValue($event)" />
-          <input :value="room" placeholder="____室" @input="room=eventValue($event)" />
+          <input :value="road" placeholder="____路" :always-embed="true" :hold-keyboard="true" @input="road = eventValue($event, road)" />
+          <input :value="number" placeholder="____号/弄" :always-embed="true" :hold-keyboard="true" @input="number = eventValue($event, number)" />
+          <input :value="room" placeholder="____室" :always-embed="true" :hold-keyboard="true" @input="room = eventValue($event, room)" />
         </view>
-        <FieldRow v-model="name" label="姓名（选填）" />
+        <view class="field">
+          <text class="lab">姓名（选填）</text>
+          <input
+            class="inp"
+            :value="name"
+            placeholder="选填"
+            placeholder-class="ph"
+            confirm-type="done"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="name = eventValue($event, name)"
+          />
+        </view>
         <view class="pick" @click="pickGender">
           <text class="lab">性别（选填）</text>
           <text>{{ gender || '未填写' }} ›</text>
         </view>
-        <FieldRow v-model="age" label="年龄（选填）" type="number" />
-        <FieldRow v-model="note" label="客户情况说明（选填）" />
+        <view class="field">
+          <text class="lab">年龄（选填）</text>
+          <input
+            class="inp"
+            :value="age"
+            type="number"
+            :maxlength="3"
+            placeholder="选填"
+            placeholder-class="ph"
+            confirm-type="done"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="age = eventValue($event, age)"
+          />
+        </view>
+        <view class="field">
+          <text class="lab">客户情况说明（选填）</text>
+          <textarea
+            class="area"
+            :value="note"
+            placeholder="选填"
+            placeholder-class="ph"
+            :adjust-position="true"
+            :auto-height="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="note = eventValue($event, note)"
+          />
+        </view>
         <text class="hint">{{ hint }}</text>
-        <button class="ghost" @click="step=1">返回扫码</button>
-        <button class="btn-p" @click="submit">校验并激活</button>
+        <view class="ghost" @click="step=1">返回扫码</view>
+        <view class="btn-p" @click="submit">校验并激活</view>
       </view>
     </view>
   </view>
@@ -49,10 +128,10 @@
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
-import FieldRow from '@/components/FieldRow.vue'
 import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { http } from '@/service/http'
+import { inputEventValue } from '@/utils/inputValue'
 import { scanOrPrompt } from '@/utils/scan'
 
 const user = useUserStore()
@@ -117,7 +196,8 @@ function next() {
   if (!snRows.value.length) { uni.showToast({ title: '请先加入 SN', icon: 'none' }); return }
   step.value = 2
 }
-function eventValue(e: any) { return String(e?.detail?.value || '') }
+function eventValue(e: unknown, fallback = '') { return inputEventValue(e, fallback) }
+function onSnInput(e: unknown) { snInput.value = inputEventValue(e, snInput.value) }
 function onRegion(e: any) { region.value = (e.detail.value || []).map(String) }
 function pickGender() {
   uni.showActionSheet({ itemList: ['未填写', '男', '女'], success: (r) => { gender.value = ['', '男', '女'][r.tapIndex] } })
@@ -159,7 +239,17 @@ async function submit() {
 .card { padding: 28rpx; border-radius: 24rpx; }
 .tip { display: block; color: #636366; font-size: 24rpx; margin-bottom: 12rpx; }
 .hint { display: block; color: #8e8e93; font-size: 22rpx; margin: 16rpx 0; line-height: 1.5; }
-.pick { display: flex; justify-content: space-between; padding: 22rpx 0; border-bottom: 1rpx solid rgba(60,60,67,.12); }
+.pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 22rpx 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border-bottom: 1rpx solid rgba(60,60,67,.12);
+}
 .lab { color: #8e8e93; font-size: 22rpx; }
 .sn-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
 .sn-actions .btn-p, .sn-actions .ghost { margin-top: 16rpx; }
@@ -170,6 +260,31 @@ async function submit() {
 .remove { flex-shrink: 0; color: #DE4B4B; font-size: 22rpx; }
 .next-btn { margin-top: 28rpx; }
 .field-label { display: block; margin-top: 24rpx; color: #8e8e93; font-size: 22rpx; }
+.field { padding: 18rpx 0; border-bottom: 2rpx solid #E5E9F1; }
+.inp {
+  display: block;
+  width: 100%;
+  height: 56rpx;
+  min-height: 56rpx;
+  padding: 0;
+  margin: 0;
+  color: #1A2B4A;
+  font-size: 30rpx;
+  line-height: 56rpx;
+  background: transparent;
+}
+.ph { color: #9AA4B2; }
+.area {
+  display: block;
+  width: 100%;
+  min-height: 96rpx;
+  padding: 0;
+  margin: 0;
+  color: #1A2B4A;
+  font-size: 30rpx;
+  line-height: 44rpx;
+  background: transparent;
+}
 .region-row, .address-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12rpx; margin-top: 12rpx; }
 .region-box, .address-row input {
   height: 68rpx;
@@ -183,8 +298,16 @@ async function submit() {
   text-align: center;
 }
 .address-row input { width: 100%; padding: 0 8rpx; }
-.btn-p, .ghost { margin-top: 16rpx; border-radius: 999rpx; font-weight: 700; }
+.btn-p, .ghost {
+  margin-top: 16rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  border-radius: 999rpx;
+  font-weight: 700;
+  font-size: 30rpx;
+}
 .btn-p { background: #1A68D7; color: #fff; }
-.ghost { background: rgba(26,104,215,.08); }
-.btn-p::after, .ghost::after { border: 0; }
+.ghost { background: rgba(26,104,215,.08); color: #1A68D7; }
+.btn-p.disabled { opacity: .45; pointer-events: none; }
 </style>

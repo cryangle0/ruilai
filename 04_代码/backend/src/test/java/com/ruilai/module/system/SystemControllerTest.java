@@ -79,6 +79,18 @@ class SystemControllerTest {
     }
 
     @Test
+    void refusesDeletingBuiltinRole() {
+        SysRole role = new SysRole();
+        role.setId("R1");
+        role.setName("平台管理员");
+        when(roleMapper.selectById("R1")).thenReturn(role);
+
+        assertThatThrownBy(() -> controller.deleteRole("R1"))
+                .isInstanceOf(BizException.class).hasMessageContaining("系统角色");
+        verify(roleMapper, never()).deleteById("R1");
+    }
+
+    @Test
     void changesAccountPasswordWithHash() {
         SysAccount account = new SysAccount();
         account.setId(2L);

@@ -1,39 +1,8 @@
 <template>
   <view class="rl-page purchase-page">
-    <NavBar :title="kind === 'sales' ? '创建销售单' : '提交采购单（购物车）'" show-back />
+    <NavBar :title="kind === 'sales' ? '提交销售单（购物车）' : '提交采购单（购物车）'" show-back />
 
-    <template v-if="kind === 'sales'">
-      <view class="pad">
-        <view class="card glass sales-card">
-          <view class="pick" @click="pickL2">
-            <text class="lab">二级代理</text>
-            <text>{{ l2Name || '请选择' }} ›</text>
-          </view>
-          <view class="pick" @click="pickProduct">
-            <text class="lab">商品</text>
-            <text>{{ productName || '请选择' }} ›</text>
-          </view>
-          <view class="pick" @click="pickSize">
-            <text class="lab">弹力带尺码</text>
-            <text>{{ size }} ›</text>
-          </view>
-          <view class="pick" @click="pickBelt">
-            <text class="lab">腰带</text>
-            <text>{{ belt }} ›</text>
-          </view>
-          <FieldRow v-model="qty" label="数量" type="number" />
-          <button class="add-line" @click="addSaleLine">+ 加入销售明细</button>
-          <view v-for="(line,index) in saleLines" :key="`${line.productId}-${line.size}-${line.belt}`" class="sale-line">
-            <view><text>{{ line.productName }}</text><text class="sale-spec">{{ line.size }} + {{ line.belt || '无腰带' }} ×{{ line.qty }}</text></view>
-            <text class="delete-link" @click="saleLines.splice(index,1)">删除</text>
-          </view>
-          <button class="btn-p sales-submit" :disabled="!saleLines.length" @click="submitSale">创建并开始扫码（{{ saleTotal }}件）</button>
-        </view>
-      </view>
-    </template>
-
-    <template v-else>
-      <view class="purchase-content">
+    <view class="purchase-content">
         <view v-if="loading" class="state-card glass">
           <view class="state-line wide" />
           <view class="state-line" />
@@ -55,6 +24,14 @@
                 <text class="field-arrow">›</text>
               </view>
             </picker>
+          </view>
+
+          <view v-if="kind === 'sales'" class="card product-card">
+            <text class="field-label">二级代理</text>
+            <view class="field-box" @click="pickL2">
+              <text>{{ l2Name || '请选择' }}</text>
+              <text class="field-arrow">›</text>
+            </view>
           </view>
 
           <view class="tipbox">{{ productTip }}</view>
@@ -100,9 +77,19 @@
               </view>
               <view class="custom-col qty-col">
                 <text class="mini-label">数量</text>
-                <input v-model="customQty" class="mini-input" type="number" />
+                <input
+                  class="mini-input"
+                  :value="customQty"
+                  type="number"
+                  :adjust-position="true"
+                  :hold-keyboard="true"
+                  :always-embed="true"
+                  :cursor-spacing="24"
+                  data-echo="1"
+                  @input="customQty = eventValue($event, customQty)"
+                />
               </view>
-              <button class="custom-add" @click="addCustomLine">+添加</button>
+              <view class="custom-add" @click="addCustomLine">+添加</view>
             </view>
             <view v-else class="empty-box">该商品没有可下单的非标组合</view>
             <text v-if="customOptions.length" class="custom-tip">非标仅展示「本商品已维护尺码」中排除标品后的组合，可多次添加。</text>
@@ -116,7 +103,7 @@
             <view class="sum-row">非标套件总计 <text>{{ customTotal }}</text> 件</view>
           </view>
 
-          <view v-if="selectedProduct.type === 'kit'" class="card bundle-card">
+          <view v-if="kind !== 'sales' && selectedProduct.type === 'kit'" class="card bundle-card">
             <view class="section-title"><text>可随售单品</text></view>
             <text v-if="bundleRows.length" class="bundle-tip">按规格填写数量，将作为独立 SN 行随本采购单入库。</text>
             <view v-for="single in bundleRows" :key="single.id" class="bundle-group">
@@ -147,22 +134,22 @@
       </view>
 
       <view class="purchase-footer">
-        <button class="footer-btn cancel-btn" :disabled="submitting" @click="cancel">取消</button>
-        <button class="footer-btn submit-btn" :disabled="!canSubmit" :loading="submitting" @click="submitPurchase">
-          {{ submitting ? '提交中' : `提交采购单${lineTotal ? `（${lineTotal}件）` : ''}` }}
-        </button>
+        <view class="footer-btn cancel-btn" :class="{ disabled: submitting }" @click="cancel">取消</view>
+        <view class="footer-btn submit-btn" :class="{ disabled: !canSubmit || submitting }" @click="kind === 'sales' ? submitSale() : submitPurchase()">
+          {{ submitting ? '提交中' : (kind === 'sales'
+            ? `创建并开始扫码${lineTotal ? `（${lineTotal}件）` : ''}`
+            : `提交采购单${lineTotal ? `（${lineTotal}件）` : ''}`) }}
+        </view>
       </view>
-    </template>
   </view>
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
-import FieldRow from '@/components/FieldRow.vue'
 import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
-import { BAND_SIZES, BELTS } from '@/utils/constants'
+import { inputEventValue } from '@/utils/inputValue'
 import {
   buildPurchasePayload,
   bundleProducts,
@@ -182,9 +169,6 @@ const l2s = ref<any[]>([])
 const productId = ref('P1')
 const l2Id = ref('')
 const l2Name = ref('')
-const size = ref('M')
-const belt = ref('腰带M')
-const qty = ref('5')
 const loading = ref(true)
 const loadError = ref('')
 const submitting = ref(false)
@@ -194,14 +178,13 @@ const customQty = ref('1')
 const customBeltIndex = ref(0)
 const customBandIndex = ref(0)
 const bundleQty = ref<Record<string, Record<string, number>>>({})
-const saleLines = ref<Array<Record<string, any>>>([])
 
-const orderableProducts = computed(() => products.value.filter((p) => ['kit', 'single', 'part'].includes(p.type)))
-const saleProducts = computed(() => products.value.filter((p) => ['kit', 'single'].includes(p.type)))
-const productNames = computed(() => orderableProducts.value.map((p) => p.name))
-const productIndex = computed(() => Math.max(0, orderableProducts.value.findIndex((p) => p.id === productId.value)))
-const selectedProduct = computed(() => orderableProducts.value.find((p) => p.id === productId.value) || orderableProducts.value[0])
-const productName = computed(() => selectedProduct.value?.name || '')
+const catalogProducts = computed(() => products.value.filter((p) => (
+  kind.value === 'sales' ? ['kit', 'single'] : ['kit', 'single', 'part']
+).includes(p.type)))
+const productNames = computed(() => catalogProducts.value.map((p) => p.name))
+const productIndex = computed(() => Math.max(0, catalogProducts.value.findIndex((p) => p.id === productId.value)))
+const selectedProduct = computed(() => catalogProducts.value.find((p) => p.id === productId.value) || catalogProducts.value[0])
 const standardRows = computed(() => selectedProduct.value ? standardOptions(selectedProduct.value) : [])
 const customOptions = computed(() => selectedProduct.value ? nonstandardOptions(selectedProduct.value) : [])
 const componentLabels = computed(() => selectedProduct.value ? componentNames(selectedProduct.value) : { belt: '腰带', band: '弹力带' })
@@ -230,7 +213,8 @@ const standardTotal = computed(() => standardRows.value.reduce((sum, row) => sum
 const customTotal = computed(() => customLines.value.reduce((sum, row) => sum + (Number(row.qty) || 0), 0))
 const bundleTotal = computed(() => bundleRows.value.reduce((total, product) =>
   total + product.sizes.reduce((sum: number, item: string) => sum + bundleQtyOf(product.id, item), 0), 0))
-const canSubmit = computed(() => !loading.value && !submitting.value && Boolean(selectedProduct.value) && lineTotal.value > 0)
+const canSubmit = computed(() => !loading.value && !submitting.value && Boolean(selectedProduct.value)
+  && lineTotal.value > 0 && (kind.value !== 'sales' || Boolean(l2Id.value)))
 const standardSectionTitle = computed(() => {
   if (selectedProduct.value?.type === 'part') return '配件规格'
   if (selectedProduct.value?.type === 'single') return '尺码数量'
@@ -264,8 +248,7 @@ async function loadProducts() {
   loadError.value = ''
   try {
     products.value = (await miniApi.products()).data || []
-    const candidates = kind.value === 'sales' ? saleProducts.value : orderableProducts.value
-    const hit = candidates.find((p) => p.id === productId.value) || candidates[0]
+    const hit = catalogProducts.value.find((p) => p.id === productId.value) || catalogProducts.value[0]
     if (hit) productId.value = hit.id
     resetPurchaseDraft()
   } catch (error: any) {
@@ -275,26 +258,6 @@ async function loadProducts() {
   }
 }
 
-function pickProduct() {
-  const list = kind.value === 'sales' ? saleProducts.value : orderableProducts.value
-  const names = list.map((p) => p.name)
-  if (!names.length) { uni.showToast({ title: '暂无商品', icon: 'none' }); return }
-  uni.showActionSheet({ itemList: names, success: (r) => {
-    const p = list[r.tapIndex]
-    productId.value = p.id
-  } })
-}
-
-const saleTotal = computed(() => saleLines.value.reduce((sum, line) => sum + Number(line.qty || 0), 0))
-function addSaleLine() {
-  const n = Math.floor(Number(qty.value) || 0)
-  const product = saleProducts.value.find((p) => p.id === productId.value)
-  if (!product || n <= 0) { uni.showToast({ title: '请选择商品并填写数量', icon: 'none' }); return }
-  const line = saleLines.value.find((item) => item.productId === product.id && item.size === size.value && item.belt === belt.value)
-  if (line) line.qty += n
-  else saleLines.value.push({ productId: product.id, productName: product.name, size: size.value, belt: product.type === 'single' ? '' : belt.value, qty: n })
-  qty.value = '1'
-}
 function pickL2() {
   const names = l2s.value.map((a) => a.name)
   if (!names.length) { uni.showToast({ title: '暂无已通过二级', icon: 'none' }); return }
@@ -302,12 +265,6 @@ function pickL2() {
     l2Id.value = l2s.value[r.tapIndex].id
     l2Name.value = l2s.value[r.tapIndex].name
   } })
-}
-function pickSize() {
-  uni.showActionSheet({ itemList: [...BAND_SIZES], success: (r) => { size.value = BAND_SIZES[r.tapIndex] } })
-}
-function pickBelt() {
-  uni.showActionSheet({ itemList: [...BELTS], success: (r) => { belt.value = BELTS[r.tapIndex] } })
 }
 
 function resetPurchaseDraft() {
@@ -320,7 +277,7 @@ function resetPurchaseDraft() {
 }
 
 function onProductChange(event: any) {
-  const selected = orderableProducts.value[Number(event.detail.value)]
+  const selected = catalogProducts.value[Number(event.detail.value)]
   if (!selected || selected.id === productId.value) return
   productId.value = selected.id
   resetPurchaseDraft()
@@ -373,30 +330,42 @@ function removeCustomLine(index: number) {
   customLines.value.splice(index, 1)
 }
 
+function eventValue(e: unknown, fallback = '') { return inputEventValue(e, fallback) }
+
 function cancel() {
+  if (submitting.value) return
   uni.navigateBack()
 }
 
 async function submitSale() {
-  if (!saleLines.value.length) { uni.showToast({ title: '请先加入销售明细', icon: 'none' }); return }
-  if (!l2Id.value) { uni.showToast({ title: '请选择二级', icon: 'none' }); return }
-  const created = await miniApi.createSale({
-    channel: 'distribute',
-    l2Id: l2Id.value,
-    lines: saleLines.value,
-    planTotal: saleTotal.value,
-  })
-  const soId = (created.data as any)?.id
-  uni.showToast({ title: '已创建销售单', icon: 'success' })
-  setTimeout(() => {
-    if (soId) uni.redirectTo({ url: `/pkg/scan/index?mode=ship&soId=${soId}` })
-    else uni.navigateBack()
-  }, 400)
+  if (submitting.value || !canSubmit.value) {
+    if (!l2Id.value) uni.showToast({ title: '请选择二级', icon: 'none' })
+    else if (!lineTotal.value) uni.showToast({ title: '请至少选择 1 件商品', icon: 'none' })
+    return
+  }
+  submitting.value = true
+  try {
+    const payload = purchasePayload.value
+    const created = await miniApi.createSale({
+      channel: 'distribute',
+      l2Id: l2Id.value,
+      lines: [...payload.lines, ...payload.customLines],
+      planTotal: lineTotal.value,
+    })
+    const soId = (created.data as any)?.id
+    uni.showToast({ title: '已创建销售单', icon: 'success' })
+    setTimeout(() => {
+      if (soId) uni.redirectTo({ url: `/pkg/scan/index?mode=ship&soId=${soId}` })
+      else uni.navigateBack()
+    }, 400)
+  } finally {
+    submitting.value = false
+  }
 }
 
 async function submitPurchase() {
-  if (!canSubmit.value) {
-    uni.showToast({ title: '请至少选择 1 件商品', icon: 'none' })
+  if (submitting.value || !canSubmit.value) {
+    if (!canSubmit.value) uni.showToast({ title: '请至少选择 1 件商品', icon: 'none' })
     return
   }
   submitting.value = true
@@ -412,7 +381,6 @@ async function submitPurchase() {
 <style scoped>
 .purchase-page { padding-bottom: calc(124rpx + env(safe-area-inset-bottom)); }
 .purchase-content { padding: 22rpx 32rpx 30rpx; }
-.pad { padding: 22rpx 32rpx; }
 .card {
   background: #fff;
   border: 2rpx solid #E3E9F2;
@@ -554,6 +522,7 @@ async function submitPurchase() {
   font-size: 22rpx;
   font-weight: 600;
   line-height: 64rpx;
+  text-align: center;
   box-shadow: 0 6rpx 14rpx rgba(26, 104, 215, 0.26);
 }
 .custom-tip, .bundle-tip {
@@ -622,6 +591,7 @@ async function submitPurchase() {
   font-size: 25rpx;
   font-weight: 600;
   line-height: 84rpx;
+  text-align: center;
 }
 .cancel-btn { background: #F4F6FA; color: #5B6472; border: 2rpx solid #E3E9F2; }
 .submit-btn {
@@ -630,7 +600,8 @@ async function submitPurchase() {
   background: linear-gradient(135deg, #2B7BF0, #1A68D7);
   box-shadow: 0 8rpx 20rpx rgba(26, 104, 215, 0.32);
 }
-.submit-btn[disabled] { opacity: .48; box-shadow: none; }
+.submit-btn.disabled { opacity: .48; box-shadow: none; pointer-events: none; }
+.cancel-btn.disabled { opacity: .48; pointer-events: none; }
 .state-card {
   padding: 28rpx 24rpx;
   border-radius: 20rpx;
@@ -652,32 +623,4 @@ async function submitPurchase() {
   font-size: 22rpx;
   line-height: 68rpx;
 }
-.sales-card { padding: 22rpx 24rpx; border-radius: 20rpx; }
-.pick {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  padding: 0 0 16rpx;
-}
-.lab { color: #9AA6BA; font-size: 20rpx; }
-.pick text:not(.lab) {
-  height: 72rpx;
-  border: 2rpx solid #D7E3F7;
-  border-radius: 14rpx;
-  background: #F5F9FF;
-  display: flex;
-  align-items: center;
-  padding: 0 22rpx;
-  font-size: 25rpx;
-  font-weight: 600;
-  color: #1A2B4A;
-}
-.btn-p { margin-top: 16rpx; border-radius: 16rpx; font-weight: 600; height: 84rpx; line-height: 84rpx; }
-.btn-p { background: linear-gradient(135deg, #2B7BF0, #1A68D7); color: #fff; }
-.btn-p::after { border: 0; }
-.add-line { height: 68rpx; margin: 8rpx 0 18rpx; border: 2rpx solid #BFD4F2; border-radius: 14rpx; background: #F5F9FF; color: #1A68D7; font-size: 23rpx; line-height: 64rpx; }
-.add-line::after { border: 0; }
-.sale-line { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; padding: 18rpx 4rpx; border-top: 1rpx solid #E9EEF5; color: #1A2B4A; font-size: 24rpx; }
-.sale-spec { display: block; margin-top: 6rpx; color: #7A879C; font-size: 21rpx; }
-.delete-link { color: #DE4B4B; font-size: 22rpx; }
 </style>

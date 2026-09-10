@@ -47,6 +47,9 @@ public class ExceptionService {
                                             String l1Id, String l2Id, String from, String to, String sn) {
         var q = Wrappers.<ExceptionTicket>lambdaQuery();
         applyCurrentScope(q);
+        if (StringUtils.hasText(sn)) {
+            q.eq(ExceptionTicket::getTarget, sn.trim());
+        }
         if (StringUtils.hasText(status)) {
             if ("open".equals(status)) {
                 q.in(ExceptionTicket::getStatus, "待处理", "会签中");
@@ -54,34 +57,33 @@ public class ExceptionService {
                 q.eq(ExceptionTicket::getStatus, status);
             }
         }
-        String dimKey = dim;
-        Boolean distributed = null;
-        if ("activate-direct".equals(dimKey)) {
-            dimKey = "activate";
-            distributed = false;
+        if (!StringUtils.hasText(sn)) {
+            String dimKey = dim;
+            Boolean distributed = null;
+            if ("activate-direct".equals(dimKey)) {
+                dimKey = "activate";
+                distributed = false;
+            }
+            if ("activate-dist".equals(dimKey)) {
+                dimKey = "activate";
+                distributed = true;
+            }
+            if (StringUtils.hasText(dimKey)) {
+                q.eq(ExceptionTicket::getDim, dimKey);
+            }
+            if (StringUtils.hasText(type)) {
+                q.like(ExceptionTicket::getType, type);
+            }
+            if (StringUtils.hasText(from)) {
+                try { q.ge(ExceptionTicket::getOccurredAt, LocalDate.parse(from.trim()).atStartOfDay()); } catch (Exception ignored) { }
+            }
+            if (StringUtils.hasText(to)) {
+                try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
+            }
+            applyActivationChannel(q, distributed);
         }
-        if ("activate-dist".equals(dimKey)) {
-            dimKey = "activate";
-            distributed = true;
-        }
-        if (StringUtils.hasText(dimKey)) {
-            q.eq(ExceptionTicket::getDim, dimKey);
-        }
-        if (StringUtils.hasText(type)) {
-            q.like(ExceptionTicket::getType, type);
-        }
-        if (StringUtils.hasText(from)) {
-            try { q.ge(ExceptionTicket::getOccurredAt, LocalDate.parse(from.trim()).atStartOfDay()); } catch (Exception ignored) { }
-        }
-        if (StringUtils.hasText(to)) {
-            try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
-        }
-        if (StringUtils.hasText(sn)) {
-            q.eq(ExceptionTicket::getTarget, sn.trim());
-        }
-        applyActivationChannel(q, distributed);
         applyAgentScope(q, l1Id, l2Id);
-        q.orderByDesc(ExceptionTicket::getOccurredAt);
+        q.last("ORDER BY CASE WHEN status IN ('待处理','会签中') THEN 0 ELSE 1 END, occurred_at DESC");
         PageResult<ExceptionTicket> result = PageResult.of(mapper.selectPage(Page.of(page, size), q));
         if (result.list() != null) {
             result.list().forEach(this::enrich);
@@ -175,6 +177,9 @@ public class ExceptionService {
     }
 
     private void enrich(ExceptionTicket e) {
+        if (StringUtils.hasText(e.getDetail()) && e.getDetail().startsWith("异常销售预警：")) {
+            e.setDetail(e.getDetail().substring("异常销售预警：".length()));
+        }
         Map<String, Object> extra = e.getExtra() == null ? new HashMap<>() : new HashMap<>(e.getExtra());
         String target = e.getTarget();
         SnCode sn = StringUtils.hasText(target) ? snMapper.selectById(target) : null;

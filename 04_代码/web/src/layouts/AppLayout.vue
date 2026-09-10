@@ -231,7 +231,7 @@ onUnmounted(() => document.removeEventListener('click', closePanels))
   position: absolute;
   top: 4px;
   right: 4px;
-  box-sizing: content-box;
+  box-sizing: border-box;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

@@ -34,41 +34,45 @@
         <SegBar v-model="panel" :items="homeSegs" />
         <view v-if="panel === 'dash'">
           <view class="filter-panel">
-            <DateBar embedded v-model:from="from" v-model:to="to" />
-            <FormPicker
-              v-if="user.role === 'L1'"
-              v-model="childL2"
-              :options="l2Options"
-              placeholder="全部下属二级"
-            />
+            <DateBar embedded v-model:from="from" v-model:to="to">
+              <FormPicker
+                v-if="user.role === 'L1'"
+                :compact="true"
+                v-model="childL2"
+                :options="l2Options"
+                placeholder="全部下属二级"
+              />
+            </DateBar>
           </view>
           <text class="hint">{{ scopeHint }} · {{ rangeHint }}</text>
           <view class="pair">
-            <view class="kpi glass" @click="goKpi('purchase')">
-              <text class="k">{{ user.role === 'L2' || childL2 ? '到货采购' : '采购统计' }}<text v-if="home.pendingPo" class="badge">{{ home.pendingPo }}</text></text>
+            <view class="kpi glass" data-kpi="purchase" @click="goKpi('purchase')">
+              <view v-if="home.pendingPo" class="badge">{{ home.pendingPo }}</view>
+              <text class="k">{{ user.role === 'L2' || childL2 ? '到货采购' : '采购统计' }}</text>
               <view class="duo"><text>区间 <text class="n">{{ home.purchaseRange || 0 }}</text></text><text>累计 <text class="n">{{ home.purchaseAll || 0 }}</text></text></view>
             </view>
-            <view class="kpi glass" @click="goKpi('sales')">
+            <view class="kpi glass" data-kpi="sales" @click="goKpi('sales')">
               <text class="k">{{ user.role === 'L2' || childL2 ? 'C端销售' : '销售统计' }}</text>
               <view class="duo"><text>区间 <text class="n">{{ home.salesRange || 0 }}</text></text><text>累计 <text class="n">{{ home.salesAll || 0 }}</text></text></view>
             </view>
           </view>
           <view v-if="user.role === 'L1' && !childL2" class="pair">
-            <view class="kpi glass" @click="goKpi('dist')">
+            <view class="kpi glass" data-kpi="dist" @click="goKpi('dist')">
               <text class="k">区间分销</text>
               <view class="duo"><text>区间 <text class="n">{{ home.distRange || 0 }}</text></text><text>累计 <text class="n">{{ home.distAll || 0 }}</text></text></view>
             </view>
-            <view class="kpi glass" @click="goKpi('direct')">
+            <view class="kpi glass" data-kpi="direct" @click="goKpi('direct')">
               <text class="k">区间直售</text>
               <view class="duo"><text>区间 <text class="n">{{ home.directRange || 0 }}</text></text><text>累计 <text class="n">{{ home.directAll || 0 }}</text></text></view>
             </view>
           </view>
           <view class="pair">
-            <view class="kpi glass" @click="goKpi('return')">
-              <text class="k">退货<text v-if="home.pendingReturn" class="badge">{{ home.pendingReturn }}</text></text>
+            <view class="kpi glass" data-kpi="return" @click="goKpi('return')">
+              <view v-if="home.pendingReturn" class="badge">{{ home.pendingReturn }}</view>
+              <text class="k">退货</text>
               <view class="duo"><text>区间 <text class="n">{{ home.returnRange || 0 }}</text></text><text>累计 <text class="n">{{ home.returnAll || 0 }}</text></text></view>
             </view>
-            <view class="kpi glass" @click="goKpi('activation')">
+            <view class="kpi glass" data-kpi="activation" @click="goKpi('activation')">
               <text class="k">激活绑定</text>
               <view class="duo"><text>区间 <text class="n">{{ home.actRange || 0 }}</text></text><text>累计 <text class="n">{{ home.actAll || 0 }}</text></text></view>
             </view>
@@ -207,7 +211,7 @@ const stockMix = computed(() => home.value.snStatus || [])
 const chartTab = ref('trend')
 const homeSegs = computed(() => [
   { id: 'dash', title: '数据' },
-  { id: 'scan', title: '扫码', badge: Number(home.value.scanningSo) || undefined },
+  { id: 'scan', title: '扫码' },
 ])
 const chartSegs = computed(() => [
   { id: 'trend', title: '趋势' },
@@ -270,7 +274,6 @@ async function loadAll() {
 
 onShow(async () => {
   if (!user.ensureLogin()) return
-  uni.hideTabBar({ animation: false })
   if (user.role === 'L2') scanMode.value = 'direct'
   await loadAll()
 })
@@ -307,7 +310,8 @@ function goCreateSo() { uni.navigateTo({ url: '/pkg/purchase/index?kind=sales' }
 </script>
 <style scoped lang="scss">
 @import '@/styles/theme.scss';
-.pad { padding: 0 32rpx 180rpx; }
+.rl-page { min-height: 0; padding-bottom: calc(128rpx + env(safe-area-inset-bottom)); }
+.pad { padding: 0 32rpx 8rpx; }
 .hero {
   position: relative;
   overflow: hidden;
@@ -357,7 +361,17 @@ function goCreateSo() { uni.navigateTo({ url: '/pkg/purchase/index?kind=sales' }
   color: #1A2B4A;
 }
 .pair { display: flex; gap: 16rpx; margin-top: 16rpx; }
-.kpi { flex: 1; padding: 18rpx 22rpx; border-radius: 20rpx; }
+.kpi { flex: 1; padding: 18rpx 22rpx; border-radius: 20rpx; position: relative; overflow: visible; }
+.badge {
+  @include rl-corner-badge;
+  top: 8rpx;
+  right: 8rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  border-radius: 14rpx;
+  font-size: 16rpx;
+  line-height: 28rpx;
+}
 .k {
   display: flex;
   align-items: center;
@@ -375,15 +389,14 @@ function goCreateSo() { uni.navigateTo({ url: '/pkg/purchase/index?kind=sales' }
   background: #1A68D7;
   flex-shrink: 0;
 }
-.badge { min-width: 30rpx; height: 30rpx; padding: 0 8rpx; border-radius: 15rpx; background: $rl-danger; color: #fff; font-size: 18rpx; line-height: 30rpx; text-align: center; }
 .duo { display: flex; margin-top: 14rpx; font-size: 18rpx; color: #9AA6BA; }
 .duo > text { flex: 1; }
 .duo > text + text { border-left: 2rpx solid #EEF1F6; padding-left: 22rpx; }
 .n { display: block; font-size: 38rpx; font-weight: 700; color: #1A2B4A; margin-top: 4rpx; line-height: 1; }
 .chart { padding: 18rpx 22rpx 20rpx; border-radius: 20rpx; margin-top: 16rpx; }
-.chart-swiper { height: 430rpx; }
+.chart-swiper { height: 430rpx; margin-top: 16rpx; }
 .chart-slide { height: 100%; overflow: hidden; }
-.chart-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12rpx; margin-bottom: 4rpx; }
+.chart-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12rpx; margin-bottom: 16rpx; }
 .chart-hd .t { font-size: 25rpx; font-weight: 700; color: #1A2B4A; }
 .chart-hd .s { font-size: 19rpx; color: #8A97AD; }
 .stock { display: flex; justify-content: space-between; align-items: center; padding: 22rpx 26rpx; border-radius: 20rpx; margin-top: 16rpx; }

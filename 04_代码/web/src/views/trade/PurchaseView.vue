@@ -75,11 +75,11 @@ const kpiItems = computed(() => [
   { key: 'hist', label: '历史采购量', value: metrics.histQty, icon: 'Collection', tone: 'gray' as const },
 ])
 const tabItems = computed(() => [
-  { id: 'all', title: '全部', badge: counts.all, showZero: true },
-  { id: 'pending', title: '待处理', badge: counts.pending, showZero: true },
-  { id: 'cosigning', title: '会签中', badge: counts.cosigning, showZero: true },
-  { id: 'approved', title: '已完成', badge: counts.approved, showZero: true },
-  { id: 'rejected', title: '已驳回', badge: counts.rejected, showZero: true },
+  { id: 'all', title: '全部' },
+  { id: 'pending', title: '待处理', badge: counts.pending || undefined },
+  { id: 'cosigning', title: '会签中' },
+  { id: 'approved', title: '已完成' },
+  { id: 'rejected', title: '已驳回' },
 ])
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
 function prodName(id?: string) { return products.value.find((p) => p.id === id)?.name || id || '—' }

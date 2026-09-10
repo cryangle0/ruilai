@@ -54,7 +54,7 @@ function go(item: { key: string; url: string }) {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 50;
+  z-index: 999;
   background: $rl-card;
   border-top: 1rpx solid $rl-border-soft;
   padding: 14rpx 0 calc(20rpx + env(safe-area-inset-bottom));

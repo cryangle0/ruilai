@@ -8,7 +8,7 @@
     <view class="pad">
       <SegBar v-model="tab" :items="segs" />
       <view v-if="tab === 'purchase'" class="action-row">
-        <text class="action-tip">发起采购申请（标准/非标/配件）</text>
+        <text class="action-tip">发起采购申请（标准/非标/单品）</text>
         <button class="mini-btn" @click="goForm('purchase')">新建采购申请</button>
       </view>
       <view v-if="tab === 'sales' && user.role !== 'L2'" class="action-row">
@@ -44,7 +44,7 @@
             <StatusTag :value="r.status" :map="tab === 'purchase' ? PO_STATUS : SO_STATUS" />
           </template>
           <view v-if="tab !== 'purchase'" class="detail-row"><text class="chip">{{ channelText(r) }}</text><text>{{ scanProgress(r) }}</text></view>
-          <view v-if="warnText(r)" class="warn-row">{{ warnText(r) }}</view>
+          <view v-if="warnText(r)" class="warn-row rl-fit-tag">{{ warnText(r) }}</view>
           <text class="sn-row">{{ snText(r) }}</text>
         </ListCard>
       </PagedState>
@@ -183,12 +183,11 @@ onShow(async () => {
   const intent = consumeNavigationIntent('biz')
   if (intent) {
     tab.value = segs.value.some((item) => item.id === intent.tab) ? intent.tab : segs.value[0].id
-    from.value = intent.from || ''
-    to.value = intent.to || ''
-    deepL2.value = intent.l2Id || ''
+    if (intent.from !== undefined) from.value = intent.from || ''
+    if (intent.to !== undefined) to.value = intent.to || ''
+    if (intent.l2Id !== undefined) deepL2.value = intent.l2Id || ''
     if (intent.status) poStatus.value = intent.status
   }
-  uni.hideTabBar({ animation: false })
   await nextTick()
   suppressWatch = false
   reload()
@@ -227,6 +226,7 @@ function open(r: any) {
 }
 </script>
 <style scoped lang="scss">
+@import '@/styles/theme.scss';
 .pad { padding: 0 32rpx 24rpx; }
 .alert { padding: 16rpx 20rpx; border-radius: 16rpx; margin: 12rpx 0 0; font-size: 24rpx; color: #636366; }
 .mini-btn {
@@ -243,6 +243,15 @@ function open(r: any) {
 .emphasized { border-color: #F6DCB0; background: #FFFBF4; }
 .detail-row { display: flex; align-items: center; gap: 14rpx; margin-top: 10rpx; color: #5B6472; font-size: 21rpx; }
 .chip { padding: 4rpx 12rpx; border-radius: 9rpx; background: #EAF2FD; color: #1A68D7; font-weight: 600; }
-.warn-row { margin-top: 10rpx; padding: 8rpx 12rpx; border-radius: 9rpx; background: #FCEBEB; color: #DE4B4B; font-size: 20rpx; font-weight: 600; }
+.warn-row {
+  @include rl-fit-tag;
+  margin-top: 10rpx;
+  padding: 8rpx 12rpx;
+  border-radius: 9rpx;
+  background: $rl-danger-bg;
+  color: $rl-danger;
+  font-size: 20rpx;
+  font-weight: 600;
+}
 .sn-row { display: block; margin-top: 12rpx; color: #7A879C; font-size: 20rpx; line-height: 1.55; word-break: break-all; }
 </style>

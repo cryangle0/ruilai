@@ -8,7 +8,12 @@ import com.ruilai.common.util.SnRanges;
 import com.ruilai.common.web.BizException;
 import com.ruilai.common.web.ErrCode;
 import com.ruilai.common.web.PageResult;
+import com.ruilai.common.web.QueryValues;
 import com.ruilai.common.time.ChinaTime;
+import com.ruilai.module.agent.entity.AgentL1;
+import com.ruilai.module.agent.entity.AgentL2;
+import com.ruilai.module.agent.mapper.AgentL1Mapper;
+import com.ruilai.module.agent.mapper.AgentL2Mapper;
 import com.ruilai.module.product.entity.Product;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.risk.entity.ExceptionTicket;
@@ -27,10 +32,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +48,8 @@ public class SnService {
     private final LogService logService;
     private final ExceptionTicketMapper exMapper;
     private final ReturnOrderMapper returnMapper;
+    private final AgentL1Mapper l1Mapper;
+    private final AgentL2Mapper l2Mapper;
 
     public PageResult<SnCode> page(long page, long size, String sn, String status, String l1Id, String l2Id,
                                    String productName, String productId, String sizeCode, String belt,
@@ -52,6 +57,9 @@ public class SnService {
                                    String factoryFrom, String factoryTo,
                                    String soldFrom, String soldTo,
                                    String returnFrom, String returnTo) {
+        productId = QueryValues.decode(productId);
+        sizeCode = QueryValues.decode(sizeCode);
+        belt = QueryValues.decode(belt);
         var q = Wrappers.<SnCode>lambdaQuery();
         if (StringUtils.hasText(sn)) {
             q.like(SnCode::getSn, sn);
@@ -70,11 +78,8 @@ public class SnService {
         if (StringUtils.hasText(belt)) {
             q.eq(SnCode::getBelt, belt);
         }
-        if (StringUtils.hasText(productId)) {
-            q.eq(SnCode::getProductId, productId);
-        } else if (StringUtils.hasText(productName)) {
-            List<String> ids = productMapper.selectList(Wrappers.<Product>lambdaQuery().like(Product::getName, productName))
-                    .stream().map(Product::getId).toList();
+        if (StringUtils.hasText(productId) || StringUtils.hasText(productName)) {
+            List<String> ids = resolveProductIds(productId, productName);
             if (ids.isEmpty()) {
                 return PageResult.of(new Page<>(page, size));
             }
@@ -94,7 +99,7 @@ public class SnService {
                 q.apply(SnTags.jsonContainsSql(), safe);
             }
         }
-        applyDate(q, SnCode::getFactoryAt, factoryFrom, factoryTo);
+        applyFactoryDay(q, factoryFrom, factoryTo);
         applyDate(q, SnCode::getSoldAt, soldFrom, soldTo);
         applyDate(q, SnCode::getReturnAt, returnFrom, returnTo);
         if (!com.ruilai.common.security.DataScope.isAdmin()) {
@@ -116,15 +121,18 @@ public class SnService {
                 q.eq(SnCode::getL2Id, l2Id);
             }
         }
-        Set<String> pin = openActivateSns();
-        if (!pin.isEmpty()) {
-            String in = pin.stream().map(s -> "'" + s.replace("'", "") + "'").reduce((a, b) -> a + "," + b).orElse("''");
+        Map<String, ExceptionTicket> open = openActivateBySn();
+        if (!open.isEmpty()) {
+            String in = open.keySet().stream().map(s -> "'" + s.replace("'", "") + "'").reduce((a, b) -> a + "," + b).orElse("''");
             q.last("ORDER BY CASE WHEN sn IN (" + in + ") THEN 0 ELSE 1 END, updated_at DESC");
         } else {
             q.orderByDesc(SnCode::getUpdatedAt);
         }
         PageResult<SnCode> result = PageResult.of(snMapper.selectPage(Page.of(page, size), q));
-        result.list().forEach(this::enrichForDisplay);
+        result.list().forEach(row -> {
+            enrichForDisplay(row);
+            applyOpenException(row, open);
+        });
         return result;
     }
 
@@ -134,6 +142,8 @@ public class SnService {
             throw new BizException(ErrCode.NOT_FOUND, "SN 不存在");
         }
         enrichForDisplay(row);
+        applyOpenException(row, openActivateBySn());
+        fillAgentNames(row);
         return row;
     }
 
@@ -305,17 +315,32 @@ public class SnService {
         return row;
     }
 
-    private Set<String> openActivateSns() {
+    private Map<String, ExceptionTicket> openActivateBySn() {
         List<ExceptionTicket> list = exMapper.selectList(Wrappers.<ExceptionTicket>lambdaQuery()
                 .in(ExceptionTicket::getStatus, "待处理", "会签中")
                 .in(ExceptionTicket::getDim, "activate", "scan"));
-        Set<String> out = new HashSet<>();
+        Map<String, ExceptionTicket> out = new java.util.LinkedHashMap<>();
+        if (list == null) {
+            return out;
+        }
         for (ExceptionTicket e : list) {
             if (e.getTarget() != null && e.getTarget().toUpperCase().startsWith("RL")) {
-                out.add(e.getTarget().toUpperCase());
+                out.putIfAbsent(e.getTarget().toUpperCase(), e);
             }
         }
         return out;
+    }
+
+    private void applyOpenException(SnCode row, Map<String, ExceptionTicket> open) {
+        if (row == null || !StringUtils.hasText(row.getSn()) || open == null) {
+            return;
+        }
+        ExceptionTicket ticket = open.get(row.getSn().toUpperCase());
+        row.setOpenException(ticket != null);
+        if (ticket != null) {
+            row.setOpenExceptionType(ticket.getType());
+            row.setOpenExceptionDetail(ticket.getDetail());
+        }
     }
 
     private void applyDate(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SnCode> q,
@@ -348,7 +373,63 @@ public class SnService {
 
     private void enrichForDisplay(SnCode row) {
         fillProductName(row);
+        LocalDateTime fromSn = SnFactoryDates.fromSnPrefix(row.getSn());
+        if (fromSn != null) {
+            row.setFactoryAt(fromSn);
+        } else if (row.getFactoryAt() == null && row.getCreatedAt() != null) {
+            row.setFactoryAt(row.getCreatedAt());
+        }
         ensureLifecycleForDisplay(row);
+    }
+
+    private void fillAgentNames(SnCode row) {
+        if (row == null) {
+            return;
+        }
+        if (StringUtils.hasText(row.getL1Id())) {
+            AgentL1 agent = l1Mapper.selectById(row.getL1Id());
+            row.setL1Name(agent == null ? row.getL1Id() : agent.getName());
+        }
+        if (StringUtils.hasText(row.getL2Id())) {
+            AgentL2 agent = l2Mapper.selectById(row.getL2Id());
+            row.setL2Name(agent == null ? row.getL2Id() : agent.getName());
+        }
+    }
+
+    private List<String> resolveProductIds(String productId, String productName) {
+        String code = productId == null ? "" : productId.trim();
+        String name = productName == null ? "" : productName.trim();
+        var w = Wrappers.<Product>lambdaQuery();
+        w.and(q -> {
+            boolean any = false;
+            if (StringUtils.hasText(code)) {
+                q.eq(Product::getId, code).or().eq(Product::getCode, code).or().like(Product::getCode, code);
+                any = true;
+            }
+            if (StringUtils.hasText(name)) {
+                if (any) {
+                    q.or();
+                }
+                q.like(Product::getName, name);
+            }
+        });
+        return productMapper.selectList(w).stream().map(Product::getId).distinct().toList();
+    }
+
+    private void applyFactoryDay(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SnCode> q,
+                                 String from, String to) {
+        if (StringUtils.hasText(from)) {
+            try {
+                q.apply(SnFactoryDates.SQL_FACTORY_DAY + " >= {0}", LocalDate.parse(from.trim()));
+            } catch (Exception ignored) {
+            }
+        }
+        if (StringUtils.hasText(to)) {
+            try {
+                q.apply(SnFactoryDates.SQL_FACTORY_DAY + " <= {0}", LocalDate.parse(to.trim()));
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     /**

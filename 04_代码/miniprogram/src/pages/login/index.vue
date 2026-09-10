@@ -1,5 +1,5 @@
 <template>
-  <scroll-view class="login" scroll-y enable-flex>
+  <view class="login">
     <NavBar title="" />
     <view class="login-body">
       <view class="brand">
@@ -12,11 +12,36 @@
         <text class="form-sub">欢迎回来，请使用经销商账号登录</text>
         <view class="field">
           <view class="f-icon user" />
-          <input v-model="username" class="f-input" placeholder="代理 ID / 账号" placeholder-class="ph" />
+          <input
+            class="f-input"
+            :value="username"
+            placeholder="代理 ID / 账号"
+            placeholder-class="ph"
+            confirm-type="next"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="username = eventValue($event, username)"
+          />
         </view>
         <view class="field">
           <view class="f-icon key" />
-          <input v-model="password" class="f-input" password placeholder="请输入密码" placeholder-class="ph" />
+          <input
+            class="f-input"
+            :value="password"
+            password
+            placeholder="请输入密码"
+            placeholder-class="ph"
+            confirm-type="done"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="password = eventValue($event, password)"
+          />
         </view>
         <view class="agree" @click="agreed = !agreed">
           <view class="cbx" :class="{ on: agreed }" />
@@ -25,17 +50,20 @@
           <text class="agree-text">和</text>
           <text class="link" @click.stop="openPolicy('privacy')">《隐私政策》</text>
         </view>
-        <button class="submit" hover-class="none" :loading="loading" :disabled="loading" @click="onLogin">登录</button>
+        <view class="submit" :class="{ busy: loading }" @click="onLogin">{{ loading ? '登录中' : '登录' }}</view>
       </view>
     </view>
-  </scroll-view>
+    <PrivacyPopup @agree="onPrivacyAgreed" />
+  </view>
 </template>
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onShareAppMessage, onShow } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
+import PrivacyPopup from '@/components/PrivacyPopup.vue'
 import { useUserStore } from '@/store/user'
 import { ruilaiShareMessage } from '@/utils/constants'
+import { inputEventValue } from '@/utils/inputValue'
 
 const user = useUserStore()
 const username = ref('')
@@ -57,8 +85,13 @@ function goHome() {
 onShow(() => {
   if (loading.value || jumping.value) return
   user.restore()
-  if (user.isLogin) goHome()
+  if (user.isLogin && uni.getStorageSync('rl_privacy_ok')) goHome()
 })
+
+function onPrivacyAgreed() {
+  user.restore()
+  if (user.isLogin) goHome()
+}
 
 function ensureAgreed() {
   if (agreed.value) return true
@@ -66,7 +99,10 @@ function ensureAgreed() {
   return false
 }
 
+function eventValue(e: unknown, fallback = '') { return inputEventValue(e, fallback) }
+
 async function onLogin() {
+  if (loading.value) return
   if (!ensureAgreed()) return
   if (!username.value.trim()) { uni.showToast({ title: '请输入账号', icon: 'none' }); return }
   if (password.value.length < 4) { uni.showToast({ title: '请输入密码', icon: 'none' }); return }
@@ -94,10 +130,8 @@ function openPolicy(type: string) { uni.navigateTo({ url: `/pkg/policy/index?typ
 @import '@/styles/theme.scss';
 .login {
   min-height: 100vh;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
   background: linear-gradient(160deg, #EAF2FD 0%, #F3F5F9 44%, #F3F5F9 100%);
 }
 .login-body {
@@ -122,10 +156,21 @@ function openPolicy(type: string) { uni.navigateTo({ url: `/pkg/policy/index?typ
 .f-icon { width: 40rpx; height: 40rpx; margin-right: 18rpx; background: no-repeat center/100%; }
 .f-icon.user { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231A68D7' stroke-width='2'%3E%3Ccircle cx='12' cy='8' r='3.5'/%3E%3Cpath d='M5.5 19.5a6.5 6.5 0 0 1 13 0'/%3E%3C/svg%3E"); }
 .f-icon.key { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231A68D7' stroke-width='2'%3E%3Ccircle cx='7.5' cy='15.5' r='4'/%3E%3Cpath d='M10.3 12.7 20 3m-4 4 3 3'/%3E%3C/svg%3E"); }
-.f-input { flex: 1; font-size: 30rpx; }
+.f-input { flex: 1; height: 96rpx; color: $rl-text; font-size: 30rpx; line-height: 96rpx; background: transparent; }
 .ph { color: #9AA4B2; }
-.submit { width: 100%; margin-top: 48rpx; background: $rl-gradient-primary; color: #fff; border-radius: 16rpx; font-size: 32rpx; font-weight: 700; height: 96rpx; line-height: 96rpx; box-shadow: $rl-shadow-primary; }
-.submit::after { border: 0; }
+.submit {
+  @include rl-tap;
+  width: 100%;
+  margin-top: 48rpx;
+  background: $rl-gradient-primary;
+  color: #fff;
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  height: 96rpx;
+  box-shadow: $rl-shadow-primary;
+}
+.submit.busy { opacity: .65; }
 .agree { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx; margin-top: 36rpx; }
 .cbx { width: 28rpx; height: 28rpx; border: 2rpx solid #D6DCE8; border-radius: 6rpx; }
 .cbx.on {
@@ -139,6 +184,5 @@ function openPolicy(type: string) { uni.navigateTo({ url: `/pkg/policy/index?typ
 .agree-text, .link { font-size: 22rpx; color: $rl-text-3; }
 .link { color: $rl-primary-deep; }
 </style>
-<style lang="scss">
-page { height: 100%; }
-</style>
+
+

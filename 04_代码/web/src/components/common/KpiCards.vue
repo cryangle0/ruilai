@@ -20,10 +20,19 @@
         <div class="kpi-label">{{ item.label }}</div>
         <div class="kpi-value">{{ item.value }}</div>
       </template>
-      <template v-else>
+      <template v-else-if="variant === 'bar'">
         <div class="kpi-label">{{ item.label }}</div>
         <div class="kpi-value">{{ item.value }}</div>
         <div v-if="item.hint" class="kpi-trend" :class="item.hintDir || 'flat'">{{ item.hint }}</div>
+      </template>
+      <template v-else>
+        <div class="kpi-ico">
+          <el-icon :size="20"><component :is="item.icon || 'TrendCharts'" /></el-icon>
+        </div>
+        <div class="kpi-copy">
+          <div class="kpi-label">{{ item.label }}</div>
+          <div class="kpi-value">{{ item.value }}</div>
+        </div>
       </template>
     </component>
   </div>
@@ -160,26 +169,40 @@ const gridStyle = computed(() => {
 
 .kpi.is-sm {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 20px;
-  min-height: 0;
+  gap: 14px;
+  padding: 15px 18px 15px 22px;
+  min-height: 88px;
 }
-.kpi.is-sm .kpi-label { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.kpi.is-sm::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--primary);
+}
+.kpi--orange.is-sm::before,
+.kpi--amber.is-sm::before { background: var(--warning); }
+.kpi--green.is-sm::before { background: var(--success); }
+.kpi--red.is-sm::before { background: var(--danger); }
+.kpi--gray.is-sm::before { background: var(--text-4); }
+.kpi--purple.is-sm::before { background: #0EA5C8; }
+.kpi.is-sm .kpi-ico {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+}
+.kpi.is-sm .kpi-copy { min-width: 0; flex: 1; }
+.kpi.is-sm .kpi-label { font-size: 12.5px; color: var(--text-2); font-weight: 500; }
 .kpi.is-sm .kpi-value {
-  font-size: 26px;
+  margin-top: 4px;
+  font-size: 24px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.15;
   font-family: var(--font-num);
   color: var(--text-strong);
-}
-.kpi.is-sm .kpi-trend {
-  width: 100%;
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--text-3);
 }
 
 .kpi.is-bar {

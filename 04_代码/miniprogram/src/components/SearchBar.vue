@@ -7,11 +7,16 @@ export default {
   <view class="search" :class="{ compact }">
     <input
       class="inp"
-      :value="modelValue"
+      :value="draft"
       :placeholder="placeholder"
       placeholder-class="ph"
       confirm-type="search"
-      @input="$emit('update:modelValue', ($event.detail as any).value)"
+      :adjust-position="true"
+      :hold-keyboard="true"
+      :always-embed="true"
+      :cursor-spacing="24"
+      data-echo="1"
+      @input="onInput($event)"
       @confirm="$emit('search')"
     />
     <view class="go" @click="$emit('search')">
@@ -20,14 +25,27 @@ export default {
   </view>
 </template>
 <script setup lang="ts">
-withDefaults(defineProps<{
+import { ref, watch } from 'vue'
+import { inputEventValue } from '@/utils/inputValue'
+
+const props = withDefaults(defineProps<{
   modelValue?: string
   placeholder?: string
   compact?: boolean
-}>(), { placeholder: '搜索', compact: false })
-defineEmits<{ 'update:modelValue': [string]; search: [] }>()
+}>(), { placeholder: '搜索', compact: false, modelValue: '' })
+const emit = defineEmits<{ 'update:modelValue': [string]; search: [] }>()
+const draft = ref(String(props.modelValue || ''))
+watch(() => props.modelValue, (value) => {
+  const next = String(value || '')
+  if (next !== draft.value) draft.value = next
+})
+function onInput(event: unknown) {
+  draft.value = inputEventValue(event, draft.value)
+  emit('update:modelValue', draft.value)
+}
 </script>
-<style scoped>
+<style scoped lang="scss">
+@import '@/styles/theme.scss';
 .search {
   display: flex;
   align-items: center;
@@ -54,7 +72,10 @@ defineEmits<{ 'update:modelValue': [string]; search: [] }>()
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+  color: $rl-text;
   font-size: 28rpx;
+  line-height: 64rpx;
+  background: transparent;
 }
 .compact .inp { height: 46rpx; line-height: 46rpx; font-size: 22rpx; }
 .ph { color: #9AA4B2; }

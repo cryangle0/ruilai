@@ -129,6 +129,30 @@ class SalesServiceTest {
     }
 
     @Test
+    void createAcceptsNonstandardComboWhenSizeAndBeltAreMaintained() {
+        Product p1 = product("P1", "产品一", List.of("M", "L"), List.of("腰带M", "腰带S"));
+        p1.setExtra(Map.of(
+                "sizes", List.of("M", "L"),
+                "belts", List.of("腰带M", "腰带S"),
+                "stdCombos", List.of(Map.of("size", "M", "belt", "腰带M"))));
+        when(productMapper.selectById("P1")).thenReturn(p1);
+        when(l2Mapper.selectById("L2A")).thenReturn(approvedL2());
+        when(orderNos.next("SO")).thenReturn("SO-1");
+        when(soMapper.insert(any(SalesOrder.class))).thenAnswer(inv -> {
+            inserted = inv.getArgument(0);
+            return 1;
+        });
+        when(soMapper.selectById(any())).thenAnswer(inv -> inserted);
+
+        SalesOrder body = new SalesOrder();
+        body.setChannel("distribute");
+        body.setL2Id("L2A");
+        body.setLines(List.of(line("P1", "L", "腰带S", 1)));
+
+        assertThat(service.create(body).getPlanTotal()).isEqualTo(1);
+    }
+
+    @Test
     void distributeRequiresApprovedChildOfCurrentL1() {
         AgentL2 foreign = approvedL2();
         foreign.setParentId("L1B");

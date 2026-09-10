@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { inputEventValue } from '../src/utils/inputValue.ts'
 import {
   aggregateStockRows,
   compactSnRanges,
@@ -11,12 +12,29 @@ import {
   exceptionDimension,
   exceptionApiDimension,
   exceptionCountForTab,
+  exceptionDimLabel,
+  exceptionExplainLabel,
+  exceptionExplainText,
+  decodeQueryValue,
   fetchNextPage,
   mergePage,
+  peekStockDraft,
   purchaseSegmentText,
+  purchaseLineRows,
+  returnProductRows,
+  returnTypeLabel,
+  saleProductRows,
+  factoryDateText,
+  sameStockBelt,
+  snRowMatches,
+  stockLevelLabel,
+  stockSpecText,
+  stockRowMatches,
+  timelineTone,
   salesScanSummary,
   statusBadge,
   sortStockSns,
+  compareOpenThenTime,
 } from '../src/utils/miniPages.ts'
 
 test('navigation intent is consumed once by its target only', () => {
@@ -63,12 +81,23 @@ test('distributed activation requests activate dimension before local classifica
   assert.equal(exceptionApiDimension('stock'), 'stock')
 })
 
-test('exception badges use server counts without loading ticket pages', () => {
-  const counts = { open: 7, 'activate-direct': 2, 'activate-dist': 3, stock: 2 }
+test('exception badges use visible tab counts and ignore scan leftovers', () => {
+  const counts = { open: 12, scan: 1, 'activate-direct': 2, 'activate-dist': 3, stock: 2 }
   assert.equal(exceptionCountForTab(counts, 'activate-direct'), 2)
   assert.equal(exceptionCountForTab(counts, 'activate-dist'), 3)
   assert.equal(exceptionCountForTab(counts, 'stock'), 2)
   assert.equal(exceptionCountForTab(counts, 'all'), 7)
+})
+
+test('open exceptions sort pending first then newest time', () => {
+  const rows = [
+    { status: '已处理', occurredAt: '2026-09-04 18:30:49' },
+    { status: '待处理', occurredAt: '2026-09-03 03:31:01' },
+    { status: '待处理', occurredAt: '2026-09-04 18:30:49' },
+  ].sort(compareOpenThenTime)
+  assert.equal(rows[0].status, '待处理')
+  assert.equal(rows[0].occurredAt, '2026-09-04 18:30:49')
+  assert.equal(rows[2].status, '已处理')
 })
 
 test('sales scan cards show product and progress', () => {
@@ -77,6 +106,85 @@ test('sales scan cards show product and progress', () => {
     scanned: ['S1'],
     planTotal: 2,
   }), { product: '锐涞套件/M×2', progress: '1/2' })
+})
+
+test('input events keep typed text instead of wiping the native value', () => {
+  assert.equal(inputEventValue({ detail: { value: 'RL1' } }), 'RL1')
+  assert.equal(inputEventValue('RL2'), 'RL2')
+  assert.equal(inputEventValue({ target: { value: 'abc' } }), 'abc')
+  assert.equal(inputEventValue({ detail: { detail: { value: 'nested' } } }), 'nested')
+  assert.equal(inputEventValue({ mp: { detail: { value: 'mp' } } }), 'mp')
+  assert.equal(inputEventValue({ detail: {} }, 'keep'), 'keep')
+  const field = readFileSync(new URL('../src/components/FieldRow.vue', import.meta.url), 'utf8')
+  const scan = readFileSync(new URL('../src/pkg/scan/index.vue', import.meta.url), 'utf8')
+  const search = readFileSync(new URL('../src/components/SearchBar.vue', import.meta.url), 'utf8')
+  const dateBar = readFileSync(new URL('../src/components/DateBar.vue', import.meta.url), 'utf8')
+  const bind = readFileSync(new URL('../src/pkg/bind/index.vue', import.meta.url), 'utf8')
+  const login = readFileSync(new URL('../src/pages/login/index.vue', import.meta.url), 'utf8')
+  const ret = readFileSync(new URL('../src/pkg/return-form/index.vue', import.meta.url), 'utf8')
+  const purchase = readFileSync(new URL('../src/pkg/purchase/index.vue', import.meta.url), 'utf8')
+  const profile = readFileSync(new URL('../src/pkg/mine-profile/index.vue', import.meta.url), 'utf8')
+  const l2 = readFileSync(new URL('../src/pkg/mine-l2/index.vue', import.meta.url), 'utf8')
+  const sub = readFileSync(new URL('../src/pkg/mine-sub/index.vue', import.meta.url), 'utf8')
+  const detail = readFileSync(new URL('../src/pkg/detail/index.vue', import.meta.url), 'utf8')
+  assert.match(field, /const draft = ref/)
+  assert.match(field, /onInput\(event/)
+  assert.match(field, /virtualHost:\s*true/)
+  assert.match(field, /always-embed="true"/)
+  assert.match(scan, /data-echo="1"/)
+  assert.match(scan, /onManualInput/)
+  assert.doesNotMatch(scan, /:disabled="!manualSn\.trim\(\)"/)
+  assert.doesNotMatch(scan, /<button class="btn-add"/)
+  assert.match(search, /const draft = ref/)
+  assert.match(search, /always-embed="true"/)
+  assert.match(dateBar, /const snDraft = ref/)
+  assert.match(dateBar, /always-embed="true"/)
+  assert.match(dateBar, /<slot \/>/)
+  assert.match(bind, /name = eventValue\(\$event, name\)/)
+  assert.match(bind, /age = eventValue\(\$event, age\)/)
+  assert.match(bind, /note = eventValue\(\$event, note\)/)
+  assert.match(bind, /<textarea/)
+  assert.doesNotMatch(bind, /v-model="name"/)
+  assert.doesNotMatch(bind, /<button class="ghost" @click="step=1"/)
+  assert.doesNotMatch(bind, /<button class="btn-p" @click="addInputSn"/)
+  assert.doesNotMatch(login, /<button class="submit"/)
+  assert.match(login, /username = eventValue\(\$event, username\)/)
+  assert.match(login, /<PrivacyPopup/)
+  assert.doesNotMatch(login, /<scroll-view/)
+  const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8')
+  assert.doesNotMatch(app, /<PrivacyPopup/)
+  assert.doesNotMatch(app, /hideTabBar/)
+  assert.doesNotMatch(login, /hideTabBar/)
+  const home = readFileSync(new URL('../src/pages/home/index.vue', import.meta.url), 'utf8')
+  assert.doesNotMatch(home, /hideTabBar/)
+  const manifest = readFileSync(new URL('../src/manifest.json', import.meta.url), 'utf8')
+  assert.match(manifest, /"es6": false/)
+  assert.match(manifest, /"minified": false/)
+  assert.doesNotMatch(ret, /FieldRow/)
+  assert.match(ret, /snsText = eventValue\(\$event, snsText\)/)
+  assert.doesNotMatch(ret, /<button class="btn-p"/)
+  assert.doesNotMatch(purchase, /FieldRow/)
+  assert.match(purchase, /customQty = eventValue\(\$event, customQty\)/)
+  assert.doesNotMatch(purchase, /<button class="add-line"/)
+  assert.doesNotMatch(profile, /FieldRow/)
+  assert.match(profile, /name = eventValue\(\$event, name\)/)
+  assert.doesNotMatch(l2, /FieldRow/)
+  assert.match(l2, /loginPassword = 'demo'/)
+  assert.match(l2, /cityAllowed/)
+  assert.doesNotMatch(sub, /FieldRow/)
+  assert.doesNotMatch(detail, /FieldRow/)
+  assert.match(detail, /explain = eventValue\(\$event, explain\)/)
+})
+
+test('corner badges sit at the top-right instead of inline', () => {
+  const seg = readFileSync(new URL('../src/components/SegBar.vue', import.meta.url), 'utf8')
+  const home = readFileSync(new URL('../src/pages/home/index.vue', import.meta.url), 'utf8')
+  assert.match(seg, /@include rl-corner-badge/)
+  assert.doesNotMatch(seg, /margin-left:\s*6rpx/)
+  assert.match(home, /@include rl-corner-badge/)
+  assert.match(home, /<view v-if="home\.pendingPo" class="badge">/)
+  assert.doesNotMatch(home, /id: 'scan', title: '扫码', badge:/)
+  assert.doesNotMatch(home, /采购统计' \}<text v-if="home\.pendingPo"/)
 })
 
 test('business tabs expose only actionable badges and readable SN ranges', () => {
@@ -91,14 +199,50 @@ test('batch seven pages keep redesigned order and stock detail contracts', () =>
   const detail = readFileSync(new URL('../src/pkg/detail/index.vue', import.meta.url), 'utf8')
   const purchase = readFileSync(new URL('../src/pkg/purchase/index.vue', import.meta.url), 'utf8')
   const stock = readFileSync(new URL('../src/pages/stock/index.vue', import.meta.url), 'utf8')
+  const home = readFileSync(new URL('../src/pages/home/index.vue', import.meta.url), 'utf8')
   assert.match(biz, /title: '已驳回'/)
   assert.match(biz, /purchaseSegmentText\(r\)/)
   assert.doesNotMatch(stock, /title: '在库SN', badge:/)
-  assert.match(detail, /标准商品/)
+  assert.match(detail, /标准品/)
+  assert.match(detail, /商品明细/)
+  assert.match(detail, /完整流转/)
   assert.match(detail, /class="timeline"/)
-  assert.match(detail, /在库 SN（/)
-  assert.match(purchase, /加入销售明细/)
-  assert.match(purchase, /lines: saleLines\.value/)
+  assert.match(detail, /商品信息/)
+  assert.match(detail, /查看在库SN/)
+  assert.match(purchase, /提交销售单（购物车）/)
+  assert.match(purchase, /标准套件/)
+  assert.match(purchase, /\.\.\.payload\.lines, \.\.\.payload\.customLines/)
+  assert.match(home, /padding: 0 32rpx 8rpx/)
+  assert.doesNotMatch(home, /padding: 0 32rpx 240rpx/)
+  assert.match(home, /compact/)
+})
+
+test('purchase and sale detail helpers keep prototype tables', () => {
+  assert.deepEqual(purchaseLineRows(
+    [{ productId: 'P1', productName: '锐涞经典款套件', size: 'M', belt: '腰带M', qty: 10 }],
+    { P1_M_腰带M: ['RL202608010001-RL202608010010'] },
+  ), [{
+    product: '锐涞经典款套件',
+    size: 'M',
+    belt: '腰带M',
+    qty: 10,
+    segments: 'RL202608010001-RL202608010010',
+    segQty: 10,
+  }])
+  assert.deepEqual(saleProductRows({
+    productName: '锐涞经典款套件',
+    lines: [{ productId: 'P1', productName: '锐涞经典款套件', size: 'M', belt: '腰带M', qty: 2 }],
+    snRows: [{ size: 'M', belt: '腰带M' }],
+  }), [{
+    product: '锐涞经典款套件',
+    size: 'M',
+    belt: '腰带M',
+    plan: 2,
+    scanned: 1,
+  }])
+  assert.equal(factoryDateText('RL202607200009', '2026-07-20T00:00:00'), '2026-07-20')
+  assert.equal(timelineTone({ title: '异常：扫码尺码不匹配', type: 'exception' }), 'danger')
+  assert.equal(timelineTone({ title: '直售客户退货', type: 'return' }), 'warn')
 })
 
 test('batch eight after-sales pages keep status, multi-SN and customer contracts', () => {
@@ -110,11 +254,44 @@ test('batch eight after-sales pages keep status, multi-SN and customer contracts
   assert.match(service, /id: 'pending', title: '待审核', badge:/)
   assert.match(service, /id: 'rejected', title: '已驳回'/)
   assert.match(service, /label="二级代理"/)
-  assert.match(form, /v-model="snsText" class="sn-textarea"/)
+  assert.match(form, /snsText = eventValue\(\$event, snsText\)/)
+  assert.match(form, /class="sn-textarea"/)
   assert.match(form, /v-for="sn in sns"/)
-  assert.match(detail, /客户姓名/)
-  assert.match(detail, /data\.snDetail/)
+  assert.match(detail, /销售客户信息/)
+  assert.match(detail, /snDetail/)
+  assert.match(detail, /凭证图片/)
   assert.match(constants, /done: '已通过'/)
+})
+
+test('stock detail query puts belt in the URL and decodes leftover encodings', () => {
+  const stock = readFileSync(new URL('../src/pages/stock/index.vue', import.meta.url), 'utf8')
+  const detail = readFileSync(new URL('../src/pkg/detail/index.vue', import.meta.url), 'utf8')
+  const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8')
+  const home = readFileSync(new URL('../src/pages/home/index.vue', import.meta.url), 'utf8')
+  assert.match(stock, /belt=\$\{encodeURIComponent/)
+  assert.match(stock, /saveStockDraft/)
+  assert.match(detail, /peekStockDraft/)
+  assert.match(detail, /stockRowMatches/)
+  assert.match(detail, /stockSpecText/)
+  assert.match(app, /min-height: 0/)
+  assert.doesNotMatch(home, /min-height: 100vh/)
+  assert.equal(decodeQueryValue('%E8%85%B0%E5%B8%A6M'), '腰带M')
+  assert.equal(decodeQueryValue('腰带M'), '腰带M')
+  assert.equal(stockSpecText('M', '腰带M'), 'M+腰带M')
+  assert.equal(stockSpecText('M', '%E8%85%B0%E5%B8%A6M'), 'M+腰带M')
+  assert.equal(sameStockBelt('腰带M', '%E8%85%B0%E5%B8%A6M'), true)
+  assert.equal(stockRowMatches({ productId: 'P1', size: 'M', belt: '腰带M' }, 'P1', 'M', '%E8%85%B0%E5%B8%A6M'), true)
+  assert.equal(snRowMatches({ productId: 'P1', sizeCode: 'M', belt: '腰带M' }, 'P1', 'M', '腰带M'), true)
+  assert.equal(typeof peekStockDraft, 'function')
+  assert.equal(stockLevelLabel({ agentType: 'l1', status: 'l1' }), '一级在库')
+  assert.deepEqual(returnProductRows([
+    { productName: '锐涞经典款套件', spec: 'M+腰带M' },
+    { productName: '锐涞经典款套件', spec: 'M+腰带M' },
+  ]), [{ product: '锐涞经典款套件', spec: 'M+腰带M', qty: 2 }])
+  assert.equal(returnTypeLabel('l2_to_l1'), '二级退一级')
+  assert.equal(exceptionDimLabel({ dim: 'activate', extra: { l2Id: 'L2A' } }), '分销激活异常')
+  assert.equal(exceptionExplainLabel({ dim: 'activate', extra: { l2Id: 'L2A' } }), '二级解释')
+  assert.equal(exceptionExplainText({ dim: 'activate', extra: { l2Id: 'L2A' }, explainL2: '出差' }), '出差')
 })
 
 test('complete paging keeps page size stable and removes repeated rows', async () => {
