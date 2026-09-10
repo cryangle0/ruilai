@@ -130,10 +130,6 @@
               </template>
             </DetailTable>
           </DetailSection>
-          <view class="detail-footer">
-            <view class="footer-btn ghost" @click="closePage">关闭</view>
-            <view class="footer-btn primary" @click="viewStockSns">查看在库SN</view>
-          </view>
         </template>
 
         <template v-else-if="kind==='return'">
@@ -171,9 +167,6 @@
           <DetailSection title="SN码" :count="returnSnRows.length">
             <DetailTable :columns="returnSnCols" :rows="returnSnRows" min-width="720rpx" />
           </DetailSection>
-          <view class="detail-footer">
-            <view class="footer-btn ghost" @click="closePage">关闭</view>
-          </view>
         </template>
 
         <template v-else-if="kind==='exception'">
@@ -217,12 +210,19 @@
             </view>
             <view class="ok" @click="saveExplain">提交说明</view>
           </view>
-          <view class="detail-footer">
-            <view class="footer-btn ghost" @click="closePage">关闭</view>
-            <view v-if="exceptionIsSn" class="footer-btn primary" @click="openSn(data.target)">看SN</view>
-          </view>
         </template>
       </PagedState>
+    </view>
+    <view v-if="footerReady && kind==='stock'" class="detail-footer">
+      <view class="footer-btn ghost" @click="closePage">关闭</view>
+      <view class="footer-btn primary" @click="viewStockSns">查看在库SN</view>
+    </view>
+    <view v-else-if="footerReady && kind==='return'" class="detail-footer">
+      <view class="footer-btn ghost" @click="closePage">关闭</view>
+    </view>
+    <view v-else-if="footerReady && kind==='exception'" class="detail-footer">
+      <view class="footer-btn ghost" @click="closePage">关闭</view>
+      <view v-if="exceptionIsSn" class="footer-btn primary" @click="openSn(data.target)">看SN</view>
     </view>
   </view>
 </template>
@@ -279,6 +279,7 @@ const belt = ref('')
 const scope = ref('self')
 
 const hasFooter = computed(() => ['stock', 'return', 'exception'].includes(kind.value))
+const footerReady = computed(() => hasFooter.value && !loading.value && !error.value && Object.keys(data.value || {}).length > 0)
 const navTitle = computed(() => {
   const no = data.value.no || data.value.sn || ''
   if (kind.value === 'return' && no) return `退货单 ${no}`
@@ -650,7 +651,7 @@ function onRelatedSnClick(row: Record<string, unknown>) {
 <style scoped lang="scss">
 @import '@/styles/theme.scss';
 .pad { padding: 22rpx 32rpx 32rpx; }
-.has-foot .pad { padding-bottom: calc(140rpx + env(safe-area-inset-bottom)); }
+.has-foot .pad { padding-bottom: calc(220rpx + env(safe-area-inset-bottom)); }
 .ops { margin-top: 24rpx; }
 .field { padding: 8rpx 0 16rpx; }
 .inp {

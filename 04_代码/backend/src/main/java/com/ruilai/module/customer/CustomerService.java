@@ -9,7 +9,7 @@ import com.ruilai.common.web.BizException;
 import com.ruilai.common.web.ErrCode;
 import com.ruilai.module.customer.entity.Customer;
 import com.ruilai.module.customer.mapper.CustomerMapper;
-import com.ruilai.module.product.entity.Product;
+import com.ruilai.module.product.ProductDisplayNames;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.sn.entity.SnCode;
 import com.ruilai.module.sn.mapper.SnCodeMapper;
@@ -175,10 +175,8 @@ public class CustomerService {
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("sn", code);
                     if (row != null) {
-                        String pname = productNames.computeIfAbsent(row.getProductId(), id -> {
-                            Product p = productMapper.selectById(id);
-                            return p == null ? id : p.getName();
-                        });
+                        String pname = productNames.computeIfAbsent(row.getProductId(),
+                                id -> ProductDisplayNames.of(productMapper, id));
                         item.put("productId", row.getProductId());
                         item.put("productName", pname);
                         item.put("size", row.getSizeCode());

@@ -72,12 +72,18 @@ function close() { emit('update:modelValue', false) }
 .body {
   flex: 1 1 auto;
   width: 100%;
-  max-height: 56vh;
+  min-height: 0;
+  height: 62vh;
+  max-height: 62vh;
   max-width: 100%;
   box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .body-inner {
-  padding: 0 32rpx 8rpx;
+  padding: 0 32rpx 48rpx;
+  height: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }

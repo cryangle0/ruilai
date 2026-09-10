@@ -5,6 +5,7 @@ import com.ruilai.module.agent.mapper.AgentL1Mapper;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
 import com.ruilai.module.agent.entity.AgentL1;
 import com.ruilai.module.agent.entity.AgentL2;
+import com.ruilai.module.product.ProductDisplayNames;
 import com.ruilai.module.product.entity.Product;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.risk.entity.ExceptionTicket;
@@ -135,7 +136,7 @@ public class DashboardService {
             List<SnCode> boundRange = bound.stream().filter(s -> inRange(bindTime(s), from, to)).toList();
             salesRange = boundRange.size();
             bound.forEach(s -> addDay(salesByDay, bindTime(s), 1));
-            boundRange.forEach(s -> addProduct(productMap, productNames.getOrDefault(s.getProductId(), s.getProductId()), 1));
+            boundRange.forEach(s -> addProduct(productMap, catalogName(productNames, s.getProductId()), 1));
             // 二级面向 C 端的销量属于激活/终端销售，不属于一级“直售”渠道。
             directAll = 0;
             directRange = 0;
@@ -329,19 +330,26 @@ public class DashboardService {
         map.merge(name, n, Integer::sum);
     }
 
+    private String catalogName(Map<String, String> productNames, String productId) {
+        if (!StringUtils.hasText(productId)) {
+            return productId;
+        }
+        return productNames.computeIfAbsent(productId, id -> ProductDisplayNames.of(productMapper, id));
+    }
+
     private void addSalesProducts(Map<String, Integer> map, Map<String, String> productNames, SalesOrder sale) {
         boolean resolvedLine = false;
         if (sale.getLines() != null) {
             for (Map<String, Object> line : sale.getLines()) {
                 String productId = String.valueOf(line.getOrDefault("productId", ""));
-                String productName = productNames.get(productId);
-                if (!StringUtils.hasText(productName)) continue;
+                String productName = catalogName(productNames, productId);
+                if (!StringUtils.hasText(productName) || productName.equals(productId)) continue;
                 addProduct(map, productName, lineQty(List.of(line)));
                 resolvedLine = true;
             }
         }
         if (!resolvedLine) {
-            addProduct(map, productNames.get(sale.getProductId()), soQty(sale));
+            addProduct(map, catalogName(productNames, sale.getProductId()), soQty(sale));
         }
     }
 

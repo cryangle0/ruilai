@@ -21,6 +21,7 @@
       </view>
     </view>
     <BottomDrawer v-model="creating" title="创建二级代理">
+      <scroll-view class="drawer-scroll" scroll-y :show-scrollbar="true" :enhanced="true">
       <view class="field">
         <text class="lab">名称</text>
         <input class="inp" :value="form.name" placeholder="门店/公司名" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.name = eventValue($event, form.name)" />
@@ -53,6 +54,7 @@
         <view class="field"><text class="lab">地址</text><input class="inp" :value="form.ent.addr" placeholder="企业地址" placeholder-class="ph" @input="form.ent.addr = eventValue($event, form.ent.addr)" /></view>
       </view>
       <view class="ghost" @click="pickProtocol">上传合作协议{{ protocolUrl ? '（已选）' : '' }}</view>
+      </scroll-view>
       <template #footer>
         <view class="btn-p" @click="create">提交审核</view>
       </template>
@@ -199,6 +201,11 @@ async function remove(a: any) {
 </script>
 <style scoped>
 .pad { padding: 22rpx 32rpx; }
+.drawer-scroll {
+  height: 60vh;
+  width: 100%;
+  box-sizing: border-box;
+}
 .desc { display: block; color: #636366; font-size: 24rpx; margin-bottom: 12rpx; }
 .card { padding: 24rpx; border-radius: 20rpx; margin-bottom: 12rpx; }
 .hd { display: flex; justify-content: space-between; gap: 12rpx; }

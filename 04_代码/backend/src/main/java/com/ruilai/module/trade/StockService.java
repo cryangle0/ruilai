@@ -10,7 +10,7 @@ import com.ruilai.module.agent.entity.AgentL1;
 import com.ruilai.module.agent.entity.AgentL2;
 import com.ruilai.module.agent.mapper.AgentL1Mapper;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
-import com.ruilai.module.product.entity.Product;
+import com.ruilai.module.product.ProductDisplayNames;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.sn.entity.SnCode;
 import com.ruilai.module.sn.mapper.SnCodeMapper;
@@ -87,10 +87,9 @@ public class StockService {
                     + "|" + (sn.getStatus() == null ? "" : sn.getStatus());
             grouped.computeIfAbsent(key, k -> {
                 Map<String, Object> row = new LinkedHashMap<>();
-                Product p = productMapper.selectById(sn.getProductId());
                 row.put("id", k);
                 row.put("productId", sn.getProductId());
-                row.put("productName", p == null ? sn.getProductId() : p.getName());
+                row.put("productName", ProductDisplayNames.of(productMapper, sn.getProductId()));
                 row.put("size", sn.getSizeCode());
                 row.put("belt", sn.getBelt());
                 row.put("qty", 0);

@@ -14,6 +14,7 @@ import com.ruilai.module.agent.entity.AgentL1;
 import com.ruilai.module.agent.entity.AgentL2;
 import com.ruilai.module.agent.mapper.AgentL1Mapper;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
+import com.ruilai.module.product.ProductDisplayNames;
 import com.ruilai.module.product.entity.Product;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.risk.entity.ExceptionTicket;
@@ -364,8 +365,7 @@ public class SnService {
         if (row == null || !StringUtils.hasText(row.getProductId())) {
             return;
         }
-        Product p = productMapper.selectById(row.getProductId());
-        row.setProductName(p == null ? row.getProductId() : p.getName());
+        row.setProductName(ProductDisplayNames.of(productMapper, row.getProductId()));
         if (row.getTags() == null) {
             row.setTags(List.of());
         }

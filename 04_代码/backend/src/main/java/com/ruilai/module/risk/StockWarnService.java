@@ -5,7 +5,7 @@ import com.ruilai.module.agent.entity.AgentL1;
 import com.ruilai.module.agent.entity.AgentL2;
 import com.ruilai.module.agent.mapper.AgentL1Mapper;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
-import com.ruilai.module.product.entity.Product;
+import com.ruilai.module.product.ProductDisplayNames;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.risk.entity.ExceptionTicket;
 import com.ruilai.module.risk.mapper.ExceptionTicketMapper;
@@ -122,9 +122,8 @@ public class StockWarnService {
         }
         double line = Math.max(1, sold * cfg.multiplier());
         if (inbound > line) {
-            Product p = productId == null ? null : productMapper.selectById(productId);
             String label = targetLabel != null ? targetLabel
-                    : ((p == null ? productId : p.getName()) + (size == null ? "" : size));
+                    : (ProductDisplayNames.of(productMapper, productId) + (size == null ? "" : size));
             exceptionService.raise("销售库存异常", label,
                     "本次新增 " + inbound + " > 预警线 " + (int) Math.ceil(line) + "（区间销量 " + sold + " × 倍数 " + cfg.multiplier() + "）",
                     "stock", cfg.mode(), l2Id);

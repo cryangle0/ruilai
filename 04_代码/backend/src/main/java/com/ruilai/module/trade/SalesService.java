@@ -20,6 +20,7 @@ import com.ruilai.module.agent.mapper.AgentL1Mapper;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
 import com.ruilai.module.customer.entity.Customer;
 import com.ruilai.module.customer.mapper.CustomerMapper;
+import com.ruilai.module.product.ProductDisplayNames;
 import com.ruilai.module.product.entity.Product;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.risk.ExceptionService;
@@ -585,13 +586,12 @@ public class SalesService {
             so.setL2Name(a == null ? so.getL2Id() : a.getName());
         }
         if (so.getProductId() != null) {
-            Product p = productMapper.selectById(so.getProductId());
-            so.setProductName(p == null ? so.getProductId() : p.getName());
+            so.setProductName(ProductDisplayNames.of(productMapper, so.getProductId()));
         }
         if (so.getLines() != null) {
             for (Map<String, Object> line : so.getLines()) {
                 String productId = str(line.get("productId"));
-                Product p = StringUtils.hasText(productId) ? productMapper.selectById(productId) : null;
+                Product p = catalogProduct(productId);
                 if (p != null) {
                     line.put("productName", p.getName());
                     line.put("category", productCategory(p, line));
@@ -618,8 +618,7 @@ public class SalesService {
                     item.put("size", s.getSizeCode());
                     item.put("belt", s.getBelt());
                     item.put("productId", s.getProductId());
-                    Product p = s.getProductId() == null ? null : productMapper.selectById(s.getProductId());
-                    item.put("productName", p == null ? s.getProductId() : p.getName());
+                    item.put("productName", ProductDisplayNames.of(productMapper, s.getProductId()));
                     item.put("status", s.getStatus());
                     Map<String, Object> u = s.getUserJson() != null ? s.getUserJson() : s.getPrevUserJson();
                     if (u != null) {
@@ -753,6 +752,14 @@ public class SalesService {
         }
         Product product = requireOnShelfProduct(body.getProductId());
         body.setProductName(product.getName());
+    }
+
+    private Product catalogProduct(String productId) {
+        if (!StringUtils.hasText(productId)) {
+            return null;
+        }
+        Product live = productMapper.selectById(productId);
+        return live != null ? live : productMapper.findDisplayByKey(productId.trim());
     }
 
     private Product requireOnShelfProduct(String productId) {

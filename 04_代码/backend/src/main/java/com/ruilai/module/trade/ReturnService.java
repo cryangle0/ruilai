@@ -12,7 +12,7 @@ import com.ruilai.common.web.ErrCode;
 import com.ruilai.common.web.PageResult;
 import com.ruilai.module.agent.entity.AgentL2;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
-import com.ruilai.module.product.entity.Product;
+import com.ruilai.module.product.ProductDisplayNames;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.sn.SnEventWriter;
 import com.ruilai.module.sn.SnWriter;
@@ -161,8 +161,7 @@ public class ReturnService {
                 item.put("status", "未找到");
                 item.put("situation", "");
             } else {
-                Product p = productMapper.selectById(row.getProductId());
-                String pname = p == null ? row.getProductId() : p.getName();
+                String pname = ProductDisplayNames.of(productMapper, row.getProductId());
                 if ((r.getCustomer() == null || r.getCustomer().isEmpty())) {
                     Map<String, Object> customer = row.getUserJson() != null ? row.getUserJson() : row.getPrevUserJson();
                     if (customer != null && !customer.isEmpty()) {
