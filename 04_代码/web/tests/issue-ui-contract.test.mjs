@@ -1,8 +1,32 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { exceptionRequestScope } from '../src/utils/exceptionScope.ts'
 
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
+
+test('exception list and counts share the effective SN scope', () => {
+  const scope = exceptionRequestScope({
+    dim: 'activate-direct',
+    status: '待处理',
+    type: '客户信息重复',
+    l1Id: 'L1A',
+    l2Id: 'L2A',
+    from: '2026-09-01',
+    to: '2026-09-30',
+    sn: ' RL-SN-1 ',
+  })
+  assert.deepEqual(scope, {
+    dim: 'activate-direct',
+    status: '待处理',
+    type: '客户信息重复',
+    l1Id: 'L1A',
+    l2Id: 'L2A',
+    from: undefined,
+    to: undefined,
+    sn: 'RL-SN-1',
+  })
+})
 
 test('issue 1 removes the redundant todo action and fills the row', () => {
   const view = source('src/views/home/HomeView.vue')
@@ -228,7 +252,7 @@ test('issues 41 through 46 separate activation channels and customer filters', (
   assert.match(exceptionService, /applyActivationChannel\(q,\s*distributed\)/)
   assert.match(exceptions, /class="muted-label">报警时间/)
   assert.doesNotMatch(exceptions, /counts\['activate-dist'\]\s*\|\|\s*counts\.scan/)
-  assert.match(exceptions, /api\.exceptionCounts\(\{\s*l1Id:\s*query\.l1Id,\s*l2Id:\s*query\.l2Id,\s*from:\s*query\.from,\s*to:\s*query\.to/)
+  assert.match(exceptions, /api\.exceptionCounts\(scope\)/)
   assert.match(exceptions, /counts\.open\s*=\s*counts\[dimTab\.value\]\s*\|\|\s*0/)
   assert.match(exceptions, /CustomEvent\('ruilai:badges-changed',\s*\{\s*detail:\s*\{\s*openEx/)
   assert.match(sidebar, /badges\.openEx\s*=\s*\(c\['activate-direct'\].*c\['activate-dist'\].*c\.stock/)
@@ -249,7 +273,7 @@ test('sept 9 exception tickets pin pending first and stop false SN/address flags
   assert.doesNotMatch(snView, /v-if="row\.frozen" class="tag tag-red">异常未处理/)
   assert.match(snView, /gotoEx\(row\.sn\)/)
   assert.match(exceptions, /placeholder="SN"/)
-  assert.match(exceptions, /sn: query\.sn \|\| undefined/)
+  assert.match(exceptions, /sn:\s*query\.sn/)
   assert.match(snService, /applyOpenException/)
   assert.match(exceptionService, /CASE WHEN status IN \('待处理','会签中'\) THEN 0 ELSE 1 END/)
   assert.doesNotMatch(salesService, /异常销售预警：/)

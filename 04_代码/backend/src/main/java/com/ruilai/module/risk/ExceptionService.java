@@ -47,41 +47,7 @@ public class ExceptionService {
                                             String l1Id, String l2Id, String from, String to, String sn) {
         var q = Wrappers.<ExceptionTicket>lambdaQuery();
         applyCurrentScope(q);
-        if (StringUtils.hasText(sn)) {
-            q.eq(ExceptionTicket::getTarget, sn.trim());
-        }
-        if (StringUtils.hasText(status)) {
-            if ("open".equals(status)) {
-                q.in(ExceptionTicket::getStatus, "待处理", "会签中");
-            } else {
-                q.eq(ExceptionTicket::getStatus, status);
-            }
-        }
-        if (!StringUtils.hasText(sn)) {
-            String dimKey = dim;
-            Boolean distributed = null;
-            if ("activate-direct".equals(dimKey)) {
-                dimKey = "activate";
-                distributed = false;
-            }
-            if ("activate-dist".equals(dimKey)) {
-                dimKey = "activate";
-                distributed = true;
-            }
-            if (StringUtils.hasText(dimKey)) {
-                q.eq(ExceptionTicket::getDim, dimKey);
-            }
-            if (StringUtils.hasText(type)) {
-                q.like(ExceptionTicket::getType, type);
-            }
-            if (StringUtils.hasText(from)) {
-                try { q.ge(ExceptionTicket::getOccurredAt, LocalDate.parse(from.trim()).atStartOfDay()); } catch (Exception ignored) { }
-            }
-            if (StringUtils.hasText(to)) {
-                try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
-            }
-            applyActivationChannel(q, distributed);
-        }
+        applyListFilters(q, status, dim, type, from, to, sn);
         applyAgentScope(q, l1Id, l2Id);
         q.last("ORDER BY CASE WHEN status IN ('待处理','会签中') THEN 0 ELSE 1 END, occurred_at DESC");
         PageResult<ExceptionTicket> result = PageResult.of(mapper.selectPage(Page.of(page, size), q));
@@ -109,31 +75,77 @@ public class ExceptionService {
         }
     }
 
-    public Map<String, Long> counts(String l1Id, String l2Id, String from, String to) {
+    public Map<String, Long> counts(String l1Id, String l2Id, String from, String to,
+                                    String status, String dim, String type, String sn) {
         Map<String, Long> out = new LinkedHashMap<>();
-        out.put("activate-direct", openCount("activate", false, l1Id, l2Id, from, to));
-        out.put("activate-dist", openCount("activate", true, l1Id, l2Id, from, to));
+        out.put("activate-direct", openCount("activate", false, l1Id, l2Id, from, to, status, type, sn));
+        out.put("activate-dist", openCount("activate", true, l1Id, l2Id, from, to, status, type, sn));
         out.put("activate", out.get("activate-direct") + out.get("activate-dist"));
-        out.put("scan", openCount("scan", null, l1Id, l2Id, from, to));
-        out.put("stock", openCount("stock", null, l1Id, l2Id, from, to));
-        out.put("open", openCount(null, null, l1Id, l2Id, from, to));
+        out.put("scan", openCount("scan", null, l1Id, l2Id, from, to, status, type, sn));
+        out.put("stock", openCount("stock", null, l1Id, l2Id, from, to, status, type, sn));
+        String activeDim = dim;
+        Boolean activeDistributed = null;
+        if ("activate-direct".equals(activeDim)) {
+            activeDim = "activate";
+            activeDistributed = false;
+        } else if ("activate-dist".equals(activeDim)) {
+            activeDim = "activate";
+            activeDistributed = true;
+        }
+        out.put("open", openCount(activeDim, activeDistributed,
+                l1Id, l2Id, from, to, status, type, sn));
         return out;
     }
 
-    private long openCount(String dim, Boolean distributed, String l1Id, String l2Id, String from, String to) {
+    private long openCount(String dim, Boolean distributed, String l1Id, String l2Id, String from, String to,
+                           String status, String type, String sn) {
         var q = Wrappers.<ExceptionTicket>lambdaQuery()
-                .eq(StringUtils.hasText(dim), ExceptionTicket::getDim, dim)
                 .in(ExceptionTicket::getStatus, "待处理", "会签中");
         applyCurrentScope(q);
         applyAgentScope(q, l1Id, l2Id);
-        if (StringUtils.hasText(from)) {
-            try { q.ge(ExceptionTicket::getOccurredAt, LocalDate.parse(from.trim()).atStartOfDay()); } catch (Exception ignored) { }
+        String dimKey = Boolean.TRUE.equals(distributed) ? "activate-dist"
+                : Boolean.FALSE.equals(distributed) ? "activate-direct" : dim;
+        applyListFilters(q, status, dimKey, type, from, to, sn);
+        return mapper.selectCount(q);
+    }
+
+    private static void applyListFilters(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExceptionTicket> q,
+            String status, String dim, String type, String from, String to, String sn) {
+        if (StringUtils.hasText(sn)) {
+            q.eq(ExceptionTicket::getTarget, sn.trim());
         }
-        if (StringUtils.hasText(to)) {
-            try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
+        if (StringUtils.hasText(status)) {
+            if ("open".equals(status)) {
+                q.in(ExceptionTicket::getStatus, "待处理", "会签中");
+            } else {
+                q.eq(ExceptionTicket::getStatus, status);
+            }
+        }
+        String dimKey = dim;
+        Boolean distributed = null;
+        if ("activate-direct".equals(dimKey)) {
+            dimKey = "activate";
+            distributed = false;
+        } else if ("activate-dist".equals(dimKey)) {
+            dimKey = "activate";
+            distributed = true;
+        }
+        if (StringUtils.hasText(dimKey)) {
+            q.eq(ExceptionTicket::getDim, dimKey);
+        }
+        if (StringUtils.hasText(type)) {
+            q.like(ExceptionTicket::getType, type);
+        }
+        if (!StringUtils.hasText(sn)) {
+            if (StringUtils.hasText(from)) {
+                try { q.ge(ExceptionTicket::getOccurredAt, LocalDate.parse(from.trim()).atStartOfDay()); } catch (Exception ignored) { }
+            }
+            if (StringUtils.hasText(to)) {
+                try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
+            }
         }
         applyActivationChannel(q, distributed);
-        return mapper.selectCount(q);
     }
 
     static void applyActivationChannel(

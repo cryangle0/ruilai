@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { inputEventValue } from '../src/utils/inputValue.ts'
 import { scanOrPrompt } from '../src/utils/scan.ts'
+import { submitActivationBatch } from '../src/utils/activation.ts'
 import {
   aggregateStockRows,
   canExplainException,
@@ -13,6 +14,7 @@ import {
   createRefreshCycleCache,
   exceptionDimension,
   exceptionApiDimension,
+  exceptionRequestScope,
   exceptionCountForTab,
   exceptionDimLabel,
   exceptionExplainLabel,
@@ -88,6 +90,19 @@ test('exception list requests preserve the same server scope used by badge count
   assert.equal(exceptionApiDimension('activate-direct'), 'activate-direct')
   assert.equal(exceptionApiDimension('activate-dist'), 'activate-dist')
   assert.equal(exceptionApiDimension('stock'), 'stock')
+  assert.deepEqual(exceptionRequestScope({
+    dim: 'activate-dist',
+    from: '2026-09-01',
+    to: '2026-09-30',
+    l2Id: 'L2A',
+    sn: ' RL-SN-1 ',
+  }), {
+    dim: 'activate-dist',
+    from: undefined,
+    to: undefined,
+    l2Id: 'L2A',
+    sn: 'RL-SN-1',
+  })
 })
 
 test('exception badges use visible tab counts and ignore scan leftovers', () => {
@@ -135,14 +150,28 @@ test('cancelled or failed scanning returns without opening an editable prompt', 
   }
 })
 
-test('activation submits one preview and one commit for the complete SN batch', () => {
-  const bind = readFileSync(new URL('../src/pkg/bind/index.vue', import.meta.url), 'utf8')
-  const service = readFileSync(new URL('../src/service/index.ts', import.meta.url), 'utf8')
-  assert.match(service, /bindBatch:.*\/api\/sales\/direct-bind-batch/)
-  assert.match(bind, /miniApi\.bindBatch\(\{\s*\.\.\.payload,\s*sns,\s*dryRun:\s*true\s*\}\)/s)
-  assert.match(bind, /miniApi\.bindBatch\(\{\s*\.\.\.payload,\s*sns\s*\}\)/s)
-  assert.doesNotMatch(bind, /Promise\.all\(snRows\.value\.map/)
-  assert.doesNotMatch(bind, /for \(const item of snRows\.value\)/)
+test('activation submits one preview and one commit for the complete SN batch', async () => {
+  const calls: Record<string, unknown>[] = []
+  const request = async (payload: Record<string, unknown>) => {
+    calls.push(payload)
+    return { data: { issues: calls.length === 1 ? ['地址预警'] : [] } }
+  }
+
+  const result = await submitActivationBatch(
+    request,
+    { customer: { phone: '13800000000' }, lng: 120, lat: 30 },
+    ['S1', 'S2'],
+    async (issues) => {
+      assert.deepEqual(issues, ['地址预警'])
+      return true
+    },
+  )
+
+  assert.equal(result.committed, true)
+  assert.deepEqual(calls, [
+    { customer: { phone: '13800000000' }, lng: 120, lat: 30, sns: ['S1', 'S2'], dryRun: true },
+    { customer: { phone: '13800000000' }, lng: 120, lat: 30, sns: ['S1', 'S2'] },
+  ])
 })
 
 test('input events keep typed text instead of wiping the native value', () => {

@@ -133,6 +133,7 @@ import { miniApi } from '@/service'
 import { http } from '@/service/http'
 import { inputEventValue } from '@/utils/inputValue'
 import { scanOrPrompt } from '@/utils/scan'
+import { submitActivationBatch } from '@/utils/activation'
 
 const user = useUserStore()
 const step = ref(1)
@@ -211,19 +212,17 @@ async function submit() {
     customer: { phone: phone.value, addr: addr.value, name: name.value, gender: gender.value, age: age.value, note: note.value },
   }
   const sns = snRows.value.map((item) => item.sn)
-  const preview = await miniApi.bindBatch({ ...payload, sns, dryRun: true })
-  const issues = [...new Set((preview.data as any).issues || [])]
-  if (issues.length) {
+  const result = await submitActivationBatch(miniApi.bindBatch, payload, sns, async (issues) => {
     const box = await uni.showModal({
       title: '存在预警，是否仍激活？',
       content: issues.join('\n') + '\n\n取消则不提交、不记异常',
       confirmText: '确认激活',
       cancelText: '取消',
     })
-    if (!box.confirm) return
-  }
-  const result = await miniApi.bindBatch({ ...payload, sns })
-  const doneIssues = [...new Set((result.data as any).issues || [])]
+    return box.confirm
+  })
+  if (!result.committed) return
+  const doneIssues = result.issues
   uni.showModal({
     title: doneIssues.length ? '已激活（有预警）' : '激活成功',
     content: doneIssues.length ? doneIssues.join('\n') : `${snRows.value.length} 个 SN 已绑定客户`,

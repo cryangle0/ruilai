@@ -28,8 +28,12 @@ public class ExceptionController {
     public R<Map<String, Long>> counts(@RequestParam(required = false) String l1Id,
                                        @RequestParam(required = false) String l2Id,
                                        @RequestParam(required = false) String from,
-                                       @RequestParam(required = false) String to) {
-        return R.ok(exceptionService.counts(l1Id, l2Id, from, to));
+                                       @RequestParam(required = false) String to,
+                                       @RequestParam(required = false) String status,
+                                       @RequestParam(required = false) String dim,
+                                       @RequestParam(required = false) String type,
+                                       @RequestParam(required = false) String sn) {
+        return R.ok(exceptionService.counts(l1Id, l2Id, from, to, status, dim, type, sn));
     }
 
     @GetMapping

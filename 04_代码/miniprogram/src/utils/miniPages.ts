@@ -89,6 +89,20 @@ export function exceptionApiDimension(tab: string) {
   return 'stock'
 }
 
+export function exceptionRequestScope<T extends {
+  from?: string
+  to?: string
+  sn?: string
+}>(scope: T): T {
+  const sn = scope.sn?.trim() || undefined
+  return {
+    ...scope,
+    from: sn ? undefined : scope.from,
+    to: sn ? undefined : scope.to,
+    sn,
+  }
+}
+
 export function exceptionCountForTab(counts: Record<string, unknown>, tab: string) {
   if (tab === 'all') {
     return (['activate-direct', 'activate-dist', 'stock'] as const)

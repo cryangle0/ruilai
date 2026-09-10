@@ -363,8 +363,8 @@ public class SalesService {
         }
         List<String> codes = sns.stream().map(SalesService::str).map(String::trim)
                 .filter(StringUtils::hasText).toList();
-        if (codes.isEmpty()) {
-            throw new BizException(ErrCode.BAD_REQUEST, "请至少提交一个 SN");
+        if (codes.size() != sns.size()) {
+            throw new BizException(ErrCode.BAD_REQUEST, "批次中的 SN 不能为空");
         }
         if (new HashSet<>(codes).size() != codes.size()) {
             throw new BizException(ErrCode.BAD_REQUEST, "提交的 SN 不可重复");

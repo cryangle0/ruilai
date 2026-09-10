@@ -143,6 +143,7 @@ import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
 import { applyListDates, routeQ } from '@/utils/detailJump'
 import { dateTimeFormatter, formatDateTime, monthStart, todayDate } from '@/utils/dates'
+import { exceptionRequestScope } from '@/utils/exceptionScope'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -222,17 +223,17 @@ async function load() {
   loading.value = true
   try {
     query.dim = dimTab.value
+    const scope = exceptionRequestScope({
+      dim: query.dim, status: query.status, type: query.type,
+      l1Id: query.l1Id, l2Id: query.l2Id,
+      from: query.from, to: query.to, sn: query.sn,
+    })
     const [res, c] = await Promise.all([
       api.exceptions({
         page: page.value, pageSize: pageSize.value,
-        dim: query.sn ? undefined : query.dim, status: query.status, type: query.type,
-        l1Id: query.l1Id, l2Id: query.l2Id,
-        from: query.sn ? undefined : query.from, to: query.sn ? undefined : query.to,
-        sn: query.sn || undefined,
+        ...scope,
       }),
-      api.exceptionCounts({
-        l1Id: query.l1Id, l2Id: query.l2Id, from: query.from, to: query.to,
-      }),
+      api.exceptionCounts(scope),
     ])
     list.value = res.list; total.value = res.total
     Object.assign(counts, c)

@@ -34,6 +34,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -337,6 +338,29 @@ class SalesServiceTest {
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("MISSING");
 
+        verify(soMapper, never()).insert(any(SalesOrder.class));
+        verify(customerMapper, never()).insert(any(Customer.class));
+        verify(snMapper, never()).updateById(any(SnCode.class));
+        verify(stockLogMapper, never()).insert(any(com.ruilai.module.trade.entity.StockLog.class));
+        verify(eventWriter, never()).append(any(), any(), any(), any());
+        verify(exceptionService, never()).raise(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void directBindBatchRejectsBlankOrNullMembersBeforeAnyLookupOrWrite() {
+        Map<String, Object> customer = Map.of(
+                "phone", "13800000000", "addr", "杭州市文一路1号");
+
+        assertThatThrownBy(() -> service.directBindBatch(
+                List.of("S1", ""), customer, "", "", null, null, false))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("不能为空");
+        assertThatThrownBy(() -> service.directBindBatch(
+                Arrays.asList("S1", null), customer, "", "", null, null, false))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("不能为空");
+
+        verify(snMapper, never()).selectById(any());
         verify(soMapper, never()).insert(any(SalesOrder.class));
         verify(customerMapper, never()).insert(any(Customer.class));
         verify(snMapper, never()).updateById(any(SnCode.class));

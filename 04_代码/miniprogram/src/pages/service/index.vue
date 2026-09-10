@@ -78,7 +78,7 @@ import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { RT_STATUS } from '@/utils/constants'
 import { datePresetRange, matchesQuery } from '@/utils/dates'
-import { consumeNavigationIntent, compareOpenThenTime, createRefreshCycleCache, exceptionApiDimension, exceptionCountForTab, exceptionDimension, mergePage } from '@/utils/miniPages'
+import { consumeNavigationIntent, compareOpenThenTime, createRefreshCycleCache, exceptionApiDimension, exceptionCountForTab, exceptionDimension, exceptionRequestScope, mergePage } from '@/utils/miniPages'
 
 const user = useUserStore()
 const tab = ref('return')
@@ -169,6 +169,18 @@ async function load(append = false, cache?: RequestCache) {
   if (append) loadingMore.value = true
   else { loading.value = true; page.value = 1; error.value = '' }
   try {
+    const exceptionScope = exceptionRequestScope({
+      dim: dimOf(exDim.value),
+      from: from.value,
+      to: to.value,
+      l2Id: deepL2.value || undefined,
+      sn: sn.value,
+    })
+    const badgeRequest = requestInCycle(
+      cache,
+      queryKey('/api/exceptions/counts', exceptionScope),
+      async () => (await miniApi.exceptionCounts(exceptionScope)).data,
+    )
     if (tab.value === 'return') {
       const pageSize = 30
       const fetchPage = async (requestPage: number, requestSize: number) => {
@@ -184,22 +196,26 @@ async function load(append = false, cache?: RequestCache) {
         }
         return requestInCycle(cache, queryKey('/api/returns', params), async () => (await miniApi.returns(params)).data)
       }
-      const result = await fetchPage(sn.value.trim() ? 1 : page.value, pageSize)
+      const [result, counts] = await Promise.all([
+        fetchPage(sn.value.trim() ? 1 : page.value, pageSize),
+        badgeRequest,
+      ])
       total.value = result.total || 0
       allRt.value = append ? mergePage(allRt.value, result.list || [], total.value).list : (result.list || [])
+      badgeCounts.value = counts || {}
     } else {
       const params = {
         page: 1,
         pageSize: 100,
-        dim: dimOf(exDim.value),
-        from: from.value,
-        to: to.value,
-        l2Id: deepL2.value || undefined,
-        sn: sn.value.trim() || undefined,
+        ...exceptionScope,
       }
-      const result = await requestInCycle(cache, queryKey('/api/exceptions', params), async () => (await miniApi.exceptions(params)).data)
+      const [result, counts] = await Promise.all([
+        requestInCycle(cache, queryKey('/api/exceptions', params), async () => (await miniApi.exceptions(params)).data),
+        badgeRequest,
+      ])
       total.value = result.total || 0
       allEx.value = result.list || []
+      badgeCounts.value = counts || {}
     }
   } catch (e: any) {
     if (append) {
@@ -221,7 +237,6 @@ function reload() {
 function loadMore() { if (!hasMore.value || loadingMore.value) return; page.value += 1; load(true) }
 let suppressWatch = false
 let snTimer: ReturnType<typeof setTimeout> | undefined
-let showCycle = 0
 watch([tab, rtType, rtStatus, exDim, deepL2, from, to], () => { if (!suppressWatch) reload() })
 watch(sn, () => {
   if (suppressWatch) return
@@ -230,7 +245,6 @@ watch(sn, () => {
 })
 onShow(async () => {
   if (!user.ensureLogin()) return
-  const cycle = ++showCycle
   suppressWatch = true
   if (user.role === 'L2' && exDim.value === 'activate-direct') exDim.value = 'activate-dist'
   const intent = consumeNavigationIntent('service')
@@ -250,18 +264,11 @@ onShow(async () => {
     }
   }
   showRequests.begin()
-  const badgeParams = { from: from.value, to: to.value, l2Id: deepL2.value || undefined }
-  const badgeRequest = requestInCycle(
-    showRequests,
-    queryKey('/api/exceptions/counts', badgeParams),
-    async () => (await miniApi.exceptionCounts(badgeParams)).data,
-  ).then((result) => { if (cycle === showCycle) badgeCounts.value = result || {} })
-    .catch(() => { if (cycle === showCycle) badgeCounts.value = {} })
   await nextTick()
   suppressWatch = false
   if (tab.value === 'return') allRt.value = []
   else allEx.value = []
-  await Promise.all([badgeRequest, load(false, showRequests)])
+  await load(false, showRequests)
 })
 function goForm(type: string) { uni.navigateTo({ url: `/pkg/return-form/index?type=${type}` }) }
 function open(kind: string, id: string) { uni.navigateTo({ url: `/pkg/detail/index?kind=${kind}&id=${id}` }) }
