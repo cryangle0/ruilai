@@ -25,7 +25,13 @@
       <template v-else>
         <view class="filter-panel">
           <SegBar variant="seg" v-model="exDim" :items="exSegs" />
-          <DateBar embedded v-model:from="from" v-model:to="to" v-model:sn="sn" show-sn />
+          <FormPicker
+            v-if="user.role === 'L1'"
+            v-model="deepL2"
+            :options="l2Options"
+            label="二级代理"
+          />
+          <DateBar embedded v-model:from="from" v-model:to="to" v-model:sn="sn" show-sn sn-placeholder="SN" />
         </view>
       </template>
       <PagedState
@@ -66,20 +72,22 @@ import Empty from '@/components/Empty.vue'
 import ListCard from '@/components/ListCard.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import DateBar from '@/components/DateBar.vue'
+import FormPicker from '@/components/FormPicker.vue'
 import PagedState from '@/components/PagedState.vue'
 import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { RT_STATUS } from '@/utils/constants'
-import { matchesQuery } from '@/utils/dates'
-import { consumeNavigationIntent, createRefreshCycleCache, exceptionApiDimension, exceptionCountForTab, exceptionDimension, mergePage } from '@/utils/miniPages'
+import { datePresetRange, matchesQuery } from '@/utils/dates'
+import { consumeNavigationIntent, compareOpenThenTime, createRefreshCycleCache, exceptionApiDimension, exceptionCountForTab, exceptionDimension, mergePage } from '@/utils/miniPages'
 
 const user = useUserStore()
 const tab = ref('return')
 const rtType = ref('l2_to_l1')
 const rtStatus = ref('all')
 const exDim = ref('activate-direct')
-const from = ref('')
-const to = ref('')
+const month = datePresetRange('month')
+const from = ref(month.from)
+const to = ref(month.to)
 const sn = ref('')
 const allRt = ref<any[]>([])
 const allEx = ref<any[]>([])
@@ -90,25 +98,28 @@ const error = ref('')
 const page = ref(1)
 const total = ref(0)
 const deepL2 = ref('')
+const l2s = ref<any[]>([])
 const hasMore = computed(() => tab.value === 'return'
   && !sn.value.trim()
   && allRt.value.length < total.value)
 
 const showRtStatus = computed(() => user.role === 'L1' && rtType.value === 'l1_to_factory')
-const typeN = (t: string) => allRt.value.filter((r) => r.type === t).length
 const rtTypeSegs = computed(() => [
-  { id: 'l2_to_l1', title: '二级退一级', badge: typeN('l2_to_l1') || undefined },
-  { id: 'user', title: '终端退货', badge: typeN('user') || undefined },
-  { id: 'l1_to_factory', title: '退原厂', badge: typeN('l1_to_factory') || undefined },
+  { id: 'l2_to_l1', title: '二级退一级' },
+  { id: 'user', title: '终端退货' },
+  { id: 'l1_to_factory', title: '退原厂' },
 ])
 const factoryList = computed(() => allRt.value.filter((r) => r.type === 'l1_to_factory'))
 const stN = (st: string) => factoryList.value.filter((r) => r.status === st).length
 const rtStatusSegs = computed(() => [
-  { id: 'all', title: '全部', badge: factoryList.value.length || undefined },
+  { id: 'all', title: '全部' },
   { id: 'pending', title: '待审核', badge: stN('pending') || undefined },
-  { id: 'approved', title: '已通过', badge: stN('approved') || undefined },
-  { id: 'done', title: '已处理', badge: stN('done') || undefined },
-  { id: 'rejected', title: '已驳回', badge: stN('rejected') || undefined },
+  { id: 'done', title: '已通过' },
+  { id: 'rejected', title: '已驳回' },
+])
+const l2Options = computed(() => [
+  { label: '全部二级代理', value: '' },
+  ...l2s.value.map((agent) => ({ label: agent.name, value: agent.id })),
 ])
 function isExOpen(e: any) {
   return ['待处理', '会签中', 'pending', 'cosigning'].includes(e.status)
@@ -141,7 +152,7 @@ const rows = computed(() => {
     .filter((e) => exceptionDimension(e) === exDim.value)
     .filter((e) => matchesQuery([e.type, e.target, e.detail], sn.value))
     .slice()
-    .sort((a, b) => Number(isExOpen(b)) - Number(isExOpen(a)))
+      .sort(compareOpenThenTime)
 })
 
 const showRequests = createRefreshCycleCache()
@@ -211,7 +222,7 @@ function loadMore() { if (!hasMore.value || loadingMore.value) return; page.valu
 let suppressWatch = false
 let snTimer: ReturnType<typeof setTimeout> | undefined
 let showCycle = 0
-watch([tab, rtType, rtStatus, exDim, from, to], () => { if (!suppressWatch) reload() })
+watch([tab, rtType, rtStatus, exDim, deepL2, from, to], () => { if (!suppressWatch) reload() })
 watch(sn, () => {
   if (suppressWatch) return
   if (snTimer) clearTimeout(snTimer)
@@ -225,13 +236,19 @@ onShow(async () => {
   const intent = consumeNavigationIntent('service')
   if (intent) {
     tab.value = intent.tab === 'exception' ? 'exception' : 'return'
-    from.value = intent.from || ''
-    to.value = intent.to || ''
-    deepL2.value = intent.l2Id || ''
+    if (intent.from !== undefined) from.value = intent.from || ''
+    if (intent.to !== undefined) to.value = intent.to || ''
+    if (intent.l2Id !== undefined) deepL2.value = intent.l2Id || ''
     if (intent.dimension) exDim.value = intent.dimension
     if (intent.status) rtStatus.value = intent.status
   }
-  uni.hideTabBar({ animation: false })
+  if (user.role === 'L1') {
+    try {
+      l2s.value = (await miniApi.agentsL2({ pageSize: 100, auditStatus: 'approved' })).data.list || []
+    } catch {
+      l2s.value = []
+    }
+  }
   showRequests.begin()
   const badgeParams = { from: from.value, to: to.value, l2Id: deepL2.value || undefined }
   const badgeRequest = requestInCycle(
@@ -265,6 +282,11 @@ function dimensionLabel(r: any) {
 .type-chip, .reason-chip, .dimension-badge { display: inline-flex; align-items: center; padding: 5rpx 12rpx; border-radius: 9rpx; font-size: 19rpx; font-weight: 600; }
 .type-chip { color: $rl-primary; background: $rl-primary-soft; }
 .reason-chip { color: $rl-text-2; background: $rl-bg; }
-.dimension-badge { margin-top: 10rpx; color: $rl-danger; background: $rl-danger-bg; }
+.dimension-badge {
+  @include rl-fit-tag;
+  margin-top: 10rpx;
+  color: $rl-danger;
+  background: $rl-danger-bg;
+}
 </style>
 

@@ -21,6 +21,7 @@
           <el-option v-for="a in l2s" :key="a.id" :label="a.name" :value="a.id" />
         </el-select>
       </el-form-item>
+      <el-form-item><span class="muted-label">下单时间</span></el-form-item>
       <el-form-item>
         <el-date-picker v-model="query.from" type="date" value-format="YYYY-MM-DD" placeholder="开始" style="width:140px" />
       </el-form-item>
@@ -65,7 +66,7 @@
       <el-table-column prop="createdAt" label="时间" width="170" :formatter="dateTimeFormatter" />
     </DataTableShell>
 
-    <el-dialog v-model="detailOpen" :title="detail?.no ? `销售单 ${detail.no}` : '销售单'" width="720px">
+    <el-dialog v-model="detailOpen" class="issue-wide-dialog" :title="detail?.no ? `销售单 ${detail.no}` : '销售单'" width="860px">
       <template v-if="detail">
         <div class="detail-grid">
           <div><span>渠道</span><span class="tag" :class="detail.channel==='direct'?'tag-orange':'tag-blue'">{{ detail.channel==='direct'?'直售':'分销' }}</span></div>
@@ -130,9 +131,9 @@ const kpiItems = computed(() => [
   { key: 'hist', label: '历史销量', value: summary.histQty ?? 0, icon: 'DataAnalysis', tone: 'blue' as const },
 ])
 const tabItems = computed(() => [
-  { id: 'distribute', title: '分销', badge: summary.distN || 0 },
-  { id: 'direct', title: '直售', badge: summary.dirN || 0 },
-  { id: 'all', title: '全部', badge: (summary.distN || 0) + (summary.dirN || 0) },
+  { id: 'distribute', title: '分销' },
+  { id: 'direct', title: '直售' },
+  { id: 'all', title: '全部' },
 ])
 const productRows = computed(() => {
   const s = detail.value
@@ -221,4 +222,5 @@ onMounted(async () => {
 <style scoped>
 h4 { margin: 14px 0 8px; font-size: 13px; }
 code { font-size: 12px; }
+.muted-label { font-size: 12px; color: var(--text-3); }
 </style>

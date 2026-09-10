@@ -11,7 +11,10 @@
       <el-form-item class="search-actions">
         <!-- DataTableShell 会把打印/全屏 teleport 到这里，与查询同属一个操作区 -->
         <div class="search-table-tools" data-table-tools-host />
-        <el-button type="primary" @click="searchNow">查询</el-button>
+        <el-button type="primary" @click="searchNow">
+          <el-icon class="search-ico"><Search /></el-icon>
+          查询
+        </el-button>
         <el-button @click="resetNow">重置</el-button>
         <slot name="extra" />
       </el-form-item>
@@ -31,7 +34,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useSlots, watch } from 'vue'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, Search } from '@element-plus/icons-vue'
 
 const props = withDefaults(
   defineProps<{ model: Record<string, unknown>; collapsible?: boolean }>(),
@@ -96,8 +99,21 @@ onBeforeUnmount(clearTimer)
   flex: 0 0 auto;
   overflow: hidden;
   position: relative;
-  padding: 16px 20px !important;
+  padding: 16px 20px 16px 24px !important;
   margin-bottom: 0;
+}
+.search-panel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--primary);
+  border-radius: 0 3px 3px 0;
+}
+.search-ico {
+  margin-right: 4px;
 }
 
 .search-form {

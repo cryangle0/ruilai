@@ -26,25 +26,28 @@
     </SearchPanel>
     <p class="muted">{{ scopeHint }} · 所选日期为统计区间；历史为累计；在库为当前快照</p>
     <div class="dash">
-      <KpiCards :items="kpiItems" variant="bar" @select="onKpi" />
+      <div class="stats-kpi-stack">
+        <KpiCards :items="kpiPrimary" :columns="kpiPrimary.length" variant="bar" @select="onKpi" />
+        <KpiCards :items="kpiSecondary" :columns="kpiSecondary.length" variant="bar" @select="onKpi" />
+      </div>
       <div class="dash-grid">
-        <section class="dash-panel dash-panel--wide">
+        <section class="dash-panel dash-panel--two-thirds">
           <header class="dash-panel-hd"><h3>采购 / 销售趋势</h3><span>按日</span></header>
           <LineChart :labels="st.dayLabels || []" :purchase="st.trendPurchase || []" :sales="st.trendSales || []" />
         </section>
-        <section class="dash-panel">
-          <header class="dash-panel-hd"><h3>{{ query.l2Id ? '本级销售构成' : '销售渠道' }}</h3><span>区间</span></header>
+        <section class="dash-panel dash-panel--one-third">
+          <header class="dash-panel-hd"><h3>销售渠道</h3><span>区间</span></header>
           <Donut :items="st.channelPie || []" />
         </section>
-        <section class="dash-panel">
+        <section class="dash-panel" :class="query.l2Id ? 'dash-panel--full' : 'dash-panel--half'">
           <header class="dash-panel-hd">
-            <h3>{{ query.l2Id ? 'SN 状态' : (query.l1Id ? '下属二级销量' : '一级代理销量榜') }}</h3>
+            <h3>{{ query.l2Id ? 'SN 状态' : (query.l1Id ? '下属二级排行' : '一级代理排行') }}</h3>
             <span>区间</span>
           </header>
           <Donut v-if="query.l2Id" :items="st.snStatus || []" />
           <HBars v-else :items="(query.l1Id ? st.l2Rank : st.l1Rank) || []" />
         </section>
-        <section v-if="!query.l2Id" class="dash-panel">
+        <section v-if="!query.l2Id" class="dash-panel dash-panel--half">
           <header class="dash-panel-hd"><h3>SN 状态分布</h3><span>当前范围</span></header>
           <Donut :items="st.snStatus || []" />
         </section>
@@ -84,13 +87,17 @@ function scope() {
 function go(to: RouteLocationRaw) {
   router.push(to)
 }
-const kpiItems = computed(() => [
+const kpiPrimary = computed(() => [
   { key: 'purchaseRange', label: '区间采购数', value: st.purchaseRange ?? 0, icon: 'Document', tone: 'blue' as const, clickable: true },
   { key: 'purchaseAll', label: '累计采购数', value: st.purchaseAll ?? 0, icon: 'Collection', tone: 'purple' as const, clickable: true },
-  { key: 'directRange', label: '区间直售数', value: st.directRange ?? 0, icon: 'TrendCharts', tone: 'orange' as const, clickable: true },
-  { key: 'directAll', label: '累计直售数', value: st.directAll ?? 0, icon: 'DataAnalysis', tone: 'amber' as const, clickable: true },
-  { key: 'distRange', label: '区间分销数', value: st.distRange ?? 0, icon: 'Share', tone: 'green' as const, clickable: true },
-  { key: 'distAll', label: '累计分销数', value: st.distAll ?? 0, icon: 'Connection', tone: 'green' as const, clickable: true },
+  ...(!query.l2Id ? [
+    { key: 'directRange', label: '区间直售数', value: st.directRange ?? 0, icon: 'TrendCharts', tone: 'orange' as const, clickable: true },
+    { key: 'directAll', label: '累计直售数', value: st.directAll ?? 0, icon: 'DataAnalysis', tone: 'amber' as const, clickable: true },
+  ] : []),
+  { key: 'distRange', label: query.l2Id ? '区间到货数' : '区间分销数', value: st.distRange ?? 0, icon: 'Share', tone: 'green' as const, clickable: true },
+  { key: 'distAll', label: query.l2Id ? '累计到货数' : '累计分销数', value: st.distAll ?? 0, icon: 'Connection', tone: 'green' as const, clickable: true },
+])
+const kpiSecondary = computed(() => [
   { key: 'actRange', label: '区间激活数', value: st.actRange ?? 0, icon: 'CircleCheck', tone: 'orange' as const, clickable: true },
   { key: 'actAll', label: '累计激活数', value: st.actAll ?? 0, icon: 'Finished', tone: 'amber' as const, clickable: true },
   { key: 'returnRange', label: '区间退货数', value: st.returnRange ?? 0, icon: 'RefreshLeft', tone: 'red' as const, clickable: true },
@@ -235,4 +242,17 @@ onMounted(async () => {
 </script>
 <style scoped>
 .muted { margin: 0 0 10px; font-size: 12px; color: var(--text-3); }
+.stats-kpi-stack { display: grid; gap: 14px; }
+.dash-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 18px; }
+.dash-panel--two-thirds { grid-column: span 4; }
+.dash-panel--one-third { grid-column: span 2; }
+.dash-panel--half { grid-column: span 3; }
+.dash-panel--full { grid-column: 1 / -1; }
+@media (max-width: 1100px) {
+  .dash-grid { grid-template-columns: 1fr 1fr; }
+  .dash-panel--two-thirds, .dash-panel--one-third, .dash-panel--half, .dash-panel--full { grid-column: span 1; }
+}
+@media (max-width: 760px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
 </style>

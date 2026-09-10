@@ -99,6 +99,9 @@ public class AgentService {
         String loginUser = body.getLoginUsername();
         String loginPwd = body.getLoginPassword();
         body.setExtra(persistDemoPassword(body.getExtra(), loginPwd));
+        if (StringUtils.hasText(loginUser)) {
+            assertUsernameAvailable(loginUser, body.getId(), "L1", null);
+        }
         if (!StringUtils.hasText(body.getId())) {
             body.setId(Ids.next("L1"));
             if (!StringUtils.hasText(body.getCode())) {
@@ -182,6 +185,8 @@ public class AgentService {
         n.setOccurredAt(ChinaTime.now());
         n.setTitle(title);
         n.setBody(body);
+        n.setRoute(title.contains("待分配") ? "/agent/pending"
+                : (title.contains("一级") ? "/agent/l1" : "/agent/l2"));
         n.setToRole("原厂");
         n.setReadFlag(0);
         notificationMapper.insert(n);
@@ -217,7 +222,10 @@ public class AgentService {
         q.orderByDesc(AgentL2::getCreatedAt);
         PageResult<AgentL2> result = PageResult.of(l2Mapper.selectPage(Page.of(page, size), q));
         if (result.list() != null) {
-            result.list().forEach(this::enrichL2);
+            result.list().forEach(row -> {
+                enrichL2(row);
+                fillLogin(row);
+            });
         }
         return result;
     }
@@ -254,6 +262,9 @@ public class AgentService {
         syncL2AlarmFlags(body);
         if (protocolUrlOf(body) != null) {
             body.setProtocolOk(1);
+        }
+        if (StringUtils.hasText(loginUser)) {
+            assertUsernameAvailable(loginUser, body.getId(), "L2", null);
         }
         if (!StringUtils.hasText(body.getId())) {
             body.setId(Ids.next("L2"));
@@ -415,6 +426,10 @@ public class AgentService {
         }
         if (!StringUtils.hasText(body.getId())) {
             body.setId(Ids.next("SUB"));
+        }
+        assertUsernameAvailable(body.getUsername(), body.getL1Id(), "SUB", body.getId());
+        SubAccount existing = subMapper.selectById(body.getId());
+        if (existing == null) {
             subMapper.insert(body);
         } else {
             subMapper.updateById(body);
@@ -631,6 +646,32 @@ public class AgentService {
         return v;
     }
 
+    void assertUsernameAvailable(String username, String ownerAgentId, String role, String subId) {
+        if (!StringUtils.hasText(username)) {
+            return;
+        }
+        SysAccount exist = accountMapper.selectOne(Wrappers.<SysAccount>lambdaQuery()
+                .eq(SysAccount::getUsername, username.trim()).last("limit 1"));
+        if ("SUB".equals(role)) {
+            var subQ = Wrappers.<SubAccount>lambdaQuery().eq(SubAccount::getUsername, username.trim());
+            if (StringUtils.hasText(subId)) {
+                subQ.ne(SubAccount::getId, subId);
+            }
+            SubAccount otherSub = subMapper.selectOne(subQ.last("limit 1"));
+            if (otherSub != null) {
+                throw new BizException(ErrCode.BAD_REQUEST, "用户名已存在");
+            }
+        }
+        if (exist == null) {
+            return;
+        }
+        boolean sameAgent = StringUtils.hasText(ownerAgentId) && ownerAgentId.equals(exist.getAgentId());
+        boolean sameRole = role.equals(exist.getRoleCode());
+        if (!(sameAgent && sameRole)) {
+            throw new BizException(ErrCode.BAD_REQUEST, "用户名已存在");
+        }
+    }
+
     private void upsertLogin(String username, String rawPassword, String name, String role, String agentId) {
         SysAccount exist = accountMapper.selectOne(Wrappers.<SysAccount>lambdaQuery()
                 .eq(SysAccount::getUsername, username).last("limit 1"));
@@ -645,6 +686,9 @@ public class AgentService {
             a.setStatus("启用");
             accountMapper.insert(a);
             return;
+        }
+        if (!agentId.equals(exist.getAgentId()) || !role.equals(exist.getRoleCode())) {
+            throw new BizException(ErrCode.BAD_REQUEST, "用户名已存在");
         }
         exist.setName(name);
         exist.setAgentId(agentId);

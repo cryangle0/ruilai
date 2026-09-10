@@ -52,4 +52,14 @@ public class SnCode {
 
     @TableField(exist = false)
     private String productName;
+    @TableField(exist = false)
+    private String l1Name;
+    @TableField(exist = false)
+    private String l2Name;
+    @TableField(exist = false)
+    private Boolean openException;
+    @TableField(exist = false)
+    private String openExceptionType;
+    @TableField(exist = false)
+    private String openExceptionDetail;
 }

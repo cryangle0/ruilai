@@ -34,55 +34,48 @@
         <SegBar v-model="panel" :items="homeSegs" />
         <view v-if="panel === 'dash'">
           <view class="filter-panel">
-            <DateBar embedded v-model:from="from" v-model:to="to" />
-            <FormPicker
-              v-if="user.role === 'L1'"
-              v-model="childL2"
-              :options="l2Options"
-              placeholder="全部下属二级"
-            />
+            <DateBar embedded v-model:from="from" v-model:to="to">
+              <FormPicker
+                v-if="user.role === 'L1'"
+                :compact="true"
+                v-model="childL2"
+                :options="l2Options"
+                placeholder="全部下属二级"
+              />
+            </DateBar>
           </view>
           <text class="hint">{{ scopeHint }} · {{ rangeHint }}</text>
           <view class="pair">
-            <view class="kpi glass" @click="goKpi('purchase')">
-              <text class="k">{{ user.role === 'L2' || childL2 ? '到货采购' : '采购统计' }}<text v-if="home.pendingPo" class="badge">{{ home.pendingPo }}</text></text>
+            <view class="kpi glass" data-kpi="purchase" @click="goKpi('purchase')">
+              <view v-if="home.pendingPo" class="badge">{{ home.pendingPo }}</view>
+              <text class="k">{{ user.role === 'L2' || childL2 ? '到货采购' : '采购统计' }}</text>
               <view class="duo"><text>区间 <text class="n">{{ home.purchaseRange || 0 }}</text></text><text>累计 <text class="n">{{ home.purchaseAll || 0 }}</text></text></view>
             </view>
-            <view class="kpi glass" @click="goKpi('sales')">
+            <view class="kpi glass" data-kpi="sales" @click="goKpi('sales')">
               <text class="k">{{ user.role === 'L2' || childL2 ? 'C端销售' : '销售统计' }}</text>
               <view class="duo"><text>区间 <text class="n">{{ home.salesRange || 0 }}</text></text><text>累计 <text class="n">{{ home.salesAll || 0 }}</text></text></view>
             </view>
           </view>
           <view v-if="user.role === 'L1' && !childL2" class="pair">
-            <view class="kpi glass" @click="goKpi('dist')">
+            <view class="kpi glass" data-kpi="dist" @click="goKpi('dist')">
               <text class="k">区间分销</text>
               <view class="duo"><text>区间 <text class="n">{{ home.distRange || 0 }}</text></text><text>累计 <text class="n">{{ home.distAll || 0 }}</text></text></view>
             </view>
-            <view class="kpi glass" @click="goKpi('direct')">
+            <view class="kpi glass" data-kpi="direct" @click="goKpi('direct')">
               <text class="k">区间直售</text>
               <view class="duo"><text>区间 <text class="n">{{ home.directRange || 0 }}</text></text><text>累计 <text class="n">{{ home.directAll || 0 }}</text></text></view>
             </view>
           </view>
           <view class="pair">
-            <view class="kpi glass" @click="goKpi('return')">
-              <text class="k">退货<text v-if="home.pendingReturn" class="badge">{{ home.pendingReturn }}</text></text>
+            <view class="kpi glass" data-kpi="return" @click="goKpi('return')">
+              <view v-if="home.pendingReturn" class="badge">{{ home.pendingReturn }}</view>
+              <text class="k">退货</text>
               <view class="duo"><text>区间 <text class="n">{{ home.returnRange || 0 }}</text></text><text>累计 <text class="n">{{ home.returnAll || 0 }}</text></text></view>
             </view>
-            <view class="kpi glass" @click="goKpi('activation')">
+            <view class="kpi glass" data-kpi="activation" @click="goKpi('activation')">
               <text class="k">激活绑定</text>
               <view class="duo"><text>区间 <text class="n">{{ home.actRange || 0 }}</text></text><text>累计 <text class="n">{{ home.actAll || 0 }}</text></text></view>
             </view>
-          </view>
-          <view class="chart glass">
-            <SegBar variant="seg" v-model="chartTab" :items="chartSegs" />
-            <view class="chart-hd">
-              <text class="t">{{ chartTitle }}</text>
-              <text class="s">{{ chartTab === 'trend' ? trendGrain : chartTab === 'stock' ? '当前 SN' : '按区间' }}</text>
-            </view>
-            <TrendLine v-if="chartTab === 'trend'" :labels="dayLabels" :purchase="trendPurchase" :sales="trendSales" />
-            <ChannelMix v-else-if="chartTab === 'channel' || chartTab === 'stock'" :items="chartTab === 'stock' ? stockMix : channelPie" />
-            <HBarList v-else-if="chartTab === 'product'" :items="productBars" />
-            <HBarList v-else :items="l2Rank" />
           </view>
           <view class="stock glass" @click="goTab('/pages/stock/index')">
             <view>
@@ -91,10 +84,27 @@
             </view>
             <view class="stock-value"><text class="n big">{{ home.stockQty || 0 }}</text><text v-if="home.scanningSo" class="todo">进行中 {{ home.scanningSo }}</text></view>
           </view>
+          <view class="chart glass">
+            <SegBar variant="seg" v-model="chartTab" :items="chartSegs" />
+            <swiper class="chart-swiper" :current="chartIndex" @change="onChartSwipe">
+              <swiper-item v-for="item in chartSegs" :key="item.id">
+                <view class="chart-slide">
+                  <view class="chart-hd">
+                    <text class="t">{{ chartTitleOf(item.id) }}</text>
+                    <text class="s">{{ item.id === 'trend' ? trendGrain : item.id === 'stock' ? '当前 SN' : '按区间' }}</text>
+                  </view>
+                  <TrendLine v-if="item.id === 'trend'" :labels="dayLabels" :purchase="trendPurchase" :sales="trendSales" />
+                  <ChannelMix v-else-if="item.id === 'channel' || item.id === 'stock'" :items="item.id === 'stock' ? stockMix : channelPie" />
+                  <HBarList v-else-if="item.id === 'product'" :items="productBars" />
+                  <HBarList v-else :items="l2Rank" />
+                </view>
+              </swiper-item>
+            </swiper>
+          </view>
         </view>
         <view v-else>
           <view v-if="user.role === 'L2'" class="alert glass">出库不适用（二级不发货给下级）· 本页仅做直销激活</view>
-          <text v-else class="mini-page-desc">出货扫码 / 直销激活 / 查询扫码</text>
+          <text v-else class="mini-page-desc">出货扫码 / 直销激活</text>
           <view class="modes">
             <view v-if="user.role !== 'L2'" class="mode glass" :class="{ on: scanMode==='ship' }" @click="scanMode='ship'">
               <Icon name="scan" :size="40" />
@@ -104,22 +114,21 @@
               <Icon name="customers" :size="40" />
               <text class="mt">直销激活</text><text class="ms">先扫码再填客户</text>
             </view>
-            <view class="mode glass" :class="{ on: scanMode==='query' }" @click="scanMode='query'">
-              <Icon name="scan" :size="40" />
-              <text class="mt">查询扫码</text><text class="ms">查 SN 流转</text>
-            </view>
           </view>
           <button v-if="scanMode==='direct'" class="btn-p" @click="goBind">扫描 SN 激活</button>
-          <button v-else-if="scanMode==='query'" class="btn-p" @click="goQuery">扫描查询 SN</button>
           <template v-else>
             <button class="btn-p" @click="goCreateSo">创建销售单</button>
             <view v-if="!openSos.length"><Empty text="暂无进行中出货单" /></view>
             <ListCard
               v-for="s in openSos" :key="s.id"
               :title="s.no"
-              :sub="`已扫 ${(s.scanned||[]).length}/${s.planTotal || 0}`"
+              :sub="salesScanSummary(s).product"
               @click="goScanSo(s.id)"
             >
+              <view class="scan-progress-row">
+                <text>扫描进度</text>
+                <text>{{ salesScanSummary(s).progress }}</text>
+              </view>
               <view class="progress"><view class="progress-in" :style="{ width: progress(s) }" /></view>
             </ListCard>
           </template>
@@ -148,8 +157,7 @@ import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { greetingText, ROLE_LABEL, ruilaiShareMessage } from '@/utils/constants'
 import { datePresetRange } from '@/utils/dates'
-import { createNavigationIntent } from '@/utils/miniPages'
-import { scanOrPrompt } from '@/utils/scan'
+import { createNavigationIntent, salesScanSummary } from '@/utils/miniPages'
 
 const month = datePresetRange('month')
 const user = useUserStore()
@@ -203,7 +211,7 @@ const stockMix = computed(() => home.value.snStatus || [])
 const chartTab = ref('trend')
 const homeSegs = computed(() => [
   { id: 'dash', title: '数据' },
-  { id: 'scan', title: '扫码', badge: Number(home.value.scanningSo) || undefined },
+  { id: 'scan', title: '扫码' },
 ])
 const chartSegs = computed(() => [
   { id: 'trend', title: '趋势' },
@@ -213,13 +221,19 @@ const chartSegs = computed(() => [
     ? { id: 'l2', title: '二级排行' }
     : (stockMix.value.length ? { id: 'stock', title: '库存构成' } : null),
 ].filter(Boolean) as Array<{ id: string; title: string }>)
-const chartTitle = computed(() => ({
+const chartIndex = computed(() => Math.max(0, chartSegs.value.findIndex((item) => item.id === chartTab.value)))
+function chartTitleOf(tab: string) {
+  return ({
   trend: '采购 / 销售趋势',
   channel: channelTitle.value,
   product: '商品销量',
   l2: '下属二级销量',
   stock: '库存构成',
-}[chartTab.value] || '经营图表'))
+  } as Record<string, string>)[tab] || '经营图表'
+}
+function onChartSwipe(e: any) {
+  chartTab.value = chartSegs.value[Number(e.detail.current)]?.id || 'trend'
+}
 
 async function loadDash() {
   loading.value = true
@@ -260,7 +274,6 @@ async function loadAll() {
 
 onShow(async () => {
   if (!user.ensureLogin()) return
-  uni.hideTabBar({ animation: false })
   if (user.role === 'L2') scanMode.value = 'direct'
   await loadAll()
 })
@@ -294,16 +307,11 @@ function goScanSo(id?: string) {
 }
 function goBind() { uni.navigateTo({ url: '/pkg/bind/index' }) }
 function goCreateSo() { uni.navigateTo({ url: '/pkg/purchase/index?kind=sales' }) }
-async function goQuery() {
-  try {
-    const sn = await scanOrPrompt()
-    uni.navigateTo({ url: `/pkg/detail/index?kind=sn&id=${encodeURIComponent(sn)}` })
-  } catch { /* */ }
-}
 </script>
 <style scoped lang="scss">
 @import '@/styles/theme.scss';
-.pad { padding: 0 32rpx; }
+.rl-page { min-height: 0; padding-bottom: calc(128rpx + env(safe-area-inset-bottom)); }
+.pad { padding: 0 32rpx 8rpx; }
 .hero {
   position: relative;
   overflow: hidden;
@@ -337,6 +345,7 @@ async function goQuery() {
 .who { position: relative; z-index: 1; display: block; font-size: 44rpx; font-weight: 700; margin-top: 10rpx; color: #fff; }
 .role { position: relative; z-index: 1; display: inline-flex; margin: 10rpx 0 4rpx; padding: 4rpx 12rpx; border-radius: 999rpx; background: rgba(255,255,255,.16); color: #fff; font-size: 20rpx; }
 .sub { position: relative; z-index: 1; font-size: 22rpx; color: rgba(255,255,255,.78); }
+.filter-panel { margin-top: 18rpx; padding: 20rpx 22rpx; border: 2rpx solid $rl-border; border-radius: 20rpx; background: #fff; box-shadow: $rl-shadow-card; }
 .hint { display: block; font-size: 20rpx; color: #8A97AD; margin: 16rpx 4rpx 0; }
 .box {
   display: flex;
@@ -352,7 +361,17 @@ async function goQuery() {
   color: #1A2B4A;
 }
 .pair { display: flex; gap: 16rpx; margin-top: 16rpx; }
-.kpi { flex: 1; padding: 18rpx 22rpx; border-radius: 20rpx; }
+.kpi { flex: 1; padding: 18rpx 22rpx; border-radius: 20rpx; position: relative; overflow: visible; }
+.badge {
+  @include rl-corner-badge;
+  top: 8rpx;
+  right: 8rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  border-radius: 14rpx;
+  font-size: 16rpx;
+  line-height: 28rpx;
+}
 .k {
   display: flex;
   align-items: center;
@@ -370,13 +389,14 @@ async function goQuery() {
   background: #1A68D7;
   flex-shrink: 0;
 }
-.badge { min-width: 30rpx; height: 30rpx; padding: 0 8rpx; border-radius: 15rpx; background: $rl-danger; color: #fff; font-size: 18rpx; line-height: 30rpx; text-align: center; }
 .duo { display: flex; margin-top: 14rpx; font-size: 18rpx; color: #9AA6BA; }
 .duo > text { flex: 1; }
 .duo > text + text { border-left: 2rpx solid #EEF1F6; padding-left: 22rpx; }
 .n { display: block; font-size: 38rpx; font-weight: 700; color: #1A2B4A; margin-top: 4rpx; line-height: 1; }
 .chart { padding: 18rpx 22rpx 20rpx; border-radius: 20rpx; margin-top: 16rpx; }
-.chart-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12rpx; margin-bottom: 4rpx; }
+.chart-swiper { height: 430rpx; margin-top: 16rpx; }
+.chart-slide { height: 100%; overflow: hidden; }
+.chart-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12rpx; margin-bottom: 16rpx; }
 .chart-hd .t { font-size: 25rpx; font-weight: 700; color: #1A2B4A; }
 .chart-hd .s { font-size: 19rpx; color: #8A97AD; }
 .stock { display: flex; justify-content: space-between; align-items: center; padding: 22rpx 26rpx; border-radius: 20rpx; margin-top: 16rpx; }
@@ -387,13 +407,14 @@ async function goQuery() {
 .stock-value { display: flex; flex-direction: column; align-items: flex-end; gap: 6rpx; }
 .todo { color: $rl-warning; font-size: 20rpx; font-weight: 600; }
 .alert { padding: 20rpx; border-radius: 16rpx; margin: 16rpx 0; color: $rl-text-2; font-size: 24rpx; }
-.modes { display: flex; gap: 12rpx; margin: 16rpx 0; }
-.mode { flex: 1; padding: 24rpx; border-radius: 20rpx; display: flex; flex-direction: column; gap: 8rpx; }
+.modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24rpx; margin: 24rpx 0 30rpx; }
+.mode { min-width: 0; padding: 30rpx 28rpx; border-radius: 20rpx; display: flex; flex-direction: column; gap: 10rpx; }
 .mode.on { border-color: $rl-primary; background: #F5F9FF; }
 .mt { display: block; font-weight: 700; }
 .ms { font-size: 22rpx; color: $rl-text-3; }
-.btn-p { margin: 12rpx 0 20rpx; background: $rl-primary; color: #fff; border-radius: 16rpx; font-weight: 700; }
+.btn-p { margin: 20rpx 0 28rpx; background: $rl-primary; color: #fff; border-radius: 16rpx; font-weight: 700; }
 .btn-p::after { border: 0; }
+.scan-progress-row { display: flex; justify-content: space-between; margin-top: 16rpx; color: $rl-text-2; font-size: 21rpx; }
 .progress { height: 12rpx; margin-top: 16rpx; overflow: hidden; border-radius: 6rpx; background: #EEF2F8; }
 .progress-in { height: 100%; border-radius: 6rpx; background: $rl-gradient-primary; }
 </style>

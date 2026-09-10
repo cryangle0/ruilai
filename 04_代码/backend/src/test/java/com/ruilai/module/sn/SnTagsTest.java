@@ -10,7 +10,11 @@ class SnTagsTest {
     void acceptsKnownTags() {
         assertThat(SnTags.sanitize("已冻结")).isEqualTo("已冻结");
         assertThat(SnTags.sanitize("已退货")).isEqualTo("已退货");
-        assertThat(SnTags.sanitize("个性化")).isEqualTo("个性化");
+        assertThat(SnTags.sanitize("再入库")).isEqualTo("再入库");
+        assertThat(SnTags.sanitize("个性化")).isEmpty();
+        assertThat(SnTags.sanitize("修理过")).isEmpty();
+        assertThat(SnTags.visible(java.util.List.of("已退货", "个性化", "修理过", "再入库")))
+                .containsExactly("已退货", "再入库");
     }
 
     @Test

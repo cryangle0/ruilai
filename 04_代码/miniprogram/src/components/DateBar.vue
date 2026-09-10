@@ -24,21 +24,33 @@
       <view v-if="showSn" class="sn">
         <input
           class="sn-inp"
-          :value="sn"
+          :value="snDraft"
           :placeholder="snPlaceholder"
           :disabled="disabled"
           placeholder-class="ph"
           confirm-type="search"
-          @input="$emit('update:sn', ($event.detail as any).value)"
+          :adjust-position="true"
+          :hold-keyboard="true"
+          :always-embed="true"
+          :cursor-spacing="24"
+          data-echo="1"
+          @input="onSnInput($event)"
         />
         <view class="sn-ico" />
       </view>
+      <view v-if="$slots.default" class="extra"><slot /></view>
     </view>
   </view>
 </template>
+<script lang="ts">
+export default {
+  options: { virtualHost: true },
+}
+</script>
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { DATE_PRESETS, datePresetRange, todayDate } from '@/utils/dates'
+import { inputEventValue } from '@/utils/inputValue'
 
 const props = withDefaults(defineProps<{
   from?: string
@@ -57,6 +69,15 @@ const emit = defineEmits<{
 
 const today = todayDate()
 const preset = ref('all')
+const snDraft = ref(String(props.sn || ''))
+watch(() => props.sn, (value) => {
+  const next = String(value || '')
+  if (next !== snDraft.value) snDraft.value = next
+})
+function onSnInput(event: unknown) {
+  snDraft.value = inputEventValue(event, snDraft.value)
+  emit('update:sn', snDraft.value)
+}
 
 function syncPreset() {
   const from = props.from || ''
@@ -190,6 +211,7 @@ function onTo(e: any) {
   padding: 0;
   margin: 0;
   border: none;
+  color: $rl-text;
   font-size: 22rpx;
   line-height: 46rpx;
   background: transparent;
@@ -209,5 +231,19 @@ function onTo(e: any) {
   flex: none;
   align-self: center;
   line-height: $rl-filter-control-h;
+}
+.extra {
+  flex: 0 1 240rpx;
+  min-width: 168rpx;
+  max-width: 46%;
+  display: flex;
+  align-items: stretch;
+}
+.extra :deep(.form-picker) {
+  width: 100%;
+  min-width: 0;
+}
+.extra :deep(.form-picker__box) {
+  height: $rl-filter-control-h;
 }
 </style>

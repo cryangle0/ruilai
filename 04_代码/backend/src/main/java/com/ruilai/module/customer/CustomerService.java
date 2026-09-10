@@ -1,6 +1,7 @@
 package com.ruilai.module.customer;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.ruilai.common.geo.AddressMatch;
 import com.ruilai.common.security.AuthUtil;
 import com.ruilai.common.security.LoginUser;
 import com.ruilai.common.util.Ids;
@@ -47,15 +48,7 @@ public class CustomerService {
             throw new BizException(ErrCode.FORBIDDEN, "无权查看该客户");
         }
         enrich(List.of(row), null, null);
-        List<Customer> duplicates = !StringUtils.hasText(row.getPhone()) && !StringUtils.hasText(row.getAddr())
-                ? List.of()
-                : mapper.selectList(Wrappers.<Customer>lambdaQuery()
-                        .and(w -> w.eq(StringUtils.hasText(row.getPhone()), Customer::getPhone, row.getPhone())
-                                .or().eq(StringUtils.hasText(row.getAddr()), Customer::getAddr, row.getAddr())));
-        row.setDupPhone(StringUtils.hasText(row.getPhone()) && duplicates.stream()
-                .anyMatch(c -> !row.getId().equals(c.getId()) && row.getPhone().equals(c.getPhone())));
-        row.setDupAddr(StringUtils.hasText(row.getAddr()) && duplicates.stream()
-                .anyMatch(c -> !row.getId().equals(c.getId()) && row.getAddr().equals(c.getAddr())));
+        applyDuplicateMarks(List.of(row), mapper.selectList(null));
         return row;
     }
 
@@ -102,22 +95,25 @@ public class CustomerService {
         } else {
             all = new ArrayList<>(all);
         }
-        Map<String, Long> phoneCnt = new HashMap<>();
-        Map<String, Long> addrCnt = new HashMap<>();
-        for (Customer c : mapper.selectList(null)) {
-            if (StringUtils.hasText(c.getPhone())) phoneCnt.merge(c.getPhone(), 1L, Long::sum);
-            if (StringUtils.hasText(c.getAddr())) addrCnt.merge(c.getAddr(), 1L, Long::sum);
+        List<Customer> universe = mapper.selectList(null);
+        if (universe == null) {
+            universe = List.of();
         }
         enrich(all, from, to);
-        for (Customer c : all) {
-            c.setDupPhone(StringUtils.hasText(c.getPhone()) && phoneCnt.getOrDefault(c.getPhone(), 0L) > 1);
-            c.setDupAddr(StringUtils.hasText(c.getAddr()) && addrCnt.getOrDefault(c.getAddr(), 0L) > 1);
-        }
-        if ("1".equals(mark)) {
+        applyDuplicateMarks(all, universe);
+        if ("phone".equals(mark)) {
+            all.removeIf(c -> !Boolean.TRUE.equals(c.getDupPhone()));
+        } else if ("addr".equals(mark)) {
+            all.removeIf(c -> !Boolean.TRUE.equals(c.getDupAddr()));
+        } else if ("1".equals(mark)) {
+            // 兼容旧链接中的“仅重复”筛选值。
             all.removeIf(c -> !Boolean.TRUE.equals(c.getDupPhone()) && !Boolean.TRUE.equals(c.getDupAddr()));
         }
-        int rangeSum = all.stream().mapToInt(c -> c.getRangeQty() == null ? 0 : c.getRangeQty()).sum();
         int histSum = all.stream().mapToInt(c -> c.getHistQty() == null ? 0 : c.getHistQty()).sum();
+        if (StringUtils.hasText(from) || StringUtils.hasText(to)) {
+            all.removeIf(c -> c.getRangeQty() == null || c.getRangeQty() <= 0);
+        }
+        int rangeSum = all.stream().mapToInt(c -> c.getRangeQty() == null ? 0 : c.getRangeQty()).sum();
         long total = all.size();
         long p = Math.max(1, page);
         long s = Math.max(1, size);
@@ -126,6 +122,28 @@ public class CustomerService {
                 ? List.of()
                 : new ArrayList<>(all.subList(fromIdx, Math.min(all.size(), fromIdx + (int) s)));
         return new CustomerPageResult(total, slice, rangeSum, histSum);
+    }
+
+    static void applyDuplicateMarks(List<Customer> rows, List<Customer> universe) {
+        List<Customer> all = universe == null ? List.of() : universe;
+        for (Customer row : rows) {
+            String phone = row.getPhone();
+            String addr = row.getAddr();
+            boolean dupPhone = StringUtils.hasText(phone) && all.stream()
+                    .anyMatch(other -> !row.getId().equals(other.getId()) && phone.equals(other.getPhone()));
+            boolean dupAddr = StringUtils.hasText(addr) && all.stream()
+                    .anyMatch(other -> !row.getId().equals(other.getId())
+                            && sameL1(row, other)
+                            && AddressMatch.likelySame(addr, other.getAddr()));
+            row.setDupPhone(dupPhone);
+            row.setDupAddr(dupAddr);
+        }
+    }
+
+    private static boolean sameL1(Customer a, Customer b) {
+        String left = a.getL1Id() == null ? "" : a.getL1Id();
+        String right = b.getL1Id() == null ? "" : b.getL1Id();
+        return left.equals(right);
     }
 
     private void enrich(List<Customer> list, String from, String to) {
@@ -167,8 +185,7 @@ public class CustomerService {
                         item.put("belt", row.getBelt());
                         item.put("status", row.getStatus());
                         products.add(pname + "/" + row.getSizeCode() + (StringUtils.hasText(row.getBelt()) ? "+" + row.getBelt() : ""));
-                        LocalDateTime sold = row.getSoldAt() != null ? row.getSoldAt() : row.getBindAt();
-                        if (inRange(sold != null ? sold : c.getUpdatedAt(), from, to)) {
+                        if (inRange(saleTime(row, c), from, to)) {
                             range++;
                         }
                     } else {
@@ -176,7 +193,9 @@ public class CustomerService {
                         item.put("size", "—");
                         item.put("belt", "");
                         item.put("status", "");
-                        range++;
+                        if (inRange(c.getCreatedAt(), from, to)) {
+                            range++;
+                        }
                     }
                     snRows.add(item);
                 }
@@ -186,6 +205,16 @@ public class CustomerService {
             c.setHistQty(hist);
             c.setRangeQty(range);
         }
+    }
+
+    private static LocalDateTime saleTime(SnCode row, Customer c) {
+        if (row.getSoldAt() != null) {
+            return row.getSoldAt();
+        }
+        if (row.getBindAt() != null) {
+            return row.getBindAt();
+        }
+        return c.getCreatedAt();
     }
 
     private static boolean inRange(LocalDateTime t, String from, String to) {

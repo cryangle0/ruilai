@@ -11,14 +11,62 @@
           <text class="lab">角色</text>
           <text class="val">{{ roleLabel }}</text>
         </view>
-        <FieldRow v-model="name" label="显示名称" placeholder="名称" />
-        <FieldRow v-model="phone" label="手机号" placeholder="11 位手机号" type="number" :maxlength="11" />
-        <FieldRow v-model="password" label="新密码（不改请留空）" password placeholder="至少 4 位" />
-        <button class="save" :loading="saving" :disabled="saving" @click="save">保存</button>
+        <view class="field">
+          <text class="lab">显示名称</text>
+          <input
+            class="inp"
+            :value="name"
+            placeholder="名称"
+            placeholder-class="ph"
+            confirm-type="done"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="name = eventValue($event, name)"
+          />
+        </view>
+        <view class="field">
+          <text class="lab">手机号</text>
+          <input
+            class="inp"
+            :value="phone"
+            type="number"
+            :maxlength="11"
+            placeholder="11 位手机号"
+            placeholder-class="ph"
+            confirm-type="done"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="phone = eventValue($event, phone)"
+          />
+        </view>
+        <view class="field">
+          <text class="lab">新密码（不改请留空）</text>
+          <input
+            class="inp"
+            :value="password"
+            password
+            placeholder="至少 4 位"
+            placeholder-class="ph"
+            confirm-type="done"
+            :adjust-position="true"
+            :hold-keyboard="true"
+            :always-embed="true"
+            :cursor-spacing="32"
+            data-echo="1"
+            @input="password = eventValue($event, password)"
+          />
+        </view>
+        <view class="save" :class="{ busy: saving }" @click="save">{{ saving ? '保存中' : '保存' }}</view>
       </view>
     </view>
     <view class="logout-bar">
-      <button class="out" @click="user.logout()">退出登录</button>
+      <view class="out" @click="user.logout()">退出登录</view>
     </view>
   </view>
 </template>
@@ -26,9 +74,9 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
-import FieldRow from '@/components/FieldRow.vue'
 import { useUserStore } from '@/store/user'
 import { ROLE_LABEL } from '@/utils/constants'
+import { inputEventValue } from '@/utils/inputValue'
 
 const user = useUserStore()
 const name = ref('')
@@ -36,6 +84,7 @@ const phone = ref('')
 const password = ref('')
 const saving = ref(false)
 const roleLabel = computed(() => ROLE_LABEL[user.role] || user.role)
+function eventValue(e: unknown, fallback = '') { return inputEventValue(e, fallback) }
 
 onShow(async () => {
   if (!user.ensureLogin()) return
@@ -46,6 +95,7 @@ onShow(async () => {
 })
 
 async function save() {
+  if (saving.value) return
   const n = name.value.trim()
   if (!n) { uni.showToast({ title: '请填写显示名称', icon: 'none' }); return }
   const p = phone.value.trim()
@@ -79,14 +129,29 @@ async function save() {
 }
 .lab { font-size: 22rpx; color: #9AA4B2; }
 .val { font-size: 30rpx; color: #1B2430; }
+.field { padding: 18rpx 0; border-bottom: 1rpx solid rgba(60, 60, 67, 0.12); }
+.inp {
+  display: block;
+  width: 100%;
+  height: 56rpx;
+  margin-top: 8rpx;
+  color: #1B2430;
+  font-size: 30rpx;
+  line-height: 56rpx;
+  background: transparent;
+}
+.ph { color: #9AA4B2; }
 .save {
   margin-top: 32rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
   background: #1A68D7;
   color: #fff;
   border-radius: 16rpx;
   font-weight: 700;
 }
-.save::after { border: 0; }
+.save.busy { opacity: .65; }
 .logout-bar {
   position: fixed;
   left: 28rpx;
@@ -96,10 +161,12 @@ async function save() {
 }
 .out {
   width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
   background: #FCEBEB;
   color: #DE4B4B;
   border-radius: 16rpx;
   font-weight: 700;
 }
-.out::after { border: 0; }
 </style>

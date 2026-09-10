@@ -70,7 +70,7 @@
       </el-table-column>
       <el-table-column label="标签" min-width="120"><template #default="{row}">{{ (row.tags||[]).join('、') || '—' }}</template></el-table-column>
     </DataTableShell>
-    <DataTableShell v-else :data="logs" :loading="loading" :total="logs.length" :show-pagination="false">
+    <DataTableShell v-else :data="visibleLogs" :loading="loading" :total="visibleLogs.length" :show-pagination="false">
       <el-table-column prop="occurredAt" label="时间" width="170" :formatter="dateTimeFormatter" />
       <el-table-column label="代理" min-width="120"><template #default="{row}">{{ agentLabel(row) }}</template></el-table-column>
       <el-table-column label="商品" min-width="140"><template #default="{row}">{{ productNameOf(row.productId) }}/{{ row.sizeCode }}</template></el-table-column>
@@ -174,8 +174,7 @@ const rowLogs = computed(() => {
   if (!r) return []
   return stockRowLogsOf(r, detailLogs.value.length ? detailLogs.value : logs.value)
 })
-const totalQty = computed(() => list.value.reduce((n, r) => n + (Number(r.qty) || 0), 0))
-const rangeQty = computed(() => {
+const visibleLogs = computed(() => {
   const from = query.value.from
   const to = query.value.to
   return logs.value.filter((h) => {
@@ -183,8 +182,10 @@ const rangeQty = computed(() => {
     if (from && t < from) return false
     if (to && t > to) return false
     return true
-  }).reduce((n, h) => n + Math.abs(Number(h.delta) || 0), 0)
+  })
 })
+const totalQty = computed(() => list.value.reduce((n, r) => n + (Number(r.qty) || 0), 0))
+const rangeQty = computed(() => visibleLogs.value.reduce((n, h) => n + Math.abs(Number(h.delta) || 0), 0))
 const kpiItems = computed(() => {
   if (tab.value === 'flow') {
     return [
@@ -198,9 +199,9 @@ const kpiItems = computed(() => {
   ]
 })
 const tabItems = computed(() => [
-  { id: 'summary', title: '产品种类数', badge: list.value.length || null },
-  { id: 'sn', title: 'SN 列表', badge: snTotal.value || null },
-  { id: 'flow', title: '库存流水', badge: logs.value.length || null },
+  { id: 'summary', title: '产品种类数' },
+  { id: 'sn', title: 'SN 列表' },
+  { id: 'flow', title: '库存流水' },
 ])
 const agents = computed(() => {
   if (query.value.agentType === 'l2') return l2s.value.map((a) => ({ id: a.id, label: a.name }))
@@ -260,7 +261,10 @@ async function load() {
   try {
     const q = query.value
     list.value = await api.stock({ agentType: q.agentType, agentId: q.agentId, productId: q.productId, size: q.size, belt: q.belt })
-    logs.value = await api.stockLogs({ agentId: q.agentId })
+    logs.value = await api.stockLogs({
+      ...(q.agentId ? { agentId: q.agentId } : {}),
+      ...(q.agentType ? { agentType: q.agentType } : {}),
+    })
     const snStatus = q.agentType === 'l2' ? 'l2' : (q.agentType === 'l1' ? 'l1' : '')
     const snRes = await api.sns({
       page: snPage.value,

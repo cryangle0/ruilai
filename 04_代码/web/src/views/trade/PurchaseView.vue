@@ -3,7 +3,7 @@
     <div class="page-header is-compact">
       <div>
         <h2>采购单管理</h2>
-        <p>一站式审核：标准/非标/配件 + 段号起止 + 双人会签即完成（下单仅一级小程序）</p>
+        <p>一站式审核：标准/非标/单品 + 段号起止 + 双人会签即完成（下单仅一级小程序）</p>
       </div>
       <div class="page-actions">
         <BackToDetailButton />
@@ -30,12 +30,12 @@
       <el-table-column label="一级" min-width="120"><template #default="{row}">{{ nameOf(row.l1Id) }}</template></el-table-column>
       <el-table-column label="标准行" min-width="140"><template #default="{row}">{{ fmtLines(row.lines) }}</template></el-table-column>
       <el-table-column label="非标" min-width="140"><template #default="{row}">{{ fmtCustom(row.customLines) }}</template></el-table-column>
-      <el-table-column label="配件" min-width="160">
+      <el-table-column label="单品" min-width="160">
         <template #default="{row}">{{ fmtParts(row.parts) }}</template>
       </el-table-column>
       <el-table-column label="状态" width="90">
         <template #default="{row}">
-          <span class="tag" :class="row.status==='approved'?'tag-green':row.status==='pending'?'tag-orange':'tag-blue'">{{ poStatus(row.status) }}</span>
+          <span class="tag" :class="row.status==='approved'?'tag-green':row.status==='pending'?'tag-orange':row.status==='rejected'?'tag-red':'tag-blue'">{{ poStatus(row.status) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="会签" width="90">
@@ -44,7 +44,7 @@
       <el-table-column label="预警倍数异常" width="130"><template #default="{row}">{{ row.warnEx?.label || '—' }}</template></el-table-column>
       <el-table-column prop="createdAt" label="时间" width="170" :formatter="dateTimeFormatter" />
     </DataTableShell>
-    <PurchaseDrawer v-model="drawer" :row="current" :l1s="l1s" @saved="load" />
+    <PurchaseDrawer v-model="drawer" :row="current" :l1s="l1s" @saved="onSaved" />
   </div>
 </template>
 <script setup lang="ts">
@@ -58,8 +58,8 @@ import BackToDetailButton from '@/components/common/BackToDetailButton.vue'
 import KpiCards from '@/components/common/KpiCards.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
-import { applyListDatesWide, routeQ } from '@/utils/detailJump'
-import { dateTimeFormatter } from '@/utils/dates'
+import { applyListDates, routeQ } from '@/utils/detailJump'
+import { dateTimeFormatter, monthStart, todayDate } from '@/utils/dates'
 
 const route = useRoute()
 const { page, pageSize, total, loading, list, query, resetPage } = usePager()
@@ -68,17 +68,18 @@ const l1s = ref<any[]>([])
 const products = ref<any[]>([])
 const drawer = ref(false)
 const current = ref<any>(null)
-const counts = reactive({ all: 0, pending: 0, cosigning: 0, approved: 0 })
+const counts = reactive({ all: 0, pending: 0, cosigning: 0, approved: 0, rejected: 0 })
 const metrics = reactive({ rangeQty: 0, histQty: 0 })
 const kpiItems = computed(() => [
   { key: 'range', label: '筛选区间采购量', value: metrics.rangeQty, icon: 'Document', tone: 'blue' as const },
   { key: 'hist', label: '历史采购量', value: metrics.histQty, icon: 'Collection', tone: 'gray' as const },
 ])
 const tabItems = computed(() => [
-  { id: 'all', title: '全部', badge: counts.all },
-  { id: 'pending', title: '待处理', badge: counts.pending },
-  { id: 'cosigning', title: '会签中', badge: counts.cosigning },
-  { id: 'approved', title: '已完成', badge: counts.approved },
+  { id: 'all', title: '全部' },
+  { id: 'pending', title: '待处理', badge: counts.pending || undefined },
+  { id: 'cosigning', title: '会签中' },
+  { id: 'approved', title: '已完成' },
+  { id: 'rejected', title: '已驳回' },
 ])
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
 function prodName(id?: string) { return products.value.find((p) => p.id === id)?.name || id || '—' }
@@ -114,19 +115,30 @@ async function load() {
     })
     list.value = res.list
     total.value = res.total
-    const liveRes = await api.purchases({ page: 1, pageSize: 200 })
-    const live = (liveRes.list || []).filter((p: any) => p.status !== 'rejected')
-    counts.all = live.length
-    counts.pending = live.filter((p: any) => p.status === 'pending').length
-    counts.cosigning = live.filter((p: any) => p.status === 'cosigning').length
-    counts.approved = live.filter((p: any) => p.status === 'approved').length
-    const poScope = live.filter((p: any) => !query.l1Id || p.l1Id === query.l1Id)
+    const countScope = { l1Id: query.l1Id, from: query.from, to: query.to }
+    const [liveRes, pendingRes, cosigningRes, approvedRes, rejectedRes] = await Promise.all([
+      api.purchases({ page: 1, pageSize: 200, ...countScope }),
+      api.purchases({ page: 1, pageSize: 1, status: 'pending', ...countScope }),
+      api.purchases({ page: 1, pageSize: 1, status: 'cosigning', ...countScope }),
+      api.purchases({ page: 1, pageSize: 1, status: 'approved', ...countScope }),
+      api.purchases({ page: 1, pageSize: 1, status: 'rejected', ...countScope }),
+    ])
+    const live = liveRes.list || []
+    counts.all = liveRes.total
+    counts.pending = pendingRes.total
+    counts.cosigning = cosigningRes.total
+    counts.approved = approvedRes.total
+    counts.rejected = rejectedRes.total
+    window.dispatchEvent(new CustomEvent('ruilai:badges-changed', {
+      detail: { pendingPo: counts.pending + counts.cosigning },
+    }))
+    const poScope = live.filter((p: any) => p.status !== 'rejected' && (!query.l1Id || p.l1Id === query.l1Id))
     metrics.histQty = poScope.reduce((n: number, p: any) => n + poNeedQty(p), 0)
     metrics.rangeQty = poScope.filter((p: any) => inRange(p.createdAt, query.from, query.to)).reduce((n: number, p: any) => n + poNeedQty(p), 0)
   } finally { loading.value = false }
 }
 function reset() {
-  query.l1Id = ''; query.from = ''; query.to = ''; tab.value = 'all'
+  query.l1Id = ''; query.from = monthStart(); query.to = todayDate(); tab.value = 'all'
   resetPage(); load()
 }
 function fmtLines(lines?: any[]) {
@@ -145,6 +157,10 @@ async function openRow(row: any) {
   current.value = await api.purchase(row.id)
   drawer.value = true
 }
+async function onSaved() {
+  await load()
+  window.dispatchEvent(new Event('ruilai:badges-changed'))
+}
 
 watch([page, pageSize], load)
 watch(tab, () => { resetPage(); load() })
@@ -153,7 +169,7 @@ onMounted(async () => {
   products.value = (await api.products({ page: 1, pageSize: 200 })).list || []
   if (routeQ(route.query, 'l1Id')) query.l1Id = routeQ(route.query, 'l1Id')
   if (routeQ(route.query, 'tab')) tab.value = routeQ(route.query, 'tab')
-  applyListDatesWide(query, route.query)
+  applyListDates(query, route.query)
   load()
 })
 </script>

@@ -78,8 +78,8 @@ import KpiCards, { type KpiItem } from '@/components/common/KpiCards.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
 import { RETURN_REASONS } from '@/utils/format'
-import { applyListDatesWide, routeQ } from '@/utils/detailJump'
-import { dateTimeFormatter } from '@/utils/dates'
+import { applyListDates, routeQ } from '@/utils/detailJump'
+import { dateTimeFormatter, monthStart, todayDate } from '@/utils/dates'
 
 const KIND_ALIAS: Record<string, string> = {
   factory: 'l1_to_factory',
@@ -97,7 +97,7 @@ const kind = ref('l1_to_factory')
 const statusTab = ref('all')
 const l1s = ref<any[]>([])
 const l2s = ref<any[]>([])
-const kindCounts = reactive({ factory: 0, l2: 0, user: 0, all: 0 })
+const kindCounts = reactive({ factory: 0, factoryPending: 0, l2: 0, user: 0, all: 0 })
 const metrics = reactive({ rangeQty: 0, histQty: 0, pending: 0 })
 const detailOpen = ref(false)
 const detailId = ref('')
@@ -109,10 +109,10 @@ const l2Opts = computed(() => {
   return all.filter((a: any) => a.parentId === query.l1Id)
 })
 const kindItems = computed(() => [
-  { id: 'l1_to_factory', title: '一级代理退原厂', badge: kindCounts.factory },
-  { id: 'l2_to_l1', title: '二级代理退货', badge: kindCounts.l2 },
-  { id: 'user', title: '直售客户退货', badge: kindCounts.user },
-  { id: 'all', title: '全部类型', badge: kindCounts.all },
+  { id: 'l1_to_factory', title: '一级代理退原厂', badge: kindCounts.factoryPending || null },
+  { id: 'l2_to_l1', title: '二级代理退货' },
+  { id: 'user', title: '终端退货' },
+  { id: 'all', title: '全部类型' },
 ])
 const kpiItems = computed(() => {
   const items: KpiItem[] = [
@@ -129,12 +129,12 @@ function onKpi(item: KpiItem) {
 }
 const statusItems = computed(() => [
   { id: 'all', title: '全部' },
-  { id: 'pending', title: '待审核', badge: metrics.pending },
-  { id: 'approved', title: '已通过' },
-  { id: 'done', title: '已处理' },
+  { id: 'pending', title: '待审核' },
+  { id: 'done', title: '已通过' },
+  { id: 'rejected', title: '已驳回' },
 ])
 function rtStatus(s: string) {
-  return ({ pending: '待审核', approved: '已通过', done: '已处理', rejected: '已驳回' } as Record<string, string>)[s] || s
+  return ({ pending: '待审核', approved: '已通过', done: '已通过', rejected: '已驳回' } as Record<string, string>)[s] || s
 }
 
 function listQuery() {
@@ -160,20 +160,22 @@ async function load() {
     const res = await api.returns({ page: page.value, pageSize: pageSize.value, ...q })
     list.value = res.list
     total.value = res.total
-    const scoped = await api.returns({
-      page: 1,
-      pageSize: 200,
-      l1Id: q.l1Id,
-      l2Id: q.l2Id,
-      from: q.from,
-      to: q.to,
-      reasonType: q.reasonType,
-    })
+    const countScope = {
+      l1Id: q.l1Id, l2Id: q.l2Id, from: q.from, to: q.to, reasonType: q.reasonType,
+    }
+    const [scoped, factoryPending] = await Promise.all([
+      api.returns({ page: 1, pageSize: 200, ...countScope }),
+      api.returns({ page: 1, pageSize: 1, status: 'pending', type: 'l1_to_factory', ...countScope }),
+    ])
     const rows = scoped.list || []
     kindCounts.factory = rows.filter((r: any) => r.type === 'l1_to_factory').length
+    kindCounts.factoryPending = factoryPending.total
     kindCounts.l2 = rows.filter((r: any) => r.type === 'l2_to_l1').length
     kindCounts.user = rows.filter((r: any) => r.type === 'user').length
     kindCounts.all = rows.length
+    window.dispatchEvent(new CustomEvent('ruilai:badges-changed', {
+      detail: { pendingReturn: kindCounts.factoryPending },
+    }))
     const shown = kind.value === 'all' ? rows : rows.filter((r: any) => r.type === kind.value)
     metrics.rangeQty = shown.reduce((n: number, r: any) => n + ((r.sns || []).length), 0)
     metrics.pending = shown.filter((r: any) => r.status === 'pending').length
@@ -189,7 +191,7 @@ async function load() {
 }
 function reset() {
   query.l1Id = ''; query.l2Id = ''; query.reasonType = ''
-  query.from = ''; query.to = ''
+  query.from = monthStart(); query.to = todayDate()
   kind.value = 'l1_to_factory'; statusTab.value = 'all'
   resetPage(); load()
 }
@@ -220,7 +222,7 @@ onMounted(async () => {
   const statusQ = routeQ(route.query, 'status')
   if (statusQ && statusQ !== 'all') statusTab.value = statusQ
   if (!showAuditUi.value) statusTab.value = 'all'
-  applyListDatesWide(query, route.query)
+  applyListDates(query, route.query)
   ready.value = true
   load()
 })

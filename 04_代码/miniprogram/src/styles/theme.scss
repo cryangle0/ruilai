@@ -95,6 +95,48 @@ $rl-shadow-pop: 0 16rpx 64rpx rgba(22, 32, 64, .14);
 $rl-shadow-primary: 0 6rpx 16rpx rgba(26, 104, 215, .28);
 $rl-shadow-brand: 0 8rpx 18rpx rgba(26, 104, 215, .32);
 
+@mixin rl-tap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+@mixin rl-hug-x {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@mixin rl-fit-tag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
+}
+
+@mixin rl-corner-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  min-width: 20rpx;
+  height: 20rpx;
+  padding: 0 5rpx;
+  border-radius: 10rpx;
+  background: $rl-danger;
+  color: #fff;
+  font-size: 15rpx;
+  font-weight: 700;
+  line-height: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
 // 兼容现有命名
 $rl-primary-deep: $rl-primary-hover;
 $rl-mint: $rl-primary-border;

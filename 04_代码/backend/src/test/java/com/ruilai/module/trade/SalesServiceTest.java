@@ -5,6 +5,7 @@ import com.ruilai.common.web.BizException;
 import com.ruilai.module.agent.entity.AgentL2;
 import com.ruilai.module.agent.mapper.AgentL1Mapper;
 import com.ruilai.module.agent.mapper.AgentL2Mapper;
+import com.ruilai.module.customer.entity.Customer;
 import com.ruilai.module.customer.mapper.CustomerMapper;
 import com.ruilai.module.product.entity.Product;
 import com.ruilai.module.product.mapper.ProductMapper;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -126,6 +129,30 @@ class SalesServiceTest {
     }
 
     @Test
+    void createAcceptsNonstandardComboWhenSizeAndBeltAreMaintained() {
+        Product p1 = product("P1", "产品一", List.of("M", "L"), List.of("腰带M", "腰带S"));
+        p1.setExtra(Map.of(
+                "sizes", List.of("M", "L"),
+                "belts", List.of("腰带M", "腰带S"),
+                "stdCombos", List.of(Map.of("size", "M", "belt", "腰带M"))));
+        when(productMapper.selectById("P1")).thenReturn(p1);
+        when(l2Mapper.selectById("L2A")).thenReturn(approvedL2());
+        when(orderNos.next("SO")).thenReturn("SO-1");
+        when(soMapper.insert(any(SalesOrder.class))).thenAnswer(inv -> {
+            inserted = inv.getArgument(0);
+            return 1;
+        });
+        when(soMapper.selectById(any())).thenAnswer(inv -> inserted);
+
+        SalesOrder body = new SalesOrder();
+        body.setChannel("distribute");
+        body.setL2Id("L2A");
+        body.setLines(List.of(line("P1", "L", "腰带S", 1)));
+
+        assertThat(service.create(body).getPlanTotal()).isEqualTo(1);
+    }
+
+    @Test
     void distributeRequiresApprovedChildOfCurrentL1() {
         AgentL2 foreign = approvedL2();
         foreign.setParentId("L1B");
@@ -209,6 +236,27 @@ class SalesServiceTest {
     }
 
     @Test
+    void confirmDistributionRecordsL1OutflowAndL2Inflow() {
+        SalesOrder so = order("scanning", List.of("S1"));
+        when(soMapper.selectById("SO1")).thenReturn(so);
+        when(snMapper.selectById("S1")).thenReturn(sn("S1", "P1", "M", "腰带M"));
+
+        service.confirm("SO1");
+
+        ArgumentCaptor<com.ruilai.module.trade.entity.StockLog> logs =
+                ArgumentCaptor.forClass(com.ruilai.module.trade.entity.StockLog.class);
+        verify(stockLogMapper, times(2)).insert(logs.capture());
+        assertThat(logs.getAllValues()).extracting(
+                com.ruilai.module.trade.entity.StockLog::getAgentType,
+                com.ruilai.module.trade.entity.StockLog::getAgentId,
+                com.ruilai.module.trade.entity.StockLog::getDelta,
+                com.ruilai.module.trade.entity.StockLog::getReason)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("l1", "L1A", -1, "销售出库"),
+                        org.assertj.core.groups.Tuple.tuple("l2", "L2A", 1, "销售转入"));
+    }
+
+    @Test
     void singleProductAllowsEmptyBeltButPartIsRejected() {
         Product single = product("SINGLE", "单品", List.of("M"), List.of());
         single.setType("single");
@@ -240,6 +288,19 @@ class SalesServiceTest {
     void directBindRejectsNullCustomerAsBusinessError() {
         assertThatThrownBy(() -> service.directBind("S1", null, "", "", null, null, false))
                 .isInstanceOf(BizException.class).hasMessageContaining("客户");
+    }
+
+    @Test
+    void sameCustomerAcrossMultipleProductsIsNotDuplicateIdentity() {
+        Customer existing = new Customer();
+        existing.setPhone("13800000000");
+        existing.setName("张三");
+        existing.setAddr("杭州市文一路1号");
+
+        assertThat(SalesService.sameCustomerIdentity(existing, Map.of(
+                "phone", "13800000000", "name", "张三", "addr", "杭州市文一路1号"))).isTrue();
+        assertThat(SalesService.sameCustomerIdentity(existing, Map.of(
+                "phone", "13800000000", "name", "李四", "addr", "杭州市文一路2号"))).isFalse();
     }
 
     private void login(String role, String agentId) {

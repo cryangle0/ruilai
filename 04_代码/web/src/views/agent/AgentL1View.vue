@@ -26,7 +26,7 @@
         <el-table-column label="主授权区域" min-width="120"><template #default="{row}">{{ join(row.mainAreas) }}</template></el-table-column>
         <el-table-column label="可销售范围" min-width="120"><template #default="{row}">{{ join(row.saleAreas) }}</template></el-table-column>
         <el-table-column label="直销范围" min-width="120"><template #default="{row}">{{ join(row.directAreas) }}</template></el-table-column>
-        <el-table-column label="状态" min-width="188">
+        <el-table-column label="状态" width="150">
           <template #default="{row}">
             <div class="status-stack">
               <div class="status-tags">
@@ -204,7 +204,7 @@ const dlg = ref(false)
 const form = ref<any>({ ent: {} })
 const detail = ref<any>(null)
 const allL1s = ref<any[]>([])
-const directCityOpts = computed(() => citiesOf(form.value.saleAreas || form.value.mainAreas || []))
+const directCityOpts = computed(() => citiesOf(form.value.saleAreas || []))
 const occupiedMain = computed(() => {
   const set = new Set<string>()
   allL1s.value.filter((a) => a.id !== form.value.id && a.status === '启用').forEach((a) => {
@@ -257,6 +257,7 @@ function openEdit(row: any) {
 }
 async function save() {
   const saved: any = await api.saveL1(form.value)
+  ElMessage.success('已保存')
   dlg.value = false
   allL1s.value = (await api.agentsL1({ page: 1, pageSize: 200 })).list || []
   if (detail.value) detail.value = await api.agentL1(saved.id || detail.value.id)

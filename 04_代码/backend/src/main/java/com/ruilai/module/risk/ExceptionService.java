@@ -47,6 +47,9 @@ public class ExceptionService {
                                             String l1Id, String l2Id, String from, String to, String sn) {
         var q = Wrappers.<ExceptionTicket>lambdaQuery();
         applyCurrentScope(q);
+        if (StringUtils.hasText(sn)) {
+            q.eq(ExceptionTicket::getTarget, sn.trim());
+        }
         if (StringUtils.hasText(status)) {
             if ("open".equals(status)) {
                 q.in(ExceptionTicket::getStatus, "待处理", "会签中");
@@ -54,26 +57,33 @@ public class ExceptionService {
                 q.eq(ExceptionTicket::getStatus, status);
             }
         }
-        String dimKey = dim;
-        if ("activate-direct".equals(dimKey)) dimKey = "activate";
-        if ("activate-dist".equals(dimKey)) dimKey = "scan";
-        if (StringUtils.hasText(dimKey)) {
-            q.eq(ExceptionTicket::getDim, dimKey);
-        }
-        if (StringUtils.hasText(type)) {
-            q.like(ExceptionTicket::getType, type);
-        }
-        if (StringUtils.hasText(from)) {
-            try { q.ge(ExceptionTicket::getOccurredAt, LocalDate.parse(from.trim()).atStartOfDay()); } catch (Exception ignored) { }
-        }
-        if (StringUtils.hasText(to)) {
-            try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
-        }
-        if (StringUtils.hasText(sn)) {
-            q.eq(ExceptionTicket::getTarget, sn.trim());
+        if (!StringUtils.hasText(sn)) {
+            String dimKey = dim;
+            Boolean distributed = null;
+            if ("activate-direct".equals(dimKey)) {
+                dimKey = "activate";
+                distributed = false;
+            }
+            if ("activate-dist".equals(dimKey)) {
+                dimKey = "activate";
+                distributed = true;
+            }
+            if (StringUtils.hasText(dimKey)) {
+                q.eq(ExceptionTicket::getDim, dimKey);
+            }
+            if (StringUtils.hasText(type)) {
+                q.like(ExceptionTicket::getType, type);
+            }
+            if (StringUtils.hasText(from)) {
+                try { q.ge(ExceptionTicket::getOccurredAt, LocalDate.parse(from.trim()).atStartOfDay()); } catch (Exception ignored) { }
+            }
+            if (StringUtils.hasText(to)) {
+                try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
+            }
+            applyActivationChannel(q, distributed);
         }
         applyAgentScope(q, l1Id, l2Id);
-        q.orderByDesc(ExceptionTicket::getOccurredAt);
+        q.last("ORDER BY CASE WHEN status IN ('待处理','会签中') THEN 0 ELSE 1 END, occurred_at DESC");
         PageResult<ExceptionTicket> result = PageResult.of(mapper.selectPage(Page.of(page, size), q));
         if (result.list() != null) {
             result.list().forEach(this::enrich);
@@ -122,6 +132,13 @@ public class ExceptionService {
         if (StringUtils.hasText(to)) {
             try { q.le(ExceptionTicket::getOccurredAt, LocalDate.parse(to.trim()).atTime(23, 59, 59)); } catch (Exception ignored) { }
         }
+        applyActivationChannel(q, distributed);
+        return mapper.selectCount(q);
+    }
+
+    static void applyActivationChannel(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExceptionTicket> q,
+            Boolean distributed) {
         if (Boolean.TRUE.equals(distributed)) {
             q.and(w -> w.apply("NULLIF(JSON_UNQUOTE(JSON_EXTRACT(extra,'$.l2Id')), '') IS NOT NULL")
                     .or().apply("target IN (SELECT sn FROM sn_code WHERE deleted = 0 AND l2_id IS NOT NULL AND l2_id <> '')"));
@@ -129,7 +146,6 @@ public class ExceptionService {
             q.apply("(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(extra,'$.l2Id')), '') IS NULL "
                     + "AND target NOT IN (SELECT sn FROM sn_code WHERE deleted = 0 AND l2_id IS NOT NULL AND l2_id <> ''))");
         }
-        return mapper.selectCount(q);
     }
 
     private void applyCurrentScope(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExceptionTicket> q) {
@@ -161,6 +177,9 @@ public class ExceptionService {
     }
 
     private void enrich(ExceptionTicket e) {
+        if (StringUtils.hasText(e.getDetail()) && e.getDetail().startsWith("异常销售预警：")) {
+            e.setDetail(e.getDetail().substring("异常销售预警：".length()));
+        }
         Map<String, Object> extra = e.getExtra() == null ? new HashMap<>() : new HashMap<>(e.getExtra());
         String target = e.getTarget();
         SnCode sn = StringUtils.hasText(target) ? snMapper.selectById(target) : null;
@@ -171,6 +190,14 @@ public class ExceptionService {
         }
         Object l1Id = extra.get("l1Id");
         Object l2Id = extra.get("l2Id");
+        if ((l1Id == null || !StringUtils.hasText(String.valueOf(l1Id)))
+                && l2Id != null && StringUtils.hasText(String.valueOf(l2Id))) {
+            AgentL2 l2 = l2Mapper.selectById(String.valueOf(l2Id));
+            if (l2 != null && StringUtils.hasText(l2.getParentId())) {
+                l1Id = l2.getParentId();
+                extra.put("l1Id", l1Id);
+            }
+        }
         if (l1Id != null && StringUtils.hasText(String.valueOf(l1Id))) {
             AgentL1 a = l1Mapper.selectById(String.valueOf(l1Id));
             extra.put("l1Name", a == null ? l1Id : a.getName());
@@ -260,6 +287,10 @@ public class ExceptionService {
         extra.put("warnMode", m);
         if (StringUtils.hasText(l2Id)) {
             extra.put("l2Id", l2Id);
+            AgentL2 l2 = l2Mapper.selectById(l2Id);
+            if (l2 != null && StringUtils.hasText(l2.getParentId())) {
+                extra.put("l1Id", l2.getParentId());
+            }
         }
         if (StringUtils.hasText(target)) {
             SnCode sn = snMapper.selectById(target);
@@ -280,6 +311,7 @@ public class ExceptionService {
             n.setBody(target + " · " + detail);
             n.setToRole("一级+原厂");
             n.setReadFlag(0);
+            n.setRoute("/risk/exception?ticketId=" + t.getId());
             notificationMapper.insert(n);
             logService.record("触发异常 " + type + " · " + target, "exception", true);
         } else {

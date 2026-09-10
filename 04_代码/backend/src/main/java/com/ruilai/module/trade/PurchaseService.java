@@ -13,7 +13,12 @@ import com.ruilai.common.util.SnRanges;
 import com.ruilai.common.web.BizException;
 import com.ruilai.common.web.ErrCode;
 import com.ruilai.common.web.PageResult;
+import com.ruilai.module.agent.entity.AgentL1;
+import com.ruilai.module.agent.mapper.AgentL1Mapper;
+import com.ruilai.module.product.entity.Product;
+import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.sn.SnEventWriter;
+import com.ruilai.module.sn.SnFactoryDates;
 import com.ruilai.module.sn.SnWriter;
 import com.ruilai.module.sn.entity.SnCode;
 import com.ruilai.module.sn.mapper.SnCodeMapper;
@@ -47,6 +52,8 @@ public class PurchaseService {
     private final SnEventWriter eventWriter;
     private final SnWriter snWriter;
     private final StockWarnService stockWarnService;
+    private final AgentL1Mapper l1Mapper;
+    private final ProductMapper productMapper;
 
     public PageResult<PurchaseOrder> page(long page, long size, String status, String l1Id, String from, String to,
                                           String sn) {
@@ -79,12 +86,50 @@ public class PurchaseService {
         if (row == null) {
             throw new BizException(ErrCode.NOT_FOUND, "采购单不存在");
         }
+        LoginUser user = AuthUtil.current();
+        if (!user.isAdmin() && !java.util.Objects.equals(user.getAgentId(), row.getL1Id())) {
+            throw new BizException(ErrCode.FORBIDDEN, "无权查看该采购单");
+        }
         enrich(row);
         return row;
     }
 
     private void enrich(PurchaseOrder row) {
         row.setWarnEx(stockWarnService.warnMeta(row.getL1Id(), null));
+        if (StringUtils.hasText(row.getL1Id())) {
+            AgentL1 agent = l1Mapper.selectById(row.getL1Id());
+            row.setL1Name(agent == null ? row.getL1Id() : agent.getName());
+        }
+        nameProductLines(row.getLines());
+        nameProductLines(row.getCustomLines());
+        if (row.getParts() != null) {
+            for (Map<String, Object> part : row.getParts()) {
+                String id = str(part.get("partId"), str(part.get("productId"), ""));
+                if (!StringUtils.hasText(id)) {
+                    continue;
+                }
+                Product product = productMapper.selectById(id);
+                if (product != null) {
+                    part.put("productName", product.getName());
+                }
+            }
+        }
+    }
+
+    private void nameProductLines(List<Map<String, Object>> lines) {
+        if (lines == null) {
+            return;
+        }
+        for (Map<String, Object> line : lines) {
+            String id = str(line.get("productId"), "");
+            if (!StringUtils.hasText(id)) {
+                continue;
+            }
+            Product product = productMapper.selectById(id);
+            if (product != null) {
+                line.put("productName", product.getName());
+            }
+        }
     }
 
     public PurchaseOrder create(PurchaseOrder body) {
@@ -111,6 +156,11 @@ public class PurchaseService {
 
     @Transactional
     public PurchaseOrder cosign(String id, Map<String, Object> segments) {
+        return cosign(id, segments, null);
+    }
+
+    @Transactional
+    public PurchaseOrder cosign(String id, Map<String, Object> segments, List<Map<String, Object>> customLines) {
         AuthUtil.requireAdminPerm(RolePerms.ALL);
         PurchaseOrder po = get(id);
         if ("approved".equals(po.getStatus()) || "rejected".equals(po.getStatus())) {
@@ -125,18 +175,25 @@ public class PurchaseService {
         cosign.put(key + "At", ChinaTime.now().toString());
         cosign.put(key + "By", AuthUtil.current().getUsername());
         po.setCosign(cosign);
+        if (customLines != null) {
+            for (Map<String, Object> line : customLines) {
+                if (!StringUtils.hasText(str(line.get("productId"), ""))
+                        || !StringUtils.hasText(str(line.get("size"), ""))
+                        || !StringUtils.hasText(str(line.get("belt"), ""))
+                        || lineQty(List.of(line)) <= 0) {
+                    throw new BizException(ErrCode.BAD_REQUEST, "非标品须选择商品、弹力带、腰带并填写正数数量");
+                }
+            }
+            po.setCustomLines(customLines);
+        }
         if (segments != null && !segments.isEmpty()) {
             po.setSegments(segments);
-        }
-        if (!segmentsMatch(po)) {
-            int need = lineQty(po.getLines()) + lineQty(po.getCustomLines());
-            int got = segmentQty(po.getSegments());
-            throw new BizException(ErrCode.BAD_REQUEST, "段号数量须等于标准+非标总数（需求 " + need + "，已填 " + got + "）");
         }
         boolean both = Boolean.TRUE.equals(cosign.get("admin1")) && Boolean.TRUE.equals(cosign.get("admin2"));
         if (both) {
             int inbound = inbound(po);
-            if (inbound <= 0) {
+            int need = lineQty(po.getLines()) + lineQty(po.getCustomLines());
+            if (need > 0 && inbound <= 0) {
                 throw new BizException(ErrCode.BAD_REQUEST, "双人会签完成前请填写有效 SN 号段");
             }
             po.setStatus("approved");
@@ -152,7 +209,11 @@ public class PurchaseService {
     public void reject(String id, String reason) {
         AuthUtil.requireAdminPerm(RolePerms.ALL);
         PurchaseOrder po = get(id);
+        if ("approved".equals(po.getStatus()) || "rejected".equals(po.getStatus())) {
+            throw BizException.state("当前状态不可驳回");
+        }
         po.setStatus("rejected");
+        po.setRejectReason(StringUtils.hasText(reason) ? reason.trim() : null);
         poMapper.updateById(po);
         logService.record("驳回采购 " + po.getNo() + " " + (reason == null ? "" : reason), "op", true);
     }
@@ -211,7 +272,7 @@ public class PurchaseService {
             row.setStatus("l1");
             row.setL1Id(po.getL1Id());
             row.setFrozen(0);
-            row.setFactoryAt(ChinaTime.now());
+            row.setFactoryAt(SnFactoryDates.resolve(sn));
             eventWriter.append(row, "生成并审核入库", po.getNo() + " · 进入一级库存", "purchase");
             snMapper.insert(row);
             return;
@@ -232,7 +293,9 @@ public class PurchaseService {
         row.setL1Id(po.getL1Id());
         row.setL2Id(null);
         row.setStatus("l1");
-        row.setFactoryAt(ChinaTime.now());
+        if (row.getFactoryAt() == null) {
+            row.setFactoryAt(SnFactoryDates.resolve(sn));
+        }
         eventWriter.append(row, "采购审核入库", po.getNo() + " · 进入一级库存", "purchase");
         snWriter.update(row);
     }
@@ -300,36 +363,6 @@ public class PurchaseService {
             }
         }
         return n;
-    }
-
-    private int segmentQty(Map<String, Object> segments) {
-        if (segments == null) {
-            return 0;
-        }
-        int n = 0;
-        for (Object v : segments.values()) {
-            n += flattenRanges(v).size();
-        }
-        return n;
-    }
-
-    private boolean segmentsMatch(PurchaseOrder po) {
-        int need = lineQty(po.getLines()) + lineQty(po.getCustomLines());
-        int got = segmentQty(po.getSegments());
-        if (need == 0) {
-            boolean hasParts = false;
-            if (po.getParts() != null) {
-                for (Map<String, Object> p : po.getParts()) {
-                    Object q = p.get("qty");
-                    if (q instanceof Number num && num.intValue() > 0) {
-                        hasParts = true;
-                        break;
-                    }
-                }
-            }
-            return hasParts && got == 0;
-        }
-        return got == need;
     }
 
     private static final class LineHint {

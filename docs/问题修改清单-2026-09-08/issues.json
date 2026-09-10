@@ -11,8 +11,8 @@
       "platform": "管理端",
       "module": "工作台",
       "description": "1、去掉“查看全部待办”按钮\n2、调整待办事项卡片宽度，右边不要有空白",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：移除冗余入口并铺满待办卡片；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_6300_KaVbGTq6yc9wAbE9_1788774662?w=1920&h=953"
       ],
@@ -27,8 +27,8 @@
       "platform": "管理端",
       "module": "一级代理/二级代理/待分配",
       "description": "一级代理、二级代理、待分配详情里选择省市的范围需要改成完整的全国的，现在都只有一部分",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：全国城市完整展示，父级未授权城市禁选；未放宽业务范围约束",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_738666_nEc19pHmr0epRcOY_1788775064?w=1920&h=953"
       ],
@@ -43,8 +43,8 @@
       "platform": "管理端",
       "module": "一级代理/二级代理",
       "description": "状态列往右边移一点，列宽调小点",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：一级/二级状态列统一缩窄为150px；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_12241_1dMyDW_32VTb447-_1788775429?w=1920&h=953"
       ],
@@ -59,8 +59,8 @@
       "platform": "管理端",
       "module": "二级代理",
       "description": "二级代理编辑页面样式布局要改成和一级代理一样的",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：二级编辑对照一级改为1040px分区三列表单；Web构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_772301_yg_6ARdA3nZgeI4c_1788775234?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_110048_U46fr99Ny0mjZyFs_1788775242?w=1920&h=953"
@@ -77,8 +77,8 @@
       "platform": "管理端",
       "module": "二级审核",
       "description": "1、登录账号未显示\n2、去掉“合作协议”字段",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：审核详情移除合作协议，后端列表/详情填充登录账号；后端编译通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_566728_qlslz31ds9ocMUwd_1788775883?w=1920&h=953"
       ],
@@ -93,8 +93,8 @@
       "platform": "管理端",
       "module": "二级审核",
       "description": "弹窗改成横向的，且下面不要留这么多空白。",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：审核弹窗改900px横向且按内容自适应；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_173927_7sDKxf89aVVNDH_m_1788775567?w=1920&h=953"
       ],
@@ -109,8 +109,8 @@
       "platform": "管理端",
       "module": "二级审核/待分配/采购单管理",
       "description": "待审核、已通过、已驳回、全部必须要右上角的数字",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "复核补正：审核/采购页签显示数字含0，数字使用右上角上标样式；待分配页按原型仅有待分配池，无状态页签",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_341846_CYtuZemE4UX8n-U4_1788775937?w=1920&h=953"
       ],
@@ -125,8 +125,8 @@
       "platform": "管理端",
       "module": "二级审核/待分配/采购单管理",
       "description": "左侧菜单只有当有需要待办事项的时候才显示数字图标，待办已全部处理了则不需要显示",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：侧栏仅非零显示，处理动作后主动刷新待办角标；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_66688_jvvzfYYdKD2rUtwD_1788776101?w=1920&h=953"
       ],
@@ -141,8 +141,8 @@
       "platform": "管理端",
       "module": "待分配",
       "description": "详情的弹窗改成横向的，且下面不要留这么多空白。",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：待分配详情改820px横向自适应弹窗；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_759764_0_bJlVr1UmofdUpF_1788776000?w=1920&h=953"
       ],
@@ -157,8 +157,8 @@
       "platform": "管理端",
       "module": "待分配",
       "description": "重新绑定的弹窗改成横向的，且下面不要留这么多空白。",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次1：重新绑定改920px横向自适应弹窗；Web契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_993907_Nn90QVuNVmCWgtLC_1788776041?w=1920&h=953"
       ],
@@ -173,8 +173,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "去掉“系统生成SN”按钮",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：移除系统生成SN入口及弹窗，只保留Excel导入；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_507713_dP7W34l2LZD7f-1t_1788774005?w=1920&h=953"
       ],
@@ -189,8 +189,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "起止日期不要换行",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：三组起止日期不换行；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_271812_nyZaUmhoexdiBZel_1788774298?w=1920&h=953"
       ],
@@ -205,8 +205,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "列宽调整：SN、商品、尺寸列宽太大了，后面几列列宽太小，需要调整平衡一点",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：SN列表列宽重新平衡；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_874613_gPYNYr53AHMn_7-V_1788774413?w=1920&h=953"
       ],
@@ -221,8 +221,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "商品编码改成输入框，搜索的编码，现在下拉框选择的是商品名称",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：商品编码改文本输入并使用既有productId API；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_680120_A3J4G42ejeGHfwfG_1788833510?w=1920&h=953"
       ],
@@ -237,8 +237,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "1、标签筛选下拉框选项去掉“个性化”，增加再入库\n2、去掉标签“修理过”、“个性化”",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：去个性化/修理过，增加再入库，兼容隐藏旧标签；前后端测试通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_7383_nFbZH0utAussucKT_1788833606?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_298872_lUQTHgBZZofZFbit_1788833690?w=1920&h=953"
@@ -255,8 +255,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "出厂日期是怎么算的",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：按原型以RLyyyyMMdd计算出厂日期，非法编码回退首次入码库；单测通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_135740_0nEmhRJzxFlWgOU1_1788833742?w=1920&h=953"
       ],
@@ -271,8 +271,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "状态已销售，但没有流转事件",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：历史已销售无事件时补响应层生命周期，不在读取时改库；单测通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_884756_8jlirxNB1G2wRDt6_1788833790?w=1920&h=953"
       ],
@@ -287,8 +287,8 @@
       "platform": "管理端",
       "module": "SN码库",
       "description": "1、修改页面情况说明和处理说明内容和原型不一致，缺少填写日期\n2、所属二级（调库）不要换行",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：说明改为日期+内容并兼容旧数据，所属二级不换行；构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_409832_XNda_65npIjCoIEd_1788848635?w=3840&h=953"
       ],
@@ -303,8 +303,8 @@
       "platform": "管理端",
       "module": "商品库",
       "description": "套件和单品修改/新建页面“取消全选”按钮和填写新增的输入框都没对齐，且还分别和前后的框粘连了",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：商品尺码控件统一对齐行；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_539829_k1zZCEuxC0SusO8r_1788834653?w=1920&h=953"
       ],
@@ -319,8 +319,8 @@
       "platform": "管理端",
       "module": "商品库",
       "description": "单品下面大片空白去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次2：商品弹窗改内容高度，去除底部空白；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_37975__Uec9J3PcdkhevNr_1788834852?w=1920&h=953"
       ],
@@ -335,8 +335,8 @@
       "platform": "管理端",
       "module": "采购单管理/销售单管理/库存管理/返货管理/异常管理/销售客户",
       "description": "筛选和数据汇总区域样式和设计稿不统一",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：六个列表统一使用SearchPanel与KpiCards；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_604326_i-N3NPTtGi-ec34r_1788836630?w=3725&h=944"
       ],
@@ -351,8 +351,8 @@
       "platform": "管理端",
       "module": "采购单管理/返货管理/异常管理/销售客户",
       "description": "下单起止时间默认选中当前月份",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：采购/返货/异常/客户默认本月，显式历史跳转保留；构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_27524_NA3f1hQ2b2HKTFqA_1788836978?w=1920&h=953"
       ],
@@ -367,8 +367,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "配件改成单品",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：采购列表、详情和审核中的配件文案统一改为单品；构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_602667_hK92gSnURLbj_bv8_1788838692?w=1920&h=953"
       ],
@@ -383,8 +383,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "非标品始终显示SS+腰带SS，怎么选择其他规格",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：非标行从已维护商品规格选择并随会签持久化；前后端验证通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_10397_jxoCK2AsepCPl5-4_1788838890?w=1920&h=953"
       ],
@@ -399,8 +399,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "已填写号段显示为10，但是无法确认保存，提示已填0",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：前后端统一完整SN号段规则，纯数字段不再误判；测试通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_89342_zuLIVEisHjR6Lq8K_1788839175?w=1920&h=953"
       ],
@@ -415,8 +415,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "已完成后面增加已驳回的状态标签切换",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：采购补已驳回页签并使用各状态准确总数；构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_528123_urvzCJZYYaGVnHC7_1788839422?w=1920&h=953"
       ],
@@ -431,8 +431,8 @@
       "platform": "管理端",
       "module": "采购单管理",
       "description": "当状态是已驳回，增加一个字段：驳回原因（就是驳回时候弹窗填写的内容）",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：驳回原因持久化并在采购详情展示；后端测试通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_478149_pfVUrrWl-8aGhT4s_1788839462?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_362540_-fbfwjcVpwnIW3KO_1788839513?w=1920&h=953"
@@ -449,8 +449,8 @@
       "platform": "管理端",
       "module": "销售单管理",
       "description": "标签上的数字去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：销售页签移除数量角标；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_379215_zsPZs2qQyh5JUToY_1788845453?w=1920&h=953"
       ],
@@ -465,8 +465,8 @@
       "platform": "管理端",
       "module": "销售单管理",
       "description": "时间筛选前面加文字下单时间",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：销售时间筛选前增加下单时间标签；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_966872_AD5pLnU1DxcOLVKt_1788838733?w=1920&h=953"
       ],
@@ -481,8 +481,8 @@
       "platform": "管理端",
       "module": "销售单管理",
       "description": "详情下面大片空白去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次3：销售详情使用横向内容高度弹窗；契约与构建通过",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_246308_veetYjcjssQhIEEi_1788845632?w=1920&h=953"
       ],
@@ -497,8 +497,8 @@
       "platform": "管理端",
       "module": "库存管理",
       "description": "标签上的数字去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：库存页签移除数量角标",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_429760_QN015xd2-rgvErDp_1788845714?w=1920&h=953"
       ],
@@ -513,8 +513,8 @@
       "platform": "管理端",
       "module": "库存管理",
       "description": "库存流水没有记录",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：分销、终端销售与退货补齐双向库存流水",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_151815_AJcYg8rmBFjH43dp_1788845857?w=1920&h=953"
       ],
@@ -529,8 +529,8 @@
       "platform": "管理端",
       "module": "返货管理",
       "description": "只有当一级代理退原厂有需要审核的时候，一级代理退原厂这里才会有上标数字，其他的标签的上标数字都去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：仅一级退原厂待审核数显示角标",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_354948_V82pewutALTaxoYp_1788845891?w=1920&h=953"
       ],
@@ -545,8 +545,8 @@
       "platform": "管理端",
       "module": "返货管理",
       "description": "这2种描述是同一个类型，描述应该统一：终端退货",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：返货类型统一为终端退货",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_338397_y_AmgNRfSs8evdvy_1788846112?w=1920&h=953"
       ],
@@ -561,8 +561,8 @@
       "platform": "管理端",
       "module": "返货管理",
       "description": "1、文字修改：处理改成驳回，审核通过改成通过\n2、点击审核通过或者驳回之后，需要加二次确认的弹窗",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：通过/驳回文案及二次确认",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_638816_01F29oyxc2chdRIP_1788848019?w=1920&h=953"
       ],
@@ -577,8 +577,8 @@
       "platform": "管理端",
       "module": "返货管理",
       "description": "列表上的状态和标签切换的状态对不上，标签上已处理改成已驳回；列表上的已处理改成已通过",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：状态页签与列表统一为已通过/已驳回",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_599502_1-plJBjP1MqoPqcV_1788848130?w=1920&h=953"
       ],
@@ -593,8 +593,8 @@
       "platform": "管理端",
       "module": "返货管理/SN码库",
       "description": "RL202608010041 该SN商品已发生售后，但SN码库里没有状态流转；且驳回时候填写的处理说明未在SN码库中同步显示；\n在SN码库中编辑的情况说明在返货管理里也没有同步显示；",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "复核补正：新旧返货均回显SN流转和处理说明，SN情况说明同步显示在返货详情",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_555035_Zyh20LdyDnWUw6Uq_1788848398?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_438102_mnMQT8t0GmTZ20kS_1788848474?w=1920&h=953",
@@ -613,8 +613,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "这是什么意思 有什么功能",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：补充立即扫描用途和不改库存说明",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_146455_jvWLEK65QvtoMTNT_1788849376?w=1920&h=953"
       ],
@@ -629,8 +629,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "1、异常标准配置的超量比和周转倍数去掉\n2、下方大片空白去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：移除超量比/周转倍数并使用内容高度弹窗",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_31277_w4P6tHntxYsxUL8n_1788849314?w=1920&h=953"
       ],
@@ -645,8 +645,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "销售库存异常里的一级代理未显示",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次4：销售库存异常由二级归属补齐一级代理",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_885906_nKPN8lfBLkii8bkD_1788849266?w=1920&h=953"
       ],
@@ -661,8 +661,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "同一笔订单里两件商品不应该报重复异常",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：同一客户同一身份的多商品激活不再误报重复",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_430088_pG06-wCyo2uTG-oA_1788848931?w=1920&h=953",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_937437_fpVnWwfd26zF3Tgg_1788848921?w=1920&h=953"
@@ -679,8 +679,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "分销激活异常和直售激活异常的功能是一样的，区别在于直售激活异常是一级代理销售给C端用户时的激活异常，分销激活异常是指二级代理销售给C端用户时的激活异常。异常类型为：归属地异常、客户信息重复、IP异常",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：直售/分销按SN二级归属区分，共用三类激活异常",
       "images": [],
       "files": []
     },
@@ -691,8 +691,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "时间筛选前面加文字报警时间",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：时间筛选前增加报警时间",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_556432_CJxqpWRrUMmDCJ2p_1788838779?w=1920&h=953"
       ],
@@ -707,8 +707,8 @@
       "platform": "管理端",
       "module": "异常管理",
       "description": "弹窗提示下面大片空白去掉",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：异常详情沿用内容高度弹窗",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_220808_FXs18n6sCNNoPmYk_1788838630?w=1920&h=953"
       ],
@@ -723,8 +723,8 @@
       "platform": "管理端",
       "module": "销售客户",
       "description": "时间筛选未生效，只有第一条是9月的，其他都是8月的",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：客户列表按关联SN销售/激活日期过滤",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_111658_uhuixFcnbFikL-yB_1788849675?w=1920&h=953"
       ],
@@ -739,8 +739,8 @@
       "platform": "管理端",
       "module": "销售客户",
       "description": "1、筛选的标记下拉框应该是重复地址、重复手机号，去掉仅重复\n2、因为小程序上无法输入地址，暂时无法验证当手机号也重复时会怎么提示。需要系统自己验证下，正确效果是同时显示重复手机号和重复地址两个标签并列",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：重复手机号/重复地址独立筛选并可并列显示",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_693819_DnoIetHmXDRD9M2g_1788850323?w=1920&h=953"
       ],
@@ -755,8 +755,8 @@
       "platform": "管理端",
       "module": "数据统计",
       "description": "1、区间激活数换行放到累计激活数前面\n2、每个卡片宽度调整，平铺满",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：统计卡片分两行铺满，区间激活数在第二行首位",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_43853_3Asv2Uf9DFdEWB5I_1788851236?w=1920&h=953"
       ],
@@ -771,8 +771,8 @@
       "platform": "管理端",
       "module": "数据统计",
       "description": "二级代理应该不存在直售数，直售是指一级代理直接销售给C端用户",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：二级统计不再展示或计入一级直售数",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_570290_3REScbfAtivl8f7L_1788851533?w=1920&h=953"
       ],
@@ -787,8 +787,8 @@
       "platform": "管理端",
       "module": "数据统计",
       "description": "1、本级销售构成改成销售渠道\n2、缺少一级代理排行\n3、累计激活数这一排的卡片和下面的图表中间缺少间隔\n4、下面图表布局调整成和设计稿一样",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：销售渠道、一级代理排行、卡片间距及图表布局对齐",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_814026_QLzIEBknz4XYJj7t_1788851701?w=3770&h=953"
       ],
@@ -803,8 +803,8 @@
       "platform": "管理端",
       "module": "角色与权限",
       "description": "创建角色时选的这些是什么意思，没看懂",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次5：权限项增加中文功能说明并隐藏内部编码",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_174219_m7hXYmZP1fmtmgMi_1788851954?w=1920&h=953"
       ],
@@ -819,8 +819,8 @@
       "platform": "管理端",
       "module": "角色与权限",
       "description": "角色操作这里增加删除按钮，可以删除没有绑定过账号的角色",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：未绑定账号的角色可二次确认后删除",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_930818_VXBESLRh-FjsAX-9_1788852024?w=1920&h=953"
       ],
@@ -835,8 +835,8 @@
       "platform": "管理端",
       "module": "角色与权限",
       "description": "账号要可以修改密码",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：平台账号支持修改并加密保存新密码",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_14356_SoVbSxOIWXTw8AR5_1788852081?w=1920&h=953"
       ],
@@ -851,8 +851,8 @@
       "platform": "管理端",
       "module": "通知",
       "description": "点击之后跳转至列表页",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：通知已读后跳转对应业务列表",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_471770_xhAGwIrShKHYw7Kp_1788845321?w=1920&h=953"
       ],
@@ -867,8 +867,8 @@
       "platform": "小程序",
       "module": "数据",
       "description": "1、日期选择区域样式调整成设计稿那样\n2、当前在库数放到图表上方\n3、下面图表数据用左右切换的，移动端可以左右滑动交互效果",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：日期区卡片化、在库前置、图表支持左右滑动",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_394070_sOGtaYFcPAdoE6eb_1788852983?w=806&h=821"
       ],
@@ -883,8 +883,8 @@
       "platform": "小程序",
       "module": "数据",
       "description": "在手机上图表遮挡了菜单",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：首页增加底部安全间距避免图表遮挡菜单",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_228498_ARK1EDn-NOIGZYZN_1788858649?w=1280&h=2781"
       ],
@@ -899,8 +899,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "1、去掉查询扫码\n2、卡片调整到合适宽度\n3、按钮上下间隙调大一点\n4、下方待扫描的缺少商品名称、进度",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：移除查询扫码，调整卡片间距并补商品和进度",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_383161_8oLWkhdDqoAEncuc_1788853428?w=816&h=788"
       ],
@@ -915,8 +915,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "1、缺少输入sn码的框\n2、缺少下一步填写客户信息",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：扫码页增加SN输入及下一步客户信息",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_237783_Z8lFCX77kpaeMgM7_1788854927?w=772&h=672"
       ],
@@ -931,8 +931,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "应该可以一单扫码/输入多个SN码",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：同一客户可连续扫描/输入多个SN统一激活",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_922332_BfliRPIXMmmUOQSk_1788850536?w=414&h=780"
       ],
@@ -947,8 +947,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "输入不进去，填写没反应",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：手动输入改为页面内受控输入并提供明确加入按钮",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_51532_e58hoO0HnpHWRSiq_1788850619?w=414&h=780"
       ],
@@ -963,8 +963,8 @@
       "platform": "小程序",
       "module": "扫码",
       "description": "地址的样式改成  [省 ▼] [市 ▼] [区 ▼]    [____路] [____号/弄] [____室]\n，省市区是下拉框且联动的，路号室是输入框",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "批次6：省市区联动选择，路/号弄/室分栏输入",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_882538_fR8QWsMexMKkMvpU_1788850671?w=414&h=780"
       ],
@@ -979,8 +979,8 @@
       "platform": "小程序",
       "module": "业务-采购",
       "description": "1、标签上只显示待处理和会签中的数字，已完成和全部的不需要显示上标\n2、已完成后面增加标签已驳回\n3、列表上缺少号段",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "仅待处理/会签显示角标，补已驳回标签及可读号段。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_87812_qDRzs4FRKQq5iBgR_1788855332?w=414&h=780",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_194412_BvyX5TYl-Aa6BZZX_1788855415?w=414&h=780",
@@ -999,8 +999,8 @@
       "platform": "小程序",
       "module": "业务-采购",
       "description": "1、详情信息和原型不匹配\n2、号段不要有代码",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "采购详情按业务字段分组展示，号段改为文本而非 JSON。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_591396_M9GB9JcYsJd9C7sb_1788855535?w=1033&h=812",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_361794_SvxKLPFDTVia8tWt_1788856021?w=402&h=276"
@@ -1017,8 +1017,8 @@
       "platform": "小程序",
       "module": "业务-采购",
       "description": "创建采购单页面重新做",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "按商品维护规格重做标准、非标、随售单品购物车页面。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_814792_FLw83ZhLC7OLK4mk_1788855939?w=1490&h=845"
       ],
@@ -1033,8 +1033,8 @@
       "platform": "小程序",
       "module": "业务-销售",
       "description": "缺少号段",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "销售列表补充连续 SN 合并后的号段。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_772736_y94ufF9dAmfC2PBo_1788856401?w=917&h=754"
       ],
@@ -1049,8 +1049,8 @@
       "platform": "小程序",
       "module": "业务-销售",
       "description": "详情信息和原型不匹配",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "销售详情补齐渠道、进度、商品、号段、客户和时间。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_75673_nZCuV3gKFUfs_4np_1788856448?w=999&h=810"
       ],
@@ -1065,8 +1065,8 @@
       "platform": "小程序",
       "module": "业务-销售",
       "description": "创建销售单页面重新做",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "创建销售单支持多条商品规格明细并统一进入扫码。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_385431_mqWfg5ZCcdmE0_vP_1788856514?w=1045&h=862"
       ],
@@ -1081,8 +1081,8 @@
       "platform": "小程序",
       "module": "业务-C端订单",
       "description": "详情信息和原型不匹配",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "C端订单详情统一展示客户、商品、激活 SN 与状态。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_998688_5dHtVuDF077dO1ZX_1788856600?w=1009&h=749"
       ],
@@ -1097,8 +1097,8 @@
       "platform": "小程序",
       "module": "库存",
       "description": "去掉标签上的数字",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "库存三个标签已移除数字角标。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_782826_h52sgrMuKUoNsTX0_1788856694?w=414&h=780"
       ],
@@ -1113,8 +1113,8 @@
       "platform": "小程序",
       "module": "库存-在库SN",
       "description": "详情信息和原型不匹配\n流转样式和PC的流转样式保持统一",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "SN 详情补齐出厂及归属字段，流转改为 PC 同类纵向时间线。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_916478_J9Qs4CHaa_ncV7cP_1788856858?w=1062&h=824",
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_208801_Xj1Zh-7VQR6w53aG_1788857004?w=363&h=475"
@@ -1131,8 +1131,8 @@
       "platform": "小程序",
       "module": "库存-商品",
       "description": "当前开发的页面点击详情后直接跳转到在库SN列表页了，缺少详情页",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "新增库存商品详情，展示汇总、匹配 SN 和库存流水。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_679140_3MxpmKqaUBq3PwsH_1788857113?w=1481&h=834"
       ],
@@ -1147,8 +1147,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "1、详情信息和原型不匹配\n2、样式调整成设计稿那样",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "复核补正：退货详情按处理说明、情况说明、凭证、客户、商品和SN分区展示，并从关联SN补齐历史客户快照。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_935092_KQfw1fX-_ma4RO20_1788857293?w=1478&h=957"
       ],
@@ -1163,8 +1163,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "列表上标签没有加样式",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "退货类型、原因及状态均使用语义化标签样式。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_230965_3SUKgmvJbO9TNa-f_1788857381?w=1376&h=775"
       ],
@@ -1179,8 +1179,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "去掉标签上的数字，仅显示待处理的数字",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "退货类型及非待审核状态移除角标，仅待审核保留数字。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_930371_vigSSOUrWvSz5mhI_1788857423?w=414&h=887"
       ],
@@ -1195,8 +1195,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "输入不进去，填写没反应",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "SN输入改为原生多行受控输入，并实时解析显示。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_953342_Dp7Pq3l3vr4gwPII_1788847591?w=414&h=780"
       ],
@@ -1211,8 +1211,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "填写二级退一级/填写终端退货单/申请退原厂的SN都只能填一个，应该要可以填写多个或者扫描多个",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "三种退货均支持批量输入、连续扫码、去重和单项移除。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_91989_YZP5HXCGZqmcd9L2_1788857782?w=414&h=887"
       ],
@@ -1227,8 +1227,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "列表上的状态和标签切换的状态对不上，标签上已处理改成已驳回；列表上的已处理改成已通过",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "状态标签统一为待审核、已通过、已驳回，done列表状态显示已通过。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_294393_58sTrSfRK4QpTuN7_1788857977?w=414&h=887"
       ],
@@ -1243,8 +1243,8 @@
       "platform": "小程序",
       "module": "售后",
       "description": "去掉标签上的数字，仅显示待审核的数字",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "退原厂状态筛选仅待审核显示数字角标。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_956384_wBBrYloBfao-iUla_1788858033?w=414&h=887"
       ],
@@ -1259,8 +1259,8 @@
       "platform": "小程序",
       "module": "异常",
       "description": "缺少客户信息",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "异常详情展示客户姓名、电话和地址，并兼容重复手机号。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_809604_AvxKCQaj72fTDpz8_1788859113?w=1016&h=591"
       ],
@@ -1275,8 +1275,8 @@
       "platform": "小程序",
       "module": "异常",
       "description": "分销激活异常和直售激活异常的功能是一样的，区别在于直售激活异常是一级代理销售给C端用户时的激活异常，分销激活异常是指二级代理销售给C端用户时的激活异常。异常类型为：归属地异常、客户信息重复、IP异常",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "两类激活异常共用处理流程，按SN二级归属分流，类型限定为既有三类业务异常。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_342213_LZiYNu1eRsInrQ0A_1788859138?w=894&h=674"
       ],
@@ -1291,8 +1291,8 @@
       "platform": "小程序",
       "module": "异常",
       "description": "筛选项增加二级代理下拉框",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "一级账号异常筛选新增已审核二级代理下拉框。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_626898_mX-qCsemsd9FgRke_1788859215?w=414&h=887"
       ],
@@ -1307,8 +1307,8 @@
       "platform": "小程序",
       "module": "异常",
       "description": "PC有数据，但小程序上未显示",
-      "status": "待处理",
-      "note": "",
+      "status": "已验证",
+      "note": "修正分销激活维度映射为activate并按l2归属筛选，小程序与PC读取同一异常数据。",
       "images": [
         "https://wdcdn.qpic.cn/MTY4ODg1NjIwMzYyOTY5Mg_265575_52RiFiCggGlCSQBt_1788859307?w=1920&h=953"
       ],

@@ -1,5 +1,6 @@
 package com.ruilai.module.system;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruilai.common.security.AuthUtil;
@@ -38,6 +39,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api")
@@ -76,6 +78,26 @@ public class SystemController {
             logService.record("更新角色 " + body.getName(), "op", true);
         }
         return R.ok(roleMapper.selectById(body.getId()));
+    }
+
+    @PostMapping("/roles/{id}/delete")
+    public R<Void> deleteRole(@PathVariable String id) {
+        AuthUtil.requireAdminPerm(RolePerms.ALL);
+        SysRole role = roleMapper.selectById(id);
+        if (role == null) {
+            throw new BizException(ErrCode.NOT_FOUND, "角色不存在");
+        }
+        if (Set.of("R1", "R2", "R3", "R4").contains(id)) {
+            throw new BizException(ErrCode.BAD_REQUEST, "系统角色不可删除");
+        }
+        Long bound = accountMapper.selectCount(
+                Wrappers.<SysAccount>lambdaQuery().eq(SysAccount::getRoleId, id));
+        if (bound != null && bound > 0) {
+            throw new BizException(ErrCode.BAD_REQUEST, "该角色已绑定账号，不可删除");
+        }
+        roleMapper.deleteById(id);
+        logService.record("删除角色 " + role.getName(), "op", true);
+        return R.ok();
     }
 
     @GetMapping("/accounts")
@@ -158,6 +180,23 @@ public class SystemController {
         return R.ok();
     }
 
+    @PostMapping("/accounts/{id}/password")
+    public R<Void> changeAccountPassword(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        AuthUtil.requireAdminPerm(RolePerms.ALL);
+        SysAccount account = accountMapper.selectById(id);
+        if (account == null) {
+            throw new BizException(ErrCode.NOT_FOUND, "账号不存在");
+        }
+        String password = String.valueOf(body.getOrDefault("password", "")).trim();
+        if (password.length() < 6) {
+            throw new BizException(ErrCode.BAD_REQUEST, "新密码至少 6 位");
+        }
+        account.setPasswordHash(passwordEncoder.encode(password));
+        accountMapper.updateById(account);
+        logService.record("修改账号密码 " + account.getUsername(), "op", true);
+        return R.ok();
+    }
+
     @GetMapping("/logs")
     public R<PageResult<OpLog>> logs(@RequestParam(defaultValue = "1") long page,
                                      @RequestParam(defaultValue = "20") long pageSize,
@@ -184,14 +223,20 @@ public class SystemController {
 
     @GetMapping("/notifications")
     public R<List<Notification>> notifications() {
-        return R.ok(notificationMapper.selectList(Wrappers.<Notification>lambdaQuery()
+        return R.ok(notificationMapper.selectList(notificationScope()
                 .orderByDesc(Notification::getOccurredAt).last("limit 50")));
+    }
+
+    @GetMapping("/notifications/unread-count")
+    public R<Long> unreadNotificationCount() {
+        return R.ok(notificationMapper.selectCount(notificationScope()
+                .eq(Notification::getReadFlag, 0)));
     }
 
     @PostMapping("/notifications/{id}/read")
     public R<Void> read(@PathVariable String id) {
         Notification n = notificationMapper.selectById(id);
-        if (n != null) {
+        if (n != null && canReceiveNotification(n)) {
             n.setReadFlag(1);
             notificationMapper.updateById(n);
         }
@@ -200,12 +245,32 @@ public class SystemController {
 
     @PostMapping("/notifications/read-all")
     public R<Void> readAll() {
-        List<Notification> list = notificationMapper.selectList(Wrappers.<Notification>lambdaQuery().eq(Notification::getReadFlag, 0));
+        List<Notification> list = notificationMapper.selectList(notificationScope()
+                .eq(Notification::getReadFlag, 0));
         for (Notification n : list) {
             n.setReadFlag(1);
             notificationMapper.updateById(n);
         }
         return R.ok();
+    }
+
+    private LambdaQueryWrapper<Notification> notificationScope() {
+        String audience = notificationAudience();
+        return Wrappers.<Notification>lambdaQuery()
+                .and(w -> w.isNull(Notification::getToRole).or().like(Notification::getToRole, audience));
+    }
+
+    private boolean canReceiveNotification(Notification n) {
+        return n.getToRole() == null || n.getToRole().contains(notificationAudience());
+    }
+
+    private String notificationAudience() {
+        return switch (AuthUtil.current().getRoleCode()) {
+            case "ADMIN" -> "原厂";
+            case "L1", "SUB" -> "一级";
+            case "L2" -> "二级";
+            default -> "__NO_NOTIFICATION_AUDIENCE__";
+        };
     }
 
     @GetMapping("/settings/exception")

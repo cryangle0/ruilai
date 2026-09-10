@@ -9,7 +9,7 @@
       @click="$emit('update:modelValue', item.id)"
     >
       {{ item.title }}
-      <span v-if="item.badge != null && item.badge !== 0" class="menu-badge">{{ item.badge }}</span>
+      <span v-if="item.badge != null && (item.badge !== 0 || item.showZero)" class="menu-badge">{{ item.badge }}</span>
     </button>
   </div>
 </template>
@@ -18,7 +18,7 @@
 withDefaults(
   defineProps<{
     modelValue: string
-    items: { id: string; title: string; badge?: number | null }[]
+    items: { id: string; title: string; badge?: number | null; showZero?: boolean }[]
     size?: 'line' | 'pill'
   }>(),
   { size: 'line' },

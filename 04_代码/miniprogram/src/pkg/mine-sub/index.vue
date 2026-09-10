@@ -11,11 +11,20 @@
       </view>
     </view>
     <BottomDrawer v-model="creating" title="创建子账号">
-      <FieldRow v-model="form.username" label="登录账号" placeholder="如 hd_scan_03" />
-      <FieldRow v-model="form.name" label="姓名" placeholder="仓管姓名" />
-      <FieldRow v-model="form.password" label="初始密码" password placeholder="至少 4 位" />
+      <view class="field">
+        <text class="lab">登录账号</text>
+        <input class="inp" :value="form.username" placeholder="如 hd_scan_03" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.username = eventValue($event, form.username)" />
+      </view>
+      <view class="field">
+        <text class="lab">姓名</text>
+        <input class="inp" :value="form.name" placeholder="仓管姓名" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.name = eventValue($event, form.name)" />
+      </view>
+      <view class="field">
+        <text class="lab">初始密码</text>
+        <input class="inp" :value="form.password" password placeholder="至少 4 位" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.password = eventValue($event, form.password)" />
+      </view>
       <template #footer>
-        <button class="btn-p" @click="create">保存</button>
+        <view class="btn-p" @click="create">保存</view>
       </template>
     </BottomDrawer>
   </view>
@@ -24,16 +33,17 @@
 import { reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
-import FieldRow from '@/components/FieldRow.vue'
 import Empty from '@/components/Empty.vue'
 import BottomDrawer from '@/components/BottomDrawer.vue'
 import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
+import { inputEventValue } from '@/utils/inputValue'
 
 const user = useUserStore()
 const rows = ref<any[]>([])
 const creating = ref(false)
 const form = reactive({ username: '', name: '', password: '' })
+function eventValue(e: unknown, fallback = '') { return inputEventValue(e, fallback) }
 
 async function load() { rows.value = (await miniApi.subs()).data || [] }
 onShow(() => { if (user.ensureRole(['L1'])) load() })
@@ -63,6 +73,18 @@ async function toggle(s: any) {
 .row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; border-radius: 20rpx; margin-bottom: 12rpx; }
 .sm { font-size: 24rpx; background: rgba(26,104,215,.08); border-radius: 999rpx; }
 .sm::after { border: 0; }
-.btn-p { background: #1A68D7; color: #fff; border-radius: 999rpx; font-weight: 700; margin-bottom: 12rpx; }
-.btn-p::after { border: 0; }
+.btn-p { background: #1A68D7; color: #fff; border-radius: 999rpx; font-weight: 700; margin-bottom: 12rpx; height: 80rpx; line-height: 80rpx; text-align: center; }
+.field { padding: 18rpx 0; border-bottom: 1rpx solid rgba(60,60,67,.12); }
+.lab { display: block; color: #8e8e93; font-size: 22rpx; }
+.inp {
+  display: block;
+  width: 100%;
+  height: 56rpx;
+  margin-top: 8rpx;
+  color: #1A2B4A;
+  font-size: 30rpx;
+  line-height: 56rpx;
+  background: transparent;
+}
+.ph { color: #9AA4B2; }
 </style>

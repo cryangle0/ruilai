@@ -17,7 +17,7 @@
       <el-table-column label="状态" width="100"><template #default><span class="tag tag-orange">待分配</span></template></el-table-column>
     </DataTableShell>
 
-    <el-dialog v-model="viewDlg" :title="cur ? `待分配详情 · ${cur.name}` : '待分配详情'" width="480px">
+    <el-dialog v-model="viewDlg" class="issue-wide-dialog" :title="cur ? `待分配详情 · ${cur.name}` : '待分配详情'" width="820px">
       <div v-if="cur" class="detail-grid" style="grid-template-columns:1fr 1fr">
         <div><span>编码</span>{{ cur.code }}</div>
         <div><span>原一级</span>{{ nameOf(cur.prevParentId) }}</div>
@@ -30,7 +30,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="rebindDlg" :title="cur ? `重新绑定 · ${cur.name}` : '重新绑定'" width="560px">
+    <el-dialog v-model="rebindDlg" class="issue-wide-dialog" :title="cur ? `重新绑定 · ${cur.name}` : '重新绑定'" width="920px">
       <el-form label-width="110px">
         <el-form-item label="绑定一级">
           <el-select v-model="parentId" filterable style="width:100%">
@@ -42,8 +42,8 @@
             v-model="areas"
             :options="cityOpts"
             label="授权城市（点击多选）"
-            all-label="全选"
-            :empty-text="cityOpts.length ? '暂无可选城市' : '该一级暂无可售城市，请先在一级详情维护可销售范围'"
+            all-label="全选当前一级可售城市"
+            empty-text="该一级暂无可售城市，请先在一级详情维护可销售范围"
             :note="droppedNote"
           />
           <p class="muted" style="margin-left:0">切换绑定一级后，可选城市会随一级可销售范围更新</p>
@@ -78,9 +78,11 @@ const cityOpts = computed(() => {
   const l1 = l1s.value.find((a) => a.id === parentId.value)
   return citiesOf(l1?.saleAreas || l1?.mainAreas || [])
 })
-const droppedNote = computed(() => dropped.value.length
-  ? `原城市「${dropped.value.join('、')}」不在当前一级可售范围内，已取消勾选`
-  : '')
+const droppedNote = computed(() => {
+  return dropped.value.length
+    ? `原城市「${dropped.value.join('、')}」不在当前一级可售范围内，已取消勾选。`
+    : ''
+})
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
 async function load() {
   loading.value = true
@@ -116,7 +118,10 @@ async function ok() {
     return
   }
   await api.assignL2(cur.value.id, parentId.value, areas.value)
-  ElMessage.success('已绑定'); rebindDlg.value = false; load()
+  ElMessage.success('已绑定')
+  rebindDlg.value = false
+  await load()
+  window.dispatchEvent(new Event('ruilai:badges-changed'))
 }
 watch([page, pageSize], load)
 watch(parentId, () => {

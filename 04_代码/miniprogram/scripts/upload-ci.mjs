@@ -4,6 +4,7 @@
  *   E:\angsa\angsa_data\项目\锐涞经销商管理系统\微信上传\private.wx242669dc618156c6.key
  */
 import ci from 'miniprogram-ci'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -12,9 +13,11 @@ const miniRoot = path.resolve(__dirname, '..')
 const projectPath = path.join(miniRoot, 'dist', 'build', 'mp-weixin')
 const keyPath = process.env.RUILAI_WX_KEY
   || 'E:\\angsa\\angsa_data\\项目\\锐涞经销商管理系统\\微信上传\\private.wx242669dc618156c6.key'
+const appid = (process.env.RUILAI_WX_APPID
+  || fs.readFileSync(path.join(miniRoot, 'APPID'), 'utf8')).trim()
 
 const project = new ci.Project({
-  appid: 'wx242669dc618156c6',
+  appid,
   type: 'miniProgram',
   projectPath,
   privateKeyPath: keyPath,

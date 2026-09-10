@@ -42,6 +42,8 @@ const STATUS_TONES: Record<string, StatusTone> = {
   '二级在库': 'info',
   warehouse: 'muted',
   '原厂仓': 'muted',
+  '原厂在库': 'muted',
+  '已销售': 'success',
 }
 
 const text = computed(() => (props.map && props.value ? props.map[props.value] : props.value) || '—')

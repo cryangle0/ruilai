@@ -3,7 +3,7 @@
     <NavBar title="二级代理" show-back />
     <view class="pad">
       <text class="desc">维护下属二级信息与登录账号；新建后进入平台「二级审核」。</text>
-      <button class="btn-p" @click="openCreate">创建二级代理</button>
+      <view class="btn-p" @click="openCreate">创建二级代理</view>
       <SearchBar v-model="q" placeholder="搜索名称/编码/城市" />
       <Empty v-if="!filtered.length" text="暂无二级代理，点上方创建" />
       <view v-for="a in filtered" :key="a.id" class="card glass">
@@ -21,16 +21,28 @@
       </view>
     </view>
     <BottomDrawer v-model="creating" title="创建二级代理">
-      <FieldRow v-model="form.name" label="名称" placeholder="门店/公司名" />
-      <view class="pick" @click="form.type = form.type==='法人' ? '个人' : '法人'">
-        <text class="lab">类型</text><text>{{ form.type }} ›</text>
+      <view class="field">
+        <text class="lab">名称</text>
+        <input class="inp" :value="form.name" placeholder="门店/公司名" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.name = eventValue($event, form.name)" />
       </view>
-      <FieldRow v-model="form.areas" label="城市（逗号分隔）" :placeholder="areaHint" />
-      <FieldRow v-model="form.loginUsername" label="登录账号" placeholder="agent_xx" />
-      <FieldRow v-model="form.loginPassword" label="初始密码" password placeholder="至少 4 位" />
-      <button class="ghost" @click="pickProtocol">上传合作协议{{ protocolUrl ? '（已选）' : '' }}</button>
+      <view class="pick" @click="form.type = form.type==='法人' ? '个人' : '法人'">
+        <text class="lab">类型</text><text class="pick-val">{{ form.type }} ›</text>
+      </view>
+      <view class="field">
+        <text class="lab">城市（逗号分隔）</text>
+        <input class="inp" :value="form.areas" :placeholder="areaHint" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.areas = eventValue($event, form.areas)" />
+      </view>
+      <view class="field">
+        <text class="lab">登录账号</text>
+        <input class="inp" :value="form.loginUsername" placeholder="agent_xx" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.loginUsername = eventValue($event, form.loginUsername)" />
+      </view>
+      <view class="field">
+        <text class="lab">初始密码</text>
+        <input class="inp" :value="form.loginPassword" password placeholder="至少 4 位" placeholder-class="ph" confirm-type="done" :adjust-position="true" :hold-keyboard="true" :always-embed="true" :cursor-spacing="32" data-echo="1" @input="form.loginPassword = eventValue($event, form.loginPassword)" />
+      </view>
+      <view class="ghost" @click="pickProtocol">上传合作协议{{ protocolUrl ? '（已选）' : '' }}</view>
       <template #footer>
-        <button class="btn-p" @click="create">提交审核</button>
+        <view class="btn-p" @click="create">提交审核</view>
       </template>
     </BottomDrawer>
   </view>
@@ -39,7 +51,6 @@
 import { computed, reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import NavBar from '@/components/NavBar.vue'
-import FieldRow from '@/components/FieldRow.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import Empty from '@/components/Empty.vue'
 import StatusTag from '@/components/StatusTag.vue'
@@ -47,6 +58,7 @@ import BottomDrawer from '@/components/BottomDrawer.vue'
 import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { API_BASE_URL, STORAGE_KEYS } from '@/config'
+import { inputEventValue } from '@/utils/inputValue'
 
 const user = useUserStore()
 const rows = ref<any[]>([])
@@ -61,6 +73,14 @@ const filtered = computed(() => {
   if (!k) return rows.value
   return rows.value.filter((a) => [a.name, a.code, a.type, ...(a.areas || [])].join(' ').toLowerCase().includes(k))
 })
+function eventValue(e: unknown, fallback = '') { return inputEventValue(e, fallback) }
+function cityAllowed(city: string, allowed: string[]) {
+  const c = city.replace(/市$/, '')
+  return allowed.some((a) => {
+    const x = String(a).replace(/市$/, '')
+    return a === city || x === c || String(a).includes(c) || city.includes(x)
+  })
+}
 
 async function load() {
   rows.value = (await miniApi.agentsL2({ pageSize: 100 })).data.list || []
@@ -72,7 +92,7 @@ function openCreate() {
   form.type = '法人'
   form.areas = ''
   form.loginUsername = ''
-  form.loginPassword = ''
+  form.loginPassword = 'demo'
   protocolUrl.value = ''
   creating.value = true
 }
@@ -82,10 +102,10 @@ async function loadParent() {
   if (!id) return
   try {
     const a = (await miniApi.agentL1(id)).data
-    allowedCities.value = a.directAreas || []
-    if (!allowedCities.value.length && Array.isArray(a.saleAreas)) {
-      allowedCities.value = a.saleAreas
-    }
+    const direct = Array.isArray(a.directAreas) ? a.directAreas.filter(Boolean) : []
+    const sale = Array.isArray(a.saleAreas) ? a.saleAreas.filter(Boolean) : []
+    const looksCity = (s: string) => /[市州盟区]$/.test(s)
+    allowedCities.value = direct.length ? direct : sale.filter(looksCity)
   } catch { allowedCities.value = [] }
 }
 
@@ -118,19 +138,23 @@ async function create() {
   if (!form.loginUsername.trim()) { uni.showToast({ title: '请填写登录账号', icon: 'none' }); return }
   if (form.loginPassword.length < 4) { uni.showToast({ title: '初始密码至少 4 位', icon: 'none' }); return }
   const areas = form.areas.split(/[,，\s]+/).filter(Boolean)
-  if (allowedCities.value.length && areas.some((c) => !allowedCities.value.some((a) => a.includes(c.replace(/市$/, '')) || c.includes(a.replace(/市$/, ''))))) {
+  if (allowedCities.value.length && areas.some((c) => !cityAllowed(c, allowedCities.value))) {
     uni.showToast({ title: '城市须在一级授权范围内', icon: 'none' }); return
   }
-  await miniApi.saveL2({
-    name: form.name.trim(),
-    type: form.type,
-    areas,
-    extra: {
-      loginUsername: form.loginUsername.trim(),
-      loginPassword: form.loginPassword,
-      ...(protocolUrl.value ? { protocolUrl: protocolUrl.value } : {}),
-    },
-  })
+  try {
+    await miniApi.saveL2({
+      name: form.name.trim(),
+      type: form.type,
+      areas,
+      extra: {
+        loginUsername: form.loginUsername.trim(),
+        loginPassword: form.loginPassword,
+        ...(protocolUrl.value ? { protocolUrl: protocolUrl.value } : {}),
+      },
+    })
+  } catch {
+    return
+  }
   uni.showToast({ title: '已提交审核', icon: 'success' })
   creating.value = false
   load()
@@ -157,10 +181,37 @@ async function remove(a: any) {
 .sm { flex: 1; font-size: 24rpx; background: rgba(26,104,215,.08); border-radius: 999rpx; }
 .sm.danger { background: rgba(224,88,74,.1); color: #e0584a; }
 .sm::after { border: 0; }
-.pick { display: flex; justify-content: space-between; padding: 18rpx 0; border-bottom: 1rpx solid rgba(60,60,67,.12); }
-.lab { color: #8e8e93; font-size: 22rpx; }
-.btn-p { background: #1A68D7; color: #fff; border-radius: 999rpx; font-weight: 700; margin-bottom: 12rpx; }
-.btn-p::after { border: 0; }
-.ghost { margin-top: 12rpx; background: rgba(26,104,215,.08); border-radius: 999rpx; font-weight: 700; }
-.ghost::after { border: 0; }
+.pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 18rpx 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border-bottom: 1rpx solid rgba(60,60,67,.12);
+}
+.lab { flex: none; color: #8e8e93; font-size: 22rpx; }
+.field { padding: 18rpx 0; border-bottom: 1rpx solid rgba(60,60,67,.12); }
+.inp {
+  display: block;
+  width: 100%;
+  height: 56rpx;
+  margin-top: 8rpx;
+  color: #1A2B4A;
+  font-size: 30rpx;
+  line-height: 56rpx;
+  background: transparent;
+}
+.ph { color: #9AA4B2; }
+.pick-val {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+.btn-p { background: #1A68D7; color: #fff; border-radius: 999rpx; font-weight: 700; margin-bottom: 12rpx; height: 80rpx; line-height: 80rpx; text-align: center; }
+.ghost { margin-top: 12rpx; background: rgba(26,104,215,.08); color: #1A68D7; border-radius: 999rpx; font-weight: 700; height: 72rpx; line-height: 72rpx; text-align: center; }
 </style>

@@ -5,6 +5,7 @@ import com.ruilai.common.security.AuthUtil;
 import com.ruilai.common.security.LoginUser;
 import com.ruilai.common.web.BizException;
 import com.ruilai.common.web.ErrCode;
+import com.ruilai.common.web.QueryValues;
 import com.ruilai.module.agent.entity.AgentL1;
 import com.ruilai.module.agent.entity.AgentL2;
 import com.ruilai.module.agent.mapper.AgentL1Mapper;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +72,9 @@ public class StockService {
         } else {
             q.in(SnCode::getStatus, List.of("l1", "l2"));
         }
+        productId = QueryValues.decode(productId);
+        size = QueryValues.decode(size);
+        belt = QueryValues.decode(belt);
         if (StringUtils.hasText(productId)) q.eq(SnCode::getProductId, productId);
         if (StringUtils.hasText(size)) q.eq(SnCode::getSizeCode, size);
         if (StringUtils.hasText(belt)) q.eq(SnCode::getBelt, belt);
@@ -112,10 +117,10 @@ public class StockService {
     public List<StockLog> logs(String agentId, String agentType) {
         LoginUser u = AuthUtil.current();
         if ("L2".equals(u.getRoleCode())) {
-            return stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
+            return namedLogs(stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
                     .eq(StockLog::getAgentId, u.getAgentId())
                     .orderByDesc(StockLog::getOccurredAt)
-                    .last("limit 200"));
+                    .last("limit 200")));
         }
         if (!u.isAdmin()) {
             if ("l2".equals(agentType) && StringUtils.hasText(agentId)) {
@@ -123,10 +128,10 @@ public class StockService {
                 if (kid == null || !u.getAgentId().equals(kid.getParentId())) {
                     throw new BizException(ErrCode.FORBIDDEN, "只能查看本一级下属二级流水");
                 }
-                return stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
+                return namedLogs(stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
                         .eq(StockLog::getAgentId, agentId)
                         .orderByDesc(StockLog::getOccurredAt)
-                        .last("limit 200"));
+                        .last("limit 200")));
             }
             if ("all".equals(agentType)) {
                 List<String> ids = new ArrayList<>();
@@ -135,20 +140,45 @@ public class StockService {
                                 .eq(AgentL2::getParentId, u.getAgentId())
                                 .select(AgentL2::getId))
                         .forEach(k -> ids.add(k.getId()));
-                return stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
+                return namedLogs(stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
                         .in(StockLog::getAgentId, ids)
                         .orderByDesc(StockLog::getOccurredAt)
-                        .last("limit 200"));
+                        .last("limit 200")));
             }
-            return stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
+            return namedLogs(stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
                     .eq(StockLog::getAgentId, u.getAgentId())
                     .orderByDesc(StockLog::getOccurredAt)
-                    .last("limit 200"));
+                    .last("limit 200")));
         }
         String id = agentId;
-        return stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
-                .eq(id != null, StockLog::getAgentId, id)
+        return namedLogs(stockLogMapper.selectList(Wrappers.<StockLog>lambdaQuery()
+                .eq(StringUtils.hasText(id), StockLog::getAgentId, id)
                 .orderByDesc(StockLog::getOccurredAt)
-                .last("limit 200"));
+                .last("limit 200")));
+    }
+
+    private List<StockLog> namedLogs(List<StockLog> logs) {
+        if (logs == null || logs.isEmpty()) return logs;
+        Map<String, String> l1Names = new HashMap<>();
+        Map<String, String> l2Names = new HashMap<>();
+        for (StockLog log : logs) {
+            String id = log.getAgentId();
+            if (!StringUtils.hasText(id)) {
+                log.setAgentName("—");
+                continue;
+            }
+            if ("l2".equals(log.getAgentType())) {
+                log.setAgentName(l2Names.computeIfAbsent(id, key -> {
+                    AgentL2 agent = l2Mapper.selectById(key);
+                    return agent == null ? key : agent.getName();
+                }));
+            } else {
+                log.setAgentName(l1Names.computeIfAbsent(id, key -> {
+                    AgentL1 agent = l1Mapper.selectById(key);
+                    return agent == null ? key : agent.getName();
+                }));
+            }
+        }
+        return logs;
     }
 }

@@ -21,4 +21,6 @@ public class StockLog extends StringEntity {
     @TableField("ref_no")
     private String refNo;
     private LocalDateTime occurredAt;
+    @TableField(exist = false)
+    private String agentName;
 }

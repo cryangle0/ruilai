@@ -1,9 +1,13 @@
 <template>
-  <view />
+  <view class="stub" />
 </template>
-<script setup lang="ts">
-// 原生 tabBar 由页面内 TabBar 组件接管（按角色显示 2/5 项）
+<script>
+export default {
+  data() {
+    return {}
+  },
+}
 </script>
 <style>
-view { height: 0; overflow: hidden; }
+.stub { height: 0; overflow: hidden; }
 </style>

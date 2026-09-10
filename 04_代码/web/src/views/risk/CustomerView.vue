@@ -37,8 +37,9 @@
       <el-form-item><el-input v-model="query.phone" placeholder="手机/姓名" clearable style="width:140px" /></el-form-item>
       <el-form-item><el-input v-model="query.addr" placeholder="地址" clearable style="width:160px" /></el-form-item>
       <el-form-item>
-        <el-select v-model="query.mark" placeholder="标记" clearable style="width:110px">
-          <el-option label="仅重复" value="1" />
+        <el-select v-model="query.mark" placeholder="标记" clearable style="width:130px">
+          <el-option label="重复手机号" value="phone" />
+          <el-option label="重复地址" value="addr" />
         </el-select>
       </el-form-item>
     </SearchPanel>
@@ -58,7 +59,7 @@
       <el-table-column prop="addr" label="地址" min-width="180" />
       <el-table-column label="标记" width="140">
         <template #default="{row}">
-          <span v-if="row.dupPhone" class="tag tag-orange">重复手机</span>
+          <span v-if="row.dupPhone" class="tag tag-orange">重复手机号</span>
           <span v-if="row.dupAddr" class="tag tag-orange">重复地址</span>
           <span v-if="!row.dupPhone && !row.dupAddr">—</span>
         </template>
@@ -75,7 +76,7 @@
         <div><span>一级代理</span>{{ nameL1(form.l1Id) }}</div>
         <div><span>二级代理</span>{{ nameL2(form.l2Id) }}</div>
         <div><span>标记</span>
-          <span v-if="form.dupPhone" class="tag tag-orange">重复手机</span>
+          <span v-if="form.dupPhone" class="tag tag-orange">重复手机号</span>
           <span v-if="form.dupAddr" class="tag tag-orange">重复地址</span>
           <span v-if="!form.dupPhone && !form.dupAddr">—</span>
         </div>

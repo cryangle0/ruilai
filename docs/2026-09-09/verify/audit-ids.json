@@ -1,0 +1,152 @@
+{
+  "result": {
+    "purchase": [
+      {
+        "id": "PODAD349A1",
+        "no": "PO20260909001",
+        "l1Name": "华东锐涞总代",
+        "status": "rejected"
+      },
+      {
+        "id": "PO73477CF4",
+        "no": "PO20260904001",
+        "l1Name": "华东锐涞总代",
+        "status": "approved"
+      },
+      {
+        "id": "PO30881F65",
+        "no": "PO20260903001",
+        "l1Name": "华东锐涞总代",
+        "status": "approved"
+      }
+    ],
+    "sales": [
+      {
+        "id": "SOF57645B6",
+        "no": "SO20260909006",
+        "channel": "direct",
+        "l1Name": "华东锐涞总代",
+        "l2Name": null,
+        "status": "done"
+      },
+      {
+        "id": "SO5DD6E12E",
+        "no": "SO20260909005",
+        "channel": "direct",
+        "l1Name": "华东锐涞总代",
+        "l2Name": "宁波海曙店",
+        "status": "done"
+      },
+      {
+        "id": "SO11A00F36",
+        "no": "SO20260909003",
+        "channel": "direct",
+        "l1Name": "华东锐涞总代",
+        "l2Name": "宁波海曙店",
+        "status": "done"
+      },
+      {
+        "id": "SO9971C39B",
+        "no": "SO20260909004",
+        "channel": "direct",
+        "l1Name": "华东锐涞总代",
+        "l2Name": "宁波海曙店",
+        "status": "done"
+      },
+      {
+        "id": "SO6702179A",
+        "no": "SO20260909001",
+        "channel": "direct",
+        "l1Name": "华东锐涞总代",
+        "l2Name": null,
+        "status": "done"
+      },
+      {
+        "id": "SOFE308407",
+        "no": "SO20260909002",
+        "channel": "direct",
+        "l1Name": "华东锐涞总代",
+        "l2Name": null,
+        "status": "done"
+      },
+      {
+        "id": "SOB5546093",
+        "no": "SO20260904002",
+        "channel": "direct",
+        "l1Name": "华东锐涞总代",
+        "l2Name": "杭州城西专营",
+        "status": "done"
+      },
+      {
+        "id": "SOCA936FF1",
+        "no": "SO20260904001",
+        "channel": "distribute",
+        "l1Name": "华东锐涞总代",
+        "l2Name": "杭州城西专营",
+        "status": "done"
+      }
+    ],
+    "returns": [
+      {
+        "id": "RTD8655305",
+        "no": "RT20260909003",
+        "type": "l1_to_factory",
+        "status": "pending"
+      },
+      {
+        "id": "RT7A32392F",
+        "no": "RT20260909002",
+        "type": "l1_to_factory",
+        "status": "done"
+      },
+      {
+        "id": "RT6755CA62",
+        "no": "RT20260909001",
+        "type": "l1_to_factory",
+        "status": "rejected"
+      }
+    ],
+    "ex": [
+      {
+        "id": "EX731EF102",
+        "type": "客户信息重复",
+        "status": "待处理"
+      },
+      {
+        "id": "EX44823C1B",
+        "type": "客户信息重复",
+        "status": "待处理"
+      },
+      {
+        "id": "EXE58C7919",
+        "type": "归属地异常",
+        "status": "待处理"
+      },
+      {
+        "id": "EXDB6C1FDA",
+        "type": "归属地异常",
+        "status": "待处理"
+      },
+      {
+        "id": "EXCF980BD6",
+        "type": "归属地异常",
+        "status": "待处理"
+      },
+      {
+        "id": "EX753C29C7",
+        "type": "归属地异常",
+        "status": "待处理"
+      },
+      {
+        "id": "EX1A7FBDAE",
+        "type": "归属地异常",
+        "status": "待处理"
+      },
+      {
+        "id": "EX7441AD50",
+        "type": "销售库存异常",
+        "status": "待处理"
+      }
+    ]
+  }
+}

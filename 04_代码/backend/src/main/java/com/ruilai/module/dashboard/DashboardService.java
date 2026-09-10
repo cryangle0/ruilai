@@ -136,8 +136,9 @@ public class DashboardService {
             salesRange = boundRange.size();
             bound.forEach(s -> addDay(salesByDay, bindTime(s), 1));
             boundRange.forEach(s -> addProduct(productMap, productNames.getOrDefault(s.getProductId(), s.getProductId()), 1));
-            directAll = salesAll;
-            directRange = salesRange;
+            // 二级面向 C 端的销量属于激活/终端销售，不属于一级“直售”渠道。
+            directAll = 0;
+            directRange = 0;
             List<SalesOrder> inbound = sos.stream()
                     .filter(s -> "distribute".equals(s.getChannel()) && l2Id.equals(s.getL2Id()))
                     .toList();

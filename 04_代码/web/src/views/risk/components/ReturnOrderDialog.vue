@@ -52,15 +52,15 @@
     <template #footer>
       <el-button @click="emit('update:modelValue', false)">关闭</el-button>
       <template v-if="canAudit">
-        <el-button type="primary" @click="decide(true)">审核通过</el-button>
-        <el-button @click="decide(false)">处理</el-button>
+        <el-button type="primary" @click="decide(true)">通过</el-button>
+        <el-button type="danger" plain @click="decide(false)">驳回</el-button>
       </template>
     </template>
   </el-dialog>
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api'
 import { snStatusLabel } from '@/utils/format'
 import { formatDateTime } from '@/utils/dates'
@@ -81,7 +81,7 @@ const productRows = computed(() => {
   return [...map.values()]
 })
 function rtStatus(s: string) {
-  return ({ pending: '待审核', approved: '已通过', done: '已处理', rejected: '已驳回' } as Record<string, string>)[s] || s
+  return ({ pending: '待审核', approved: '已通过', done: '已通过', rejected: '已驳回' } as Record<string, string>)[s] || s
 }
 watch(() => [props.modelValue, props.id], async () => {
   if (!props.modelValue || !props.id) return
@@ -90,8 +90,17 @@ watch(() => [props.modelValue, props.id], async () => {
 }, { immediate: true })
 async function decide(pass: boolean) {
   if (!cur.value) return
+  try {
+    await ElMessageBox.confirm(
+      pass ? `确认通过退货单「${cur.value.no}」？` : `确认驳回退货单「${cur.value.no}」？`,
+      pass ? '确认通过' : '确认驳回',
+      { type: pass ? 'success' : 'warning', confirmButtonText: pass ? '通过' : '驳回' },
+    )
+  } catch {
+    return
+  }
   await api.decideReturn(cur.value.id, pass, processNote.value)
-  ElMessage.success(pass ? '已通过' : '已处理')
+  ElMessage.success(pass ? '已通过' : '已驳回')
   emit('update:modelValue', false)
   emit('saved')
 }

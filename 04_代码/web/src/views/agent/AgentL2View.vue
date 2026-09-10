@@ -40,7 +40,7 @@
           <template #default="{row}">{{ row.parentName || nameOf(row.parentId) }}</template>
         </el-table-column>
         <el-table-column label="授权城市" min-width="140"><template #default="{row}">{{ (row.areas||[]).join('、') || '—' }}</template></el-table-column>
-        <el-table-column label="状态" min-width="160">
+        <el-table-column label="状态" width="150">
           <template #default="{row}">
             <div class="status-stack">
               <div class="status-tags">
@@ -112,43 +112,51 @@
       </div>
     </template>
 
-    <el-dialog v-model="dlg" title="编辑二级代理" width="640px">
-      <el-form label-width="120px">
-        <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
-        <el-form-item label="类型"><el-input :model-value="form.type" readonly /></el-form-item>
-        <el-form-item label="所属一级（更改绑定）">
-          <el-select v-model="form.parentId" filterable style="width:100%">
-            <el-option v-for="a in l1s" :key="a.id" :label="a.name" :value="a.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label-width="0">
-          <CitySearchPicker
-            v-model="form.areas"
-            :options="cityOpts"
-            label="围栏城市"
-            all-label="全选"
-            empty-text="该一级暂无可售城市"
-          />
-        </el-form-item>
-        <el-form-item label="预警倍数"><el-input-number v-model="form.warnMultiplier" :min="1" :max="9" :step="0.1" /></el-form-item>
-        <el-form-item label="报警粒度">
-          <el-select v-model="form.warnMode">
-            <el-option label="严格（强制处理）" value="strict" />
-            <el-option label="软报警（仅记录）" value="soft" />
-            <el-option label="异常不报警" value="off" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="登录用户名"><el-input v-model="form.loginUsername" /></el-form-item>
-        <el-form-item label="登录密码"><el-input v-model="form.loginPassword" /></el-form-item>
-        <template v-if="form.type==='法人'">
-          <h4 class="ent-block">企业信息</h4>
-          <el-form-item label="企业名称"><el-input v-model="form.ent.company" /></el-form-item>
-          <el-form-item label="信用代码"><el-input v-model="form.ent.creditCode" /></el-form-item>
-          <el-form-item label="法人"><el-input v-model="form.ent.legal" /></el-form-item>
-          <el-form-item label="电话"><el-input v-model="form.ent.phone" /></el-form-item>
-          <el-form-item label="地址"><el-input v-model="form.ent.addr" /></el-form-item>
-        </template>
-      </el-form>
+    <el-dialog v-model="dlg" class="kit-form-dlg" title="编辑二级代理" width="1040px" destroy-on-close>
+      <div class="form-sec">
+        <div class="form-sec-title">基本信息</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-item"><label class="form-label">名称</label><el-input v-model="form.name" /></div>
+          <div class="form-item"><label class="form-label">类型</label><el-input :model-value="form.type" readonly /></div>
+          <div class="form-item">
+            <label class="form-label">所属一级（更改绑定）</label>
+            <el-select v-model="form.parentId" filterable style="width:100%">
+              <el-option v-for="a in l1s" :key="a.id" :label="a.name" :value="a.id" />
+            </el-select>
+          </div>
+          <div class="form-item"><label class="form-label">登录用户名</label><el-input v-model="form.loginUsername" /></div>
+          <div class="form-item"><label class="form-label">登录密码</label><el-input v-model="form.loginPassword" /></div>
+          <div class="form-item"><label class="form-label">预警倍数</label><el-input-number v-model="form.warnMultiplier" :min="1" :max="9" :step="0.1" controls-position="right" /></div>
+          <div class="form-item">
+            <label class="form-label">报警粒度</label>
+            <el-select v-model="form.warnMode" style="width:100%">
+              <el-option label="严格（强制处理）" value="strict" />
+              <el-option label="软报警（仅记录）" value="soft" />
+              <el-option label="异常不报警" value="off" />
+            </el-select>
+          </div>
+        </div>
+      </div>
+      <div v-if="form.type==='法人'" class="form-sec">
+        <div class="form-sec-title">企业信息</div>
+        <div class="form-grid form-grid-3">
+          <div class="form-item"><label class="form-label">企业名称</label><el-input v-model="form.ent.company" /></div>
+          <div class="form-item"><label class="form-label">信用代码</label><el-input v-model="form.ent.creditCode" /></div>
+          <div class="form-item"><label class="form-label">法人</label><el-input v-model="form.ent.legal" /></div>
+          <div class="form-item"><label class="form-label">电话</label><el-input v-model="form.ent.phone" /></div>
+          <div class="form-item span-2"><label class="form-label">地址</label><el-input v-model="form.ent.addr" /></div>
+        </div>
+      </div>
+      <div class="form-sec">
+        <div class="form-sec-title">授权范围</div>
+        <CitySearchPicker
+          v-model="form.areas"
+          :options="cityOpts"
+          label="围栏城市"
+          all-label="全选当前一级可售城市"
+          empty-text="该一级暂无可售城市，请先在一级详情维护可销售范围"
+        />
+      </div>
       <template #footer>
         <el-button @click="dlg=false">取消</el-button>
         <el-button v-if="form.type==='法人' && form.parentId" type="danger" plain @click="unbind">解绑法人</el-button>
@@ -184,8 +192,7 @@ const selected = ref<any[]>([])
 const l1s = ref<any[]>([])
 const cityOpts = computed(() => {
   const l1 = l1s.value.find((a) => a.id === form.value.parentId)
-  const fromSale = citiesOf(l1?.saleAreas || l1?.mainAreas || [])
-  return fromSale.length ? fromSale : []
+  return citiesOf(l1?.saleAreas || l1?.mainAreas || [])
 })
 
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '—' }
@@ -270,6 +277,10 @@ async function setStatus(status: string) {
   load()
 }
 watch([page, pageSize], load)
+watch(() => form.value.parentId, () => {
+  const allow = new Set(cityOpts.value)
+  form.value.areas = (form.value.areas || []).filter((c: string) => allow.has(c))
+})
 watch(() => route.query.id, async (id) => {
   if (id) detail.value = await api.agentL2(String(id))
   else detail.value = null

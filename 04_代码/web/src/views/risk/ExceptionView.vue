@@ -22,11 +22,16 @@
           <el-option v-for="a in l2s" :key="a.id" :label="a.name" :value="a.id" />
         </el-select>
       </el-form-item>
+      <el-form-item><span class="muted-label">报警时间</span></el-form-item>
       <el-form-item>
         <el-date-picker v-model="query.from" type="date" value-format="YYYY-MM-DD" placeholder="开始" style="width:140px" />
       </el-form-item>
       <el-form-item>
         <el-date-picker v-model="query.to" type="date" value-format="YYYY-MM-DD" placeholder="结束" style="width:140px" />
+      </el-form-item>
+      <el-form-item><span class="muted-label">SN</span></el-form-item>
+      <el-form-item>
+        <el-input v-model="query.sn" placeholder="SN" clearable style="width:180px" />
       </el-form-item>
       <el-form-item>
         <el-select v-model="query.status" placeholder="状态" clearable style="width:120px">
@@ -47,7 +52,9 @@
       <el-table-column label="一级代理" min-width="110"><template #default="{row}">{{ row.extra?.l1Name || '—' }}</template></el-table-column>
       <el-table-column label="二级代理" min-width="110"><template #default="{row}">{{ dimTab==='activate-direct' ? '—' : (row.extra?.l2Name || '—') }}</template></el-table-column>
       <el-table-column prop="target" label="对象" min-width="120" />
-      <el-table-column prop="detail" label="详情" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="detail" label="详情" min-width="200" show-overflow-tooltip>
+        <template #default="{row}">{{ displayDetail(row.detail) }}</template>
+      </el-table-column>
       <el-table-column :label="explainLabel" min-width="120">
         <template #default="{row}">{{ clip((row.explainTxt || row.explainL2 || '')) }}</template>
       </el-table-column>
@@ -67,7 +74,7 @@
           <div><span>二级代理</span>{{ dimTab==='activate-direct' ? '—' : (cur.extra?.l2Name || '—') }}</div>
           <div><span>对象</span>{{ cur.target }}</div>
           <div><span>状态</span><span class="tag" :class="isOpen(cur)?'tag-orange':'tag-green'">{{ cur.status }}</span></div>
-          <div class="span-2"><span>详情</span>{{ cur.detail }}</div>
+          <div class="span-2"><span>详情</span>{{ displayDetail(cur.detail) }}</div>
           <div class="span-2"><span>{{ explainLabel }}</span>{{ cur.explainTxt || cur.explainL2 || '—' }}</div>
         </div>
         <template v-if="cur.extra?.customer">
@@ -99,23 +106,16 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="rulesOpen" title="异常标准配置" width="420px" @close="closeRules">
+    <el-dialog v-model="rulesOpen" class="issue-wide-dialog" title="异常标准配置" width="560px" @close="closeRules">
       <p class="hint">全局倍数针对所有一/二级。一级分销给二级不触发库存异常；二级可单独设严格/软报警。</p>
       <p class="hint">第三方：IP/围栏 {{ cap.geoConfigured ? cap.geoProvider : '未配置 Key（离线/提示）' }} · 号码归属 {{ cap.phoneConfigured ? '阿里云' : '离线号段兜底' }}</p>
+      <p class="hint">立即扫描会按当前全局倍数重新检查代理库存并生成待处理异常，不会修改库存数量。</p>
       <el-form label-width="120px">
         <el-form-item label="全局倍数"><el-input-number v-model="rules.multiplier" :min="0.5" :max="9" :step="0.1" /></el-form-item>
-        <el-form-item label="超量比">
-          <el-input-number v-model="rules.overOrderRatio" :min="0.5" :max="9" :step="0.1" />
-          <span class="extra-tag">extra</span>
-        </el-form-item>
-        <el-form-item label="周转倍数">
-          <el-input-number v-model="rules.stockTurnover" :min="0.5" :max="9" :step="0.1" />
-          <span class="extra-tag">extra</span>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="closeRules">取消</el-button>
-        <el-button @click="scanStock">立即扫描库存预警</el-button>
+        <el-button @click="scanStock">立即按当前标准扫描库存</el-button>
         <el-button type="primary" @click="saveRules">保存标准</el-button>
       </template>
     </el-dialog>
@@ -141,8 +141,8 @@ import BackToDetailButton from '@/components/common/BackToDetailButton.vue'
 import KpiCards, { type KpiItem } from '@/components/common/KpiCards.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
-import { applyListDatesWide, routeQ } from '@/utils/detailJump'
-import { dateTimeFormatter, formatDateTime } from '@/utils/dates'
+import { applyListDates, routeQ } from '@/utils/detailJump'
+import { dateTimeFormatter, formatDateTime, monthStart, todayDate } from '@/utils/dates'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -167,8 +167,8 @@ const explainText = ref('')
 const l1s = ref<any[]>([])
 const l2s = ref<any[]>([])
 const tabItems = computed(() => [
-  { id: 'activate-direct', title: '直售激活异常', badge: counts['activate-direct'] || counts.activate || 0 },
-  { id: 'activate-dist', title: '分销激活异常', badge: counts['activate-dist'] || counts.scan || 0 },
+  { id: 'activate-direct', title: '直售激活异常', badge: counts['activate-direct'] || 0 },
+  { id: 'activate-dist', title: '分销激活异常', badge: counts['activate-dist'] || 0 },
   { id: 'stock', title: '销售库存异常', badge: counts.stock || 0 },
 ])
 const statusOpts = computed(() => dimTab.value === 'stock' ? ['待处理', '已处理'] : ['待处理', '已完成'])
@@ -212,6 +212,9 @@ const dimLabel = computed(() => ({ 'activate-direct': '直售激活', 'activate-
 const isSn = computed(() => String(cur.value?.target || '').startsWith('RL'))
 const isDupCust = computed(() => /客户信息重复/.test(String(cur.value?.type || '')))
 function isOpen(row: any) { return row?.status === '待处理' || row?.status === '会签中' }
+function displayDetail(detail?: string) {
+  return String(detail || '').replace(/^异常销售预警：/, '') || '—'
+}
 function rowClass({ row }: { row: any }) { return isOpen(row) ? 'ex-bold' : '' }
 function clip(s: string) { return s.length > 8 ? s.slice(0, 8) + '…' : (s || '—') }
 
@@ -222,20 +225,26 @@ async function load() {
     const [res, c] = await Promise.all([
       api.exceptions({
         page: page.value, pageSize: pageSize.value,
-        dim: query.dim, status: query.status, type: query.type,
+        dim: query.sn ? undefined : query.dim, status: query.status, type: query.type,
+        l1Id: query.l1Id, l2Id: query.l2Id,
+        from: query.sn ? undefined : query.from, to: query.sn ? undefined : query.to,
+        sn: query.sn || undefined,
+      }),
+      api.exceptionCounts({
         l1Id: query.l1Id, l2Id: query.l2Id, from: query.from, to: query.to,
       }),
-      api.exceptionCounts(),
     ])
     list.value = res.list; total.value = res.total
     Object.assign(counts, c)
     counts.hist = res.total
-    counts.open = (res.list || []).filter((r: any) => isOpen(r)).length
+    counts.open = counts[dimTab.value] || 0
+    const openEx = (counts['activate-direct'] || 0) + (counts['activate-dist'] || 0) + (counts.stock || 0)
+    window.dispatchEvent(new CustomEvent('ruilai:badges-changed', { detail: { openEx } }))
   } finally { loading.value = false }
 }
 function reset() {
-  query.status = ''; query.l1Id = ''; query.l2Id = ''
-  query.from = ''; query.to = ''
+  query.status = ''; query.l1Id = ''; query.l2Id = ''; query.sn = ''
+  query.from = monthStart(); query.to = todayDate()
   resetPage(); load()
 }
 async function openRow(row: any) {
@@ -344,16 +353,18 @@ onMounted(async () => {
   rulesSnap = { ...rules }
   if (routeQ(route.query, 'tab')) dimTab.value = routeQ(route.query, 'tab')
   await nextTick()
+  if (routeQ(route.query, 'sn')) query.sn = routeQ(route.query, 'sn')
   if (routeQ(route.query, 'l1Id')) query.l1Id = routeQ(route.query, 'l1Id')
   if (routeQ(route.query, 'l2Id')) query.l2Id = routeQ(route.query, 'l2Id')
   if (routeQ(route.query, 'type')) query.type = routeQ(route.query, 'type')
-  applyListDatesWide(query, route.query)
+  applyListDates(query, route.query)
   ingesting.value = false
   load()
 })
 </script>
 <style scoped>
 .hint { color: var(--text-2); font-size: 13px; margin: 0 0 12px; line-height: 1.5; }
+.muted-label { font-size: 12px; color: var(--text-3); }
 .extra-tag { margin-left: 8px; color: var(--text-2); font-size: 12px; }
 h4 { margin: 14px 0 8px; font-size: 13px; }
 </style>

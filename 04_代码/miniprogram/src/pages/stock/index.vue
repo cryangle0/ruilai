@@ -90,7 +90,7 @@ import { datePresetRange, formatDateTime, inDateRange } from '@/utils/dates'
 import { useUserStore } from '@/store/user'
 import { miniApi } from '@/service'
 import { SN_STATUS } from '@/utils/constants'
-import { aggregateStockRows, fetchNextPage, isOpenException, mergePage, sortStockSns, stockExceptionSnSet } from '@/utils/miniPages'
+import { aggregateStockRows, consumeStockFilter, fetchNextPage, isOpenException, mergePage, saveStockDraft, sortStockSns, stockExceptionSnSet } from '@/utils/miniPages'
 
 const user = useUserStore()
 const tab = ref('product')
@@ -140,9 +140,9 @@ const rangeQty = computed(() => filteredLogs.value.reduce((n, h) => {
   return n + (d > 0 ? d : 0)
 }, 0))
 const segs = computed(() => [
-  { id: 'product', title: '商品', badge: filteredProducts.value.length || undefined },
-  { id: 'sn', title: '在库SN', badge: snTotal.value || filteredSns.value.length || undefined },
-  { id: 'flow', title: '库存流水', badge: filteredLogs.value.length || undefined },
+  { id: 'product', title: '商品' },
+  { id: 'sn', title: '在库SN' },
+  { id: 'flow', title: '库存流水' },
 ])
 const scopeOptions = computed(() => [
   { label: '本级仓库', value: 'self' },
@@ -178,7 +178,14 @@ watch(scope, () => loadStock())
 onShow(async () => {
   if (!user.ensureLogin()) return
   if (user.role === 'SUB') { uni.switchTab({ url: '/pages/home/index' }); return }
-  uni.hideTabBar({ animation: false })
+  const filter = consumeStockFilter()
+  if (filter) {
+    if (filter.tab) tab.value = String(filter.tab)
+    productId.value = String(filter.productId || '')
+    size.value = String(filter.size || '')
+    belt.value = String(filter.belt || '')
+    if (filter.scope) scope.value = filter.scope
+  }
   if (user.role === 'L1') {
     try { l2s.value = (await miniApi.agentsL2({ pageSize: 100, auditStatus: 'approved' })).data.list || [] } catch { l2s.value = [] }
   }
@@ -226,6 +233,19 @@ function prodName(id: string) {
   return products.value.find((r) => r.productId === id)?.productName || id
 }
 function openProduct(r: any) {
+  saveStockDraft({
+    productId: r.productId,
+    productName: r.productName,
+    size: r.size,
+    belt: r.belt,
+    scope: scope.value,
+    qty: r.qty,
+    l1Name: r.l1Name,
+    l2Name: r.l2Name,
+    status: r.status,
+    agentType: r.agentType,
+    sns: r.sns || [],
+  })
   const params = `id=${encodeURIComponent(r.productId || '')}&size=${encodeURIComponent(r.size || '')}&belt=${encodeURIComponent(r.belt || '')}&scope=${encodeURIComponent(String(scope.value))}`
   uni.navigateTo({ url: `/pkg/detail/index?kind=stock&${params}` })
 }
@@ -233,6 +253,7 @@ function openSn(sn: string) { uni.navigateTo({ url: `/pkg/detail/index?kind=sn&i
 function markedSn(sn: string) { return markedSns.value.has(sn) }
 </script>
 <style scoped lang="scss">
+@import '@/styles/theme.scss';
 .pad { padding: 0 32rpx 24rpx; }
 .box {
   display: flex;
@@ -250,7 +271,16 @@ function markedSn(sn: string) { return markedSns.value.has(sn) }
 .kpi { flex: 1; padding: 20rpx; border-radius: 20rpx; display: flex; flex-direction: column; gap: 8rpx; }
 .n { display: block; font-size: 36rpx; font-weight: 800; color: #1559BC; }
 .marked { border-color: $rl-danger-border; background: #FFF9F9; }
-.ex-mark { display: inline-flex; margin-top: 10rpx; padding: 5rpx 12rpx; border-radius: 9rpx; background: $rl-danger-bg; color: $rl-danger; font-size: 19rpx; font-weight: 700; }
+.ex-mark {
+  @include rl-fit-tag;
+  margin-top: 10rpx;
+  padding: 5rpx 12rpx;
+  border-radius: 9rpx;
+  background: $rl-danger-bg;
+  color: $rl-danger;
+  font-size: 19rpx;
+  font-weight: 700;
+}
 .load-more-error {
   padding: 20rpx 0;
   color: $rl-danger;

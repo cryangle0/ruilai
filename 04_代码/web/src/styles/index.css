@@ -206,7 +206,11 @@ button { font-family: inherit; }
   background: var(--primary);
   box-shadow: 0 2px 6px rgba(26, 104, 215, 0.4);
 }
-.tab .menu-badge { margin-left: 6px; }
+.tab .menu-badge {
+  margin-left: 4px;
+  transform: translateY(-7px);
+  box-shadow: 0 1px 3px rgba(222, 75, 75, 0.2);
+}
 .tabs.tabs-sm {
   gap: 6px;
   border-bottom: none;
@@ -660,7 +664,7 @@ button.metric-card, button.metric { cursor: pointer; font-family: inherit; }
   border-radius: 2px;
 }
 .el-dialog__body {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto !important;
   padding: 20px 24px 6px !important;
@@ -750,7 +754,7 @@ button.metric-card, button.metric { cursor: pointer; font-family: inherit; }
   .kit-form-dlg .form-grid .el-select { max-width: none; }
   .el-overlay-dialog { padding: 12px !important; }
   .el-dialog {
-    height: min(88vh, calc(100vh - 24px));
+    height: auto;
     max-height: calc(100vh - 24px);
   }
   .el-dialog.kit-form-dlg {

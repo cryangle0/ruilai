@@ -54,7 +54,9 @@ public class TradeController {
     public R<PurchaseOrder> cosign(@PathVariable String id, @RequestBody(required = false) Map<String, Object> body) {
         @SuppressWarnings("unchecked")
         Map<String, Object> segments = body == null ? null : (Map<String, Object>) body.get("segments");
-        return R.ok(purchaseService.cosign(id, segments));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> customLines = body == null ? null : (List<Map<String, Object>>) body.get("customLines");
+        return R.ok(purchaseService.cosign(id, segments, customLines));
     }
 
     @PostMapping("/purchases/{id}/reject")

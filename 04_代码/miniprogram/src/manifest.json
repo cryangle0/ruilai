@@ -2,13 +2,13 @@
   "name": "锐涞经销商",
   "appid": "wx242669dc618156c6",
   "description": "锐涞经销商管理系统 · 代理端",
-  "versionName": "0.2.10",
-  "versionCode": "30",
+  "versionName": "0.2.9",
+  "versionCode": "29",
   "transformPx": false,
   "mp-weixin": {
     "appid": "wx242669dc618156c6",
     "__usePrivacyCheck__": true,
-    "setting": { "urlCheck": false, "es6": true, "minified": true },
+    "setting": { "urlCheck": false, "es6": false, "minified": false, "postcss": false },
     "lazyCodeLoading": "requiredComponents",
     "permission": {
       "scope.userLocation": { "desc": "用于直销激活时校验 IP 地区与围栏" }

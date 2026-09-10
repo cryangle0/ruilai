@@ -8,7 +8,12 @@ import com.ruilai.common.util.SnRanges;
 import com.ruilai.common.web.BizException;
 import com.ruilai.common.web.ErrCode;
 import com.ruilai.common.web.PageResult;
+import com.ruilai.common.web.QueryValues;
 import com.ruilai.common.time.ChinaTime;
+import com.ruilai.module.agent.entity.AgentL1;
+import com.ruilai.module.agent.entity.AgentL2;
+import com.ruilai.module.agent.mapper.AgentL1Mapper;
+import com.ruilai.module.agent.mapper.AgentL2Mapper;
 import com.ruilai.module.product.entity.Product;
 import com.ruilai.module.product.mapper.ProductMapper;
 import com.ruilai.module.risk.entity.ExceptionTicket;
@@ -16,6 +21,8 @@ import com.ruilai.module.risk.mapper.ExceptionTicketMapper;
 import com.ruilai.module.sn.entity.SnCode;
 import com.ruilai.module.sn.mapper.SnCodeMapper;
 import com.ruilai.module.system.LogService;
+import com.ruilai.module.trade.entity.ReturnOrder;
+import com.ruilai.module.trade.mapper.ReturnOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -25,14 +32,14 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class SnService {
+
+    private static final DateTimeFormatter EVENT_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final SnCodeMapper snMapper;
     private final ProductMapper productMapper;
@@ -40,6 +47,9 @@ public class SnService {
     private final SnWriter snWriter;
     private final LogService logService;
     private final ExceptionTicketMapper exMapper;
+    private final ReturnOrderMapper returnMapper;
+    private final AgentL1Mapper l1Mapper;
+    private final AgentL2Mapper l2Mapper;
 
     public PageResult<SnCode> page(long page, long size, String sn, String status, String l1Id, String l2Id,
                                    String productName, String productId, String sizeCode, String belt,
@@ -47,6 +57,9 @@ public class SnService {
                                    String factoryFrom, String factoryTo,
                                    String soldFrom, String soldTo,
                                    String returnFrom, String returnTo) {
+        productId = QueryValues.decode(productId);
+        sizeCode = QueryValues.decode(sizeCode);
+        belt = QueryValues.decode(belt);
         var q = Wrappers.<SnCode>lambdaQuery();
         if (StringUtils.hasText(sn)) {
             q.like(SnCode::getSn, sn);
@@ -65,11 +78,8 @@ public class SnService {
         if (StringUtils.hasText(belt)) {
             q.eq(SnCode::getBelt, belt);
         }
-        if (StringUtils.hasText(productId)) {
-            q.eq(SnCode::getProductId, productId);
-        } else if (StringUtils.hasText(productName)) {
-            List<String> ids = productMapper.selectList(Wrappers.<Product>lambdaQuery().like(Product::getName, productName))
-                    .stream().map(Product::getId).toList();
+        if (StringUtils.hasText(productId) || StringUtils.hasText(productName)) {
+            List<String> ids = resolveProductIds(productId, productName);
             if (ids.isEmpty()) {
                 return PageResult.of(new Page<>(page, size));
             }
@@ -89,7 +99,7 @@ public class SnService {
                 q.apply(SnTags.jsonContainsSql(), safe);
             }
         }
-        applyDate(q, SnCode::getFactoryAt, factoryFrom, factoryTo);
+        applyFactoryDay(q, factoryFrom, factoryTo);
         applyDate(q, SnCode::getSoldAt, soldFrom, soldTo);
         applyDate(q, SnCode::getReturnAt, returnFrom, returnTo);
         if (!com.ruilai.common.security.DataScope.isAdmin()) {
@@ -111,15 +121,18 @@ public class SnService {
                 q.eq(SnCode::getL2Id, l2Id);
             }
         }
-        Set<String> pin = openActivateSns();
-        if (!pin.isEmpty()) {
-            String in = pin.stream().map(s -> "'" + s.replace("'", "") + "'").reduce((a, b) -> a + "," + b).orElse("''");
+        Map<String, ExceptionTicket> open = openActivateBySn();
+        if (!open.isEmpty()) {
+            String in = open.keySet().stream().map(s -> "'" + s.replace("'", "") + "'").reduce((a, b) -> a + "," + b).orElse("''");
             q.last("ORDER BY CASE WHEN sn IN (" + in + ") THEN 0 ELSE 1 END, updated_at DESC");
         } else {
             q.orderByDesc(SnCode::getUpdatedAt);
         }
         PageResult<SnCode> result = PageResult.of(snMapper.selectPage(Page.of(page, size), q));
-        result.list().forEach(this::fillProductName);
+        result.list().forEach(row -> {
+            enrichForDisplay(row);
+            applyOpenException(row, open);
+        });
         return result;
     }
 
@@ -128,7 +141,9 @@ public class SnService {
         if (row == null) {
             throw new BizException(ErrCode.NOT_FOUND, "SN 不存在");
         }
-        fillProductName(row);
+        enrichForDisplay(row);
+        applyOpenException(row, openActivateBySn());
+        fillAgentNames(row);
         return row;
     }
 
@@ -293,24 +308,39 @@ public class SnService {
         row.setBelt(belt);
         row.setStatus("warehouse");
         row.setFrozen(0);
-        row.setFactoryAt(ChinaTime.now());
+        row.setFactoryAt(SnFactoryDates.resolve(sn));
         if (StringUtils.hasText(l1Id)) {
             row.setL1Id(l1Id);
         }
         return row;
     }
 
-    private Set<String> openActivateSns() {
+    private Map<String, ExceptionTicket> openActivateBySn() {
         List<ExceptionTicket> list = exMapper.selectList(Wrappers.<ExceptionTicket>lambdaQuery()
                 .in(ExceptionTicket::getStatus, "待处理", "会签中")
                 .in(ExceptionTicket::getDim, "activate", "scan"));
-        Set<String> out = new HashSet<>();
+        Map<String, ExceptionTicket> out = new java.util.LinkedHashMap<>();
+        if (list == null) {
+            return out;
+        }
         for (ExceptionTicket e : list) {
             if (e.getTarget() != null && e.getTarget().toUpperCase().startsWith("RL")) {
-                out.add(e.getTarget().toUpperCase());
+                out.putIfAbsent(e.getTarget().toUpperCase(), e);
             }
         }
         return out;
+    }
+
+    private void applyOpenException(SnCode row, Map<String, ExceptionTicket> open) {
+        if (row == null || !StringUtils.hasText(row.getSn()) || open == null) {
+            return;
+        }
+        ExceptionTicket ticket = open.get(row.getSn().toUpperCase());
+        row.setOpenException(ticket != null);
+        if (ticket != null) {
+            row.setOpenExceptionType(ticket.getType());
+            row.setOpenExceptionDetail(ticket.getDetail());
+        }
     }
 
     private void applyDate(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SnCode> q,
@@ -339,6 +369,134 @@ public class SnService {
         if (row.getTags() == null) {
             row.setTags(List.of());
         }
+    }
+
+    private void enrichForDisplay(SnCode row) {
+        fillProductName(row);
+        LocalDateTime fromSn = SnFactoryDates.fromSnPrefix(row.getSn());
+        if (fromSn != null) {
+            row.setFactoryAt(fromSn);
+        } else if (row.getFactoryAt() == null && row.getCreatedAt() != null) {
+            row.setFactoryAt(row.getCreatedAt());
+        }
+        ensureLifecycleForDisplay(row);
+    }
+
+    private void fillAgentNames(SnCode row) {
+        if (row == null) {
+            return;
+        }
+        if (StringUtils.hasText(row.getL1Id())) {
+            AgentL1 agent = l1Mapper.selectById(row.getL1Id());
+            row.setL1Name(agent == null ? row.getL1Id() : agent.getName());
+        }
+        if (StringUtils.hasText(row.getL2Id())) {
+            AgentL2 agent = l2Mapper.selectById(row.getL2Id());
+            row.setL2Name(agent == null ? row.getL2Id() : agent.getName());
+        }
+    }
+
+    private List<String> resolveProductIds(String productId, String productName) {
+        String code = productId == null ? "" : productId.trim();
+        String name = productName == null ? "" : productName.trim();
+        var w = Wrappers.<Product>lambdaQuery();
+        w.and(q -> {
+            boolean any = false;
+            if (StringUtils.hasText(code)) {
+                q.eq(Product::getId, code).or().eq(Product::getCode, code).or().like(Product::getCode, code);
+                any = true;
+            }
+            if (StringUtils.hasText(name)) {
+                if (any) {
+                    q.or();
+                }
+                q.like(Product::getName, name);
+            }
+        });
+        return productMapper.selectList(w).stream().map(Product::getId).distinct().toList();
+    }
+
+    private void applyFactoryDay(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SnCode> q,
+                                 String from, String to) {
+        if (StringUtils.hasText(from)) {
+            try {
+                q.apply(SnFactoryDates.SQL_FACTORY_DAY + " >= {0}", LocalDate.parse(from.trim()));
+            } catch (Exception ignored) {
+            }
+        }
+        if (StringUtils.hasText(to)) {
+            try {
+                q.apply(SnFactoryDates.SQL_FACTORY_DAY + " <= {0}", LocalDate.parse(to.trim()));
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /**
+     * 兼容旧数据：历史记录可能已经销售但没有 events。只补接口响应，不在读取时写库。
+     */
+    private void ensureLifecycleForDisplay(SnCode row) {
+        if (row == null) {
+            return;
+        }
+        List<Map<String, Object>> events = row.getEvents() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(row.getEvents());
+        if (events.isEmpty() && row.getFactoryAt() != null) {
+            events.add(event(row.getFactoryAt(), "生成并导入码库",
+                    nz(row.getProductName()) + " / " + nz(row.getSizeCode()) + "+" + nz(row.getBelt()), "import"));
+        }
+        boolean hasSale = events.stream().anyMatch(e -> "bind".equals(e.get("type"))
+                || String.valueOf(e.getOrDefault("title", "")).contains("销售到C端"));
+        if ("bound".equals(row.getStatus()) && !hasSale) {
+            LocalDateTime soldAt = row.getBindAt() != null ? row.getBindAt() : row.getSoldAt();
+            if (soldAt == null) {
+                soldAt = row.getUpdatedAt() != null ? row.getUpdatedAt() : row.getFactoryAt();
+            }
+            if (soldAt != null) {
+                Map<String, Object> customer = row.getUserJson() != null ? row.getUserJson() : row.getPrevUserJson();
+                String phone = customer == null ? "—" : String.valueOf(customer.getOrDefault("phone", "—"));
+                String addr = customer == null ? "" : String.valueOf(customer.getOrDefault("addr", ""));
+                events.add(0, event(soldAt, "销售到C端", phone + (addr.isBlank() ? "" : " · " + addr), "bind"));
+            }
+        }
+        List<ReturnOrder> returns = returnMapper.selectList(Wrappers.<ReturnOrder>lambdaQuery()
+                .apply("JSON_SEARCH(sns, 'one', {0}) IS NOT NULL", row.getSn())
+                .orderByAsc(ReturnOrder::getCreatedAt));
+        Map<String, Object> extra = row.getExtra() == null ? new HashMap<>() : new HashMap<>(row.getExtra());
+        List<Object> processNotes = extra.get("processNotes") instanceof List<?> list
+                ? new ArrayList<>(list) : new ArrayList<>();
+        for (ReturnOrder rt : returns) {
+            String no = nz(rt.getNo());
+            boolean exists = events.stream().anyMatch(e -> String.valueOf(e.getOrDefault("desc", "")).contains(no));
+            if (!exists && rt.getCreatedAt() != null) {
+                String title = switch (String.valueOf(rt.getStatus())) {
+                    case "rejected" -> "退货申请已驳回";
+                    case "done", "approved" -> "退货申请已通过";
+                    default -> "提交退货申请";
+                };
+                String desc = no + (StringUtils.hasText(rt.getProcessNote()) ? " · " + rt.getProcessNote() : "");
+                events.add(0, event(rt.getUpdatedAt() != null ? rt.getUpdatedAt() : rt.getCreatedAt(), title, desc, "return"));
+            }
+            if (StringUtils.hasText(rt.getProcessNote())
+                    && processNotes.stream().noneMatch(note -> String.valueOf(note).contains(rt.getProcessNote()))) {
+                processNotes.add(Map.of(
+                        "date", (rt.getUpdatedAt() != null ? rt.getUpdatedAt() : rt.getCreatedAt()).toLocalDate().toString(),
+                        "text", rt.getProcessNote()));
+            }
+        }
+        extra.put("processNotes", processNotes);
+        row.setExtra(extra);
+        row.setEvents(events);
+    }
+
+    private static Map<String, Object> event(LocalDateTime time, String title, String desc, String type) {
+        Map<String, Object> item = new java.util.LinkedHashMap<>();
+        item.put("time", time.format(EVENT_TIME));
+        item.put("title", title);
+        item.put("desc", desc);
+        item.put("type", type);
+        return item;
     }
 
     private static String str(Object v) {
