@@ -129,7 +129,7 @@
           </div>
           <div class="form-item">
             <label class="form-label">登录密码</label>
-            <el-input v-model="form.loginPassword" type="password" show-password placeholder="至少 6 位" />
+            <el-input v-model="form.loginPassword" type="password" show-password placeholder="至少 6 位；编辑时留空表示不修改" />
             <small class="form-hint">新建或修改密码时至少 6 位</small>
           </div>
           <div class="form-item">
@@ -241,7 +241,7 @@ function closeDetail() {
   router.push('/agent/l1')
 }
 function openCreate() {
-  form.value = { status: '启用', warnMode: 'strict', warnMultiplier: 1.5, mainAreas: [], saleAreas: [], directAreas: [], ent: {}, loginUsername: '', loginPassword: 'demo' }
+  form.value = { status: '启用', warnMode: 'strict', warnMultiplier: 1.5, mainAreas: [], saleAreas: [], directAreas: [], ent: {}, loginUsername: '', loginPassword: '' }
   dlg.value = true
 }
 function openEdit(row: any) {
@@ -252,7 +252,7 @@ function openEdit(row: any) {
     directAreas: [...(row.directAreas||[])],
     ent: { ...(row.ent || {}) },
     loginUsername: row.loginUsername || '',
-    loginPassword: row.loginPassword || 'demo',
+    loginPassword: '',
   }
   dlg.value = true
 }
@@ -273,6 +273,7 @@ function validateNewAgentAccount(value: any) {
   if (!String(value.name || '').trim()) return '请填写代理名称'
   if (!value.id && !String(value.loginUsername || '').trim()) return '请填写登录用户名'
   if (!value.id && String(value.loginPassword || '').length < 6) return '登录密码至少 6 位'
+  if (value.id && value.loginPassword && String(value.loginPassword).length < 6) return '登录密码至少 6 位'
   if (!value.id && !(value.mainAreas || []).length) return '请选择主授权区域'
   const username = String(value.loginUsername || '').trim()
   const occupied = allL1s.value.some((row) => row.id !== value.id && row.loginUsername === username)

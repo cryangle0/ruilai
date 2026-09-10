@@ -64,6 +64,7 @@ test('return detail labels after-sales note immediately after reason for every r
     assert.equal(items[1].value, '外观损坏')
     assert.equal(items[2].label, '售后说明')
     assert.equal(items[2].value, '拉链断了')
+    assert.equal(items.find((item: any) => item.key === 'status')?.value, '已通过')
   }
 })
 

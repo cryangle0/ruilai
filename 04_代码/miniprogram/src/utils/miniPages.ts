@@ -280,7 +280,8 @@ export function timelineTone(event: { title?: string; type?: string }) {
   const type = String(event.type || '')
   if (type === 'exception' || title.includes('异常')) return 'danger'
   if (type === 'return' || title.includes('退货')) return 'warn'
-  return 'ok'
+  // Do not return "ok": that class is the primary action button in detail pages.
+  return ''
 }
 
 export function cendCustomer(sale: Record<string, any>) {
@@ -357,6 +358,15 @@ export function returnTypeLabel(type?: string, fallback?: string) {
   } as Record<string, string>)[String(type || '')] || fallback || type || '退货'
 }
 
+export function returnStatusLabel(status?: string) {
+  return ({
+    pending: '待审核',
+    approved: '已通过',
+    done: '已通过',
+    rejected: '已驳回',
+  } as Record<string, string>)[String(status || '')] || status || '—'
+}
+
 export function returnDetailItems(
   row: Record<string, any>,
   formatTime: (value: string) => string,
@@ -366,7 +376,7 @@ export function returnDetailItems(
     { key: 'reason', label: '理由', value: row.reasonType || '其他', tone: 'warning' as const },
     { key: 'afterSaleNote', label: '售后说明', value: row.reason || '—', full: true },
     { key: 'from', label: '来源', value: row.fromName || row.fromId || '—' },
-    { key: 'status', label: '状态', value: row.status || '—' },
+    { key: 'status', label: '状态', value: returnStatusLabel(row.status) },
     { key: 'time', label: '时间', value: formatTime(row.createdAt), full: true, code: true },
   ]
 }

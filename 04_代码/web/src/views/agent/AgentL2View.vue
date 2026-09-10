@@ -131,7 +131,7 @@
             </el-select>
           </div>
           <div class="form-item"><label class="form-label">登录用户名</label><el-input v-model="form.loginUsername" /></div>
-          <div class="form-item"><label class="form-label">登录密码</label><el-input v-model="form.loginPassword" type="password" show-password placeholder="至少 6 位" /></div>
+          <div class="form-item"><label class="form-label">登录密码</label><el-input v-model="form.loginPassword" type="password" show-password placeholder="至少 6 位；编辑时留空表示不修改" /></div>
           <div class="form-item"><label class="form-label">预警倍数</label><el-input-number v-model="form.warnMultiplier" :min="1" :max="9" :step="0.1" controls-position="right" /></div>
           <div class="form-item">
             <label class="form-label">报警粒度</label>
@@ -243,7 +243,7 @@ function closeDetail() {
   router.push('/agent/l2')
 }
 function openCreate() {
-  form.value = { type: '法人', status: '启用', warnMode: 'strict', warnMultiplier: 1.5, areas: [], ent: {}, loginUsername: '', loginPassword: 'demo' }
+  form.value = { type: '法人', status: '启用', warnMode: 'strict', warnMultiplier: 1.5, areas: [], ent: {}, loginUsername: '', loginPassword: '' }
   dlg.value = true
 }
 function openEdit(row: any) {
@@ -252,12 +252,16 @@ function openEdit(row: any) {
     areas: [...(row.areas || [])],
     ent: { ...(row.ent || {}) },
     loginUsername: row.loginUsername || '',
-    loginPassword: row.loginPassword || 'demo',
+    loginPassword: '',
   }
   dlg.value = true
 }
 async function save() {
-  if (form.value.loginPassword && form.value.loginPassword !== detail.value?.loginPassword && form.value.loginPassword.length < 6) {
+  if (!form.value.id && String(form.value.loginPassword || '').length < 6) {
+    ElMessage.error('登录密码至少 6 位')
+    return
+  }
+  if (form.value.id && form.value.loginPassword && String(form.value.loginPassword).length < 6) {
     ElMessage.error('登录密码至少 6 位')
     return
   }

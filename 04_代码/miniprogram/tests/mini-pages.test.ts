@@ -340,6 +340,7 @@ test('purchase and sale detail helpers keep prototype tables', () => {
   assert.equal(factoryDateText('RL202607200009', '2026-07-20T00:00:00'), '2026-07-20')
   assert.equal(timelineTone({ title: '异常：扫码尺码不匹配', type: 'exception' }), 'danger')
   assert.equal(timelineTone({ title: '直售客户退货', type: 'return' }), 'warn')
+  assert.equal(timelineTone({ title: '生成并导入码库', type: 'import' }), '')
 })
 
 test('sales detail separates standard nonstandard and single product rows', () => {
