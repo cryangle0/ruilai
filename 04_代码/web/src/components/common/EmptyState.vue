@@ -1,86 +1,68 @@
 <template>
   <div class="empty-state">
-    <el-empty :description="resolvedDescription" :image-size="imageSize">
-      <div v-if="resolvedTitle" class="empty-title">{{ resolvedTitle }}</div>
-      <p v-if="resolvedHint" class="empty-hint">{{ resolvedHint }}</p>
-      <slot />
-    </el-empty>
+    <EmptyStateContent />
+    <slot />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-
-export type EmptyKind = 'first' | 'filtered' | 'forbidden' | 'error' | 'default'
-
-const props = withDefaults(
-  defineProps<{
-    kind?: EmptyKind
-    description?: string
-    title?: string
-    hint?: string
-    hideHint?: boolean
-    imageSize?: number
-  }>(),
-  {
-    kind: 'default',
-    description: '',
-    title: '',
-    hint: '',
-    hideHint: false,
-    imageSize: 80,
-  },
-)
-
-const presets: Record<EmptyKind, { title: string; description: string; hint: string }> = {
-  first: {
-    title: '',
-    description: '还没有任何记录',
-    hint: '',
-  },
-  filtered: {
-    title: '无匹配结果',
-    description: '当前筛选条件下没有数据',
-    hint: '可调整条件后重新查询，或重置筛选',
-  },
-  forbidden: {
-    title: '无访问权限',
-    description: '当前账号无权查看该数据',
-    hint: '请联系管理员开通对应权限',
-  },
-  error: {
-    title: '加载失败',
-    description: '数据未能成功加载',
-    hint: '请检查网络后重试',
-  },
-  default: {
-    title: '',
-    description: '暂无数据',
-    hint: '',
-  },
-}
-
-const resolvedTitle = computed(() => props.title || presets[props.kind].title)
-const resolvedDescription = computed(
-  () => props.description || presets[props.kind].description,
-)
-const resolvedHint = computed(() => {
-  if (props.hideHint) return ''
-  return props.hint || presets[props.kind].hint
-})
+import EmptyStateContent from './EmptyStateContent.js'
 </script>
 
 <style scoped>
 .empty-state {
-  padding: 12px 0;
+  display: grid;
+  min-height: 176px;
+  place-items: center;
+  padding: 24px 0;
+  color: #8a97ad;
+  text-align: center;
 }
-.empty-title {
-  font-weight: 600;
-  margin-bottom: 4px;
+:deep(.empty-state__content) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
-.empty-hint {
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-  margin: 0 0 12px;
+:deep(.empty-state__icon) {
+  position: relative;
+  width: 30px;
+  height: 32px;
+}
+:deep(.empty-state__icon-lid),
+:deep(.empty-state__icon-bin) {
+  position: absolute;
+  display: block;
+  background: #9aa6b6;
+}
+:deep(.empty-state__icon-lid) {
+  top: 0;
+  left: 4px;
+  width: 22px;
+  height: 4px;
+  border-radius: 2px 2px 1px 1px;
+}
+:deep(.empty-state__icon-lid::before) {
+  position: absolute;
+  top: -3px;
+  left: 6px;
+  width: 10px;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: #9aa6b6;
+  content: '';
+}
+:deep(.empty-state__icon-bin) {
+  top: 6px;
+  left: 5px;
+  width: 20px;
+  height: 23px;
+  border-radius: 1px 1px 4px 4px;
+}
+:deep(.empty-state__text) {
+  margin: 0;
+  color: #8a97ad;
+  font-size: 14px;
+  line-height: 1.5;
 }
 </style>

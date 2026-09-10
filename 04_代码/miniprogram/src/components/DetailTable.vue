@@ -37,11 +37,13 @@
         </view>
       </view>
     </scroll-view>
-    <view v-else class="detail-table__empty">{{ emptyText }}</view>
+    <Empty v-else />
   </view>
 </template>
 
 <script setup lang="ts">
+import Empty from '@/components/Empty.vue'
+
 type TableValue = string | number | boolean | null | undefined
 type TableRow = Record<string, TableValue>
 type TableColumn = {
@@ -60,11 +62,9 @@ const props = withDefaults(defineProps<{
   rows: TableRow[]
   rowKey?: string
   minWidth?: string
-  emptyText?: string
   clickable?: boolean
 }>(), {
   minWidth: '100%',
-  emptyText: '暂无明细',
   clickable: false,
 })
 
@@ -128,13 +128,4 @@ function select(row: TableRow, index: number) {
 }
 .align-center { text-align: center; }
 .align-right { text-align: right; }
-.detail-table__empty {
-  padding: 30rpx 0;
-  border: 2rpx dashed $rl-border;
-  border-radius: 14rpx;
-  background: $rl-fill-soft;
-  color: $rl-text-disabled;
-  font-size: 22rpx;
-  text-align: center;
-}
 </style>

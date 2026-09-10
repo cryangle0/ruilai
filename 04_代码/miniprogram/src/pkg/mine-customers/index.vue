@@ -4,7 +4,7 @@
     <view class="pad">
       <text class="desc">{{ customerScope }} · 可搜手机/地址/SN</text>
       <SearchBar v-model="q" placeholder="搜索手机/地址/SN/姓名" />
-      <Empty v-if="!filtered.length" text="暂无客户" />
+      <Empty v-if="!filtered.length" />
       <ListCard
         v-for="r in filtered" :key="r.id"
         :title="r.name || r.phone || '未留姓名'"

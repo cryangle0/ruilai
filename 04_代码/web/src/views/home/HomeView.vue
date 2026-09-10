@@ -57,7 +57,7 @@
 
       <div class="l1-card">
         <h3>一级代理</h3>
-        <el-table :data="l1s" size="small" empty-text="暂无一级">
+        <el-table :data="l1s" size="small">
           <el-table-column prop="name" label="名称" min-width="140" />
           <el-table-column label="本月销售" width="100" align="right">
             <template #default="{ row }">{{ row.monthSalesQty ?? 0 }}</template>
@@ -73,6 +73,7 @@
               <button type="button" class="tbl-link" @click.stop="go(l1Return(row.id))">退货</button>
             </template>
           </el-table-column>
+          <template #empty><EmptyState /></template>
         </el-table>
       </div>
     </template>
@@ -85,6 +86,7 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
 import { api } from '@/api'
 import DisablePendingDialog from '@/components/common/DisablePendingDialog.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import KpiCards, { type KpiItem } from '@/components/common/KpiCards.vue'
 import { useAuthStore } from '@/stores/auth'
 import {

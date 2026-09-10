@@ -31,7 +31,7 @@
         @retry="reload"
         @load-more="loadMore"
       >
-        <Empty v-if="!rows.length" text="当前筛选暂无单据" />
+        <Empty v-if="!rows.length" />
         <ListCard
           v-for="r in rows" :key="r.id"
           :class="{ emphasized: isPending(r) }"

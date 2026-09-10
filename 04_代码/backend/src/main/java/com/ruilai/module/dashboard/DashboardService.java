@@ -156,8 +156,7 @@ public class DashboardService {
             distRange = sumSoQty(soRange.stream().filter(s -> "distribute".equals(s.getChannel())).toList());
             directAll = sumSoQty(scoped.stream().filter(s -> "direct".equals(s.getChannel())).toList());
             directRange = sumSoQty(soRange.stream().filter(s -> "direct".equals(s.getChannel())).toList());
-            soRange.forEach(s -> addProduct(productMap, productNames.getOrDefault(s.getProductId(),
-                    s.getProductId() == null ? "销售" : s.getProductId()), soQty(s)));
+            soRange.forEach(s -> addSalesProducts(productMap, productNames, s));
         }
 
         List<SnCode> snsScope = sns.stream().filter(s -> {
@@ -328,6 +327,22 @@ public class DashboardService {
     private void addProduct(Map<String, Integer> map, String name, int n) {
         if (!StringUtils.hasText(name) || n == 0) return;
         map.merge(name, n, Integer::sum);
+    }
+
+    private void addSalesProducts(Map<String, Integer> map, Map<String, String> productNames, SalesOrder sale) {
+        boolean resolvedLine = false;
+        if (sale.getLines() != null) {
+            for (Map<String, Object> line : sale.getLines()) {
+                String productId = String.valueOf(line.getOrDefault("productId", ""));
+                String productName = productNames.get(productId);
+                if (!StringUtils.hasText(productName)) continue;
+                addProduct(map, productName, lineQty(List.of(line)));
+                resolvedLine = true;
+            }
+        }
+        if (!resolvedLine) {
+            addProduct(map, productNames.get(sale.getProductId()), soQty(sale));
+        }
     }
 
     private Map<String, Object> pie(String label, long value, String color) {

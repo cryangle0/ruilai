@@ -5,7 +5,7 @@
       <view v-if="!soId">
         <text class="desc">选择进行中的销售单后扫码</text>
         <button v-if="user.role!=='SUB'" class="btn-p" @click="goCreate">创建销售单</button>
-        <Empty v-if="!openSos.length" text="暂无进行中出货单" />
+        <Empty v-if="!openSos.length" />
         <ListCard v-for="s in openSos" :key="s.id" :title="s.no" :sub="`${salesScanSummary(s).product} · ${salesScanSummary(s).progress}`" @click="pick(s.id)" />
       </view>
       <view v-else>

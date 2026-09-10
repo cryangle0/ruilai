@@ -1,5 +1,5 @@
 <template>
-  <view v-if="!rows.length" class="empty">暂无数据</view>
+  <Empty v-if="!rows.length" />
   <view v-else class="bars">
     <view v-for="it in rows" :key="it.label" class="row">
       <text class="lab">{{ it.label }}</text>
@@ -12,6 +12,7 @@
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
+import Empty from '@/components/Empty.vue'
 
 type BarItem = { label: string; value: number | string }
 const props = withDefaults(defineProps<{ items?: BarItem[] }>(), { items: () => [] })
@@ -48,5 +49,4 @@ function pct(v: number) {
 }
 .fill { height: 100%; border-radius: inherit; background: #1A68D7; }
 .val { width: 48rpx; text-align: right; font-size: 24rpx; font-weight: 700; color: $rl-ink; }
-.empty { text-align: center; color: $rl-text-3; font-size: 24rpx; padding: 36rpx 0; }
 </style>

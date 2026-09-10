@@ -18,7 +18,7 @@
       >
         <slot />
         <template #empty>
-          <EmptyState :kind="data.length ? 'default' : 'first'" />
+          <EmptyState />
         </template>
       </el-table>
       <div v-if="showPagination" class="shell-pagination pager">

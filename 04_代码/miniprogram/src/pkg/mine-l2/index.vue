@@ -5,7 +5,7 @@
       <text class="desc">维护下属二级信息与登录账号；新建后进入平台「二级审核」。</text>
       <view class="btn-p" @click="openCreate">创建二级代理</view>
       <SearchBar v-model="q" placeholder="搜索名称/编码/城市" />
-      <Empty v-if="!filtered.length" text="暂无二级代理，点上方创建" />
+      <Empty v-if="!filtered.length" />
       <view v-for="a in filtered" :key="a.id" class="card glass">
         <view class="hd">
           <view>

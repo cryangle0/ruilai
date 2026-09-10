@@ -2,7 +2,7 @@
   <view class="rl-page" :class="{ 'has-foot': hasFooter }">
     <NavBar :title="navTitle" show-back />
     <view class="pad">
-      <PagedState :loading="loading" :error="error" :empty="!Object.keys(data).length" empty-text="未找到详情" @retry="load">
+      <PagedState :loading="loading" :error="error" :empty="!Object.keys(data).length" @retry="load">
         <template v-if="kind==='purchase'">
           <DetailSection :title="data.no || '采购单'">
             <DetailKv :items="purchaseKv">
@@ -12,13 +12,13 @@
             </DetailKv>
           </DetailSection>
           <DetailSection title="标准品">
-            <DetailTable :columns="purchaseLineCols" :rows="purchaseStandardRows" min-width="720rpx" empty-text="无标准行" />
+            <DetailTable :columns="purchaseLineCols" :rows="purchaseStandardRows" min-width="720rpx" />
           </DetailSection>
           <DetailSection title="非标品">
-            <DetailTable :columns="purchaseLineCols" :rows="purchaseCustomRows" min-width="720rpx" empty-text="暂无非标" />
+            <DetailTable :columns="purchaseLineCols" :rows="purchaseCustomRows" min-width="720rpx" />
           </DetailSection>
           <DetailSection title="配件">
-            <DetailTable :columns="purchasePartCols" :rows="purchaseParts" empty-text="无配件" />
+            <DetailTable :columns="purchasePartCols" :rows="purchaseParts" />
           </DetailSection>
         </template>
 
@@ -34,16 +34,16 @@
             </DetailKv>
           </DetailSection>
           <DetailSection title="标准品">
-            <DetailTable :columns="saleProductCols" :rows="saleSections.standard" empty-text="无标准品" />
+            <DetailTable :columns="saleProductCols" :rows="saleSections.standard" />
           </DetailSection>
           <DetailSection title="非标品">
-            <DetailTable :columns="saleProductCols" :rows="saleSections.nonstandard" empty-text="无非标品" />
+            <DetailTable :columns="saleProductCols" :rows="saleSections.nonstandard" />
           </DetailSection>
           <DetailSection title="单品">
-            <DetailTable :columns="saleProductCols" :rows="saleSections.single" empty-text="无单品" />
+            <DetailTable :columns="saleProductCols" :rows="saleSections.single" />
           </DetailSection>
           <DetailSection title="SN码" :count="saleSnRows.length">
-            <DetailTable :columns="snCols" :rows="saleSnRows" min-width="680rpx" empty-text="暂无已扫 SN" />
+            <DetailTable :columns="snCols" :rows="saleSnRows" min-width="680rpx" />
           </DetailSection>
           <view v-if="data.status==='scanning' && user.role!=='SUB'" class="ok" @click="goScan">继续扫码</view>
         </template>
@@ -57,10 +57,10 @@
             </DetailKv>
           </DetailSection>
           <DetailSection title="商品明细">
-            <DetailTable :columns="cendProductCols" :rows="cendProductRows" empty-text="无商品明细" />
+            <DetailTable :columns="cendProductCols" :rows="cendProductRows" />
           </DetailSection>
           <DetailSection title="SN码" :count="saleSnRows.length">
-            <DetailTable :columns="snCols" :rows="saleSnRows" min-width="680rpx" empty-text="暂无 SN" />
+            <DetailTable :columns="snCols" :rows="saleSnRows" min-width="680rpx" />
           </DetailSection>
         </template>
 
@@ -114,7 +114,7 @@
             </DetailKv>
           </DetailSection>
           <DetailSection title="流水" :count="stockLogRows.length">
-            <DetailTable :columns="stockLogCols" :rows="stockLogRows" min-width="760rpx" empty-text="暂无流水" />
+            <DetailTable :columns="stockLogCols" :rows="stockLogRows" min-width="760rpx" />
           </DetailSection>
           <DetailSection title="SN码" :count="stockSnRows.length">
             <text class="hint">点击SN查看详情</text>
@@ -122,7 +122,6 @@
               :columns="stockSnCols"
               :rows="stockSnRows"
               min-width="780rpx"
-              empty-text="暂无 SN"
               clickable
               @row-click="onStockSnClick"
             >
@@ -155,7 +154,7 @@
             <text class="plain">{{ returnProcessNote }}</text>
           </DetailSection>
           <DetailSection title="情况说明">
-            <DetailTable :columns="returnSitCols" :rows="returnSitRows" empty-text="暂无情况说明" />
+            <DetailTable :columns="returnSitCols" :rows="returnSitRows" />
           </DetailSection>
           <DetailSection title="凭证图片">
             <view v-if="(data.photos||[]).length" class="photo-grid">
@@ -167,10 +166,10 @@
             <DetailKv :items="returnCustomerKv" />
           </DetailSection>
           <DetailSection title="商品明细" :count="returnGoodsRows.length">
-            <DetailTable :columns="returnGoodsCols" :rows="returnGoodsRows" empty-text="无商品明细" />
+            <DetailTable :columns="returnGoodsCols" :rows="returnGoodsRows" />
           </DetailSection>
           <DetailSection title="SN码" :count="returnSnRows.length">
-            <DetailTable :columns="returnSnCols" :rows="returnSnRows" min-width="720rpx" empty-text="暂无 SN" />
+            <DetailTable :columns="returnSnCols" :rows="returnSnRows" min-width="720rpx" />
           </DetailSection>
           <view class="detail-footer">
             <view class="footer-btn ghost" @click="closePage">关闭</view>

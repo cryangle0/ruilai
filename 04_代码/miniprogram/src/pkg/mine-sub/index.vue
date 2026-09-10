@@ -4,7 +4,7 @@
     <view class="pad">
       <text class="desc">一级可创建仅扫码子账号，不可改单。</text>
       <button class="btn-p" @click="openCreate">创建子账号</button>
-      <Empty v-if="!rows.length" text="暂无子账号" />
+      <Empty v-if="!rows.length" />
       <view v-for="s in rows" :key="s.id" class="row glass">
         <text>{{ s.username }} · {{ s.name }}</text>
         <button class="sm" @click="toggle(s)">{{ s.status==='启用' ? '停用' : '启用' }}</button>

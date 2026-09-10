@@ -44,7 +44,7 @@
         @retry="reload"
         @load-more="loadMore"
       >
-        <Empty v-if="!rows.length" text="当前筛选暂无记录" />
+        <Empty v-if="!rows.length" />
         <template v-if="tab === 'return'">
           <ListCard v-for="r in rows" :key="r.id" :class="{ pending: r.status === 'pending' }" :title="r.no" :sub="r.reason || r.desc || '暂无说明'" :meta="(r.sns || []).join(' ') || '暂无 SN'" @click="open('return', r.id)">
             <template #tag><StatusTag :value="r.status" :map="RT_STATUS" /></template>

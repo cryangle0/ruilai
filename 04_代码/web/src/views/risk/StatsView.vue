@@ -60,6 +60,7 @@ import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'v
 import { useRouter, type RouteLocationRaw } from 'vue-router'
 import SearchPanel from '@/components/common/SearchPanel.vue'
 import KpiCards, { type KpiItem } from '@/components/common/KpiCards.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { api } from '@/api'
 import { monthStart, todayDate } from '@/utils/dates'
 import { statsToPurchase, statsToSales, statsToStock, statsToException, statsToReturn } from '@/utils/detailJump'
@@ -217,7 +218,7 @@ const HBars = defineComponent({
     return () => {
       const rows = ((props.items as { label: string; value: number }[]) || []).slice(0, 6)
       const maxV = Math.max(1, ...rows.map((x) => x.value))
-      if (!rows.length) return h('div', { class: 'empty-hint' }, '暂无数据')
+      if (!rows.length) return h(EmptyState)
       return h('div', { class: 'dash-hbars' }, rows.map((it) => {
         const pct = Math.max(4, Math.round((it.value / maxV) * 100))
         return h('div', { class: 'dash-hbar' }, [

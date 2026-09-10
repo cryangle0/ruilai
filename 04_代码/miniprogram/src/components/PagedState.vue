@@ -12,13 +12,8 @@
       <button class="paged-state__button" @click="$emit('retry')">{{ retryText }}</button>
     </view>
 
-    <view v-else-if="empty" class="paged-state__panel">
-      <view class="paged-state__empty">
-        <view class="paged-state__empty-line" />
-        <view class="paged-state__empty-line short" />
-      </view>
-      <text class="paged-state__title">{{ emptyText }}</text>
-      <text v-if="emptyHint" class="paged-state__desc">{{ emptyHint }}</text>
+    <view v-else-if="empty" class="paged-state__empty-panel">
+      <Empty />
       <slot name="empty-action" />
     </view>
 
@@ -44,6 +39,8 @@
 </template>
 
 <script setup lang="ts">
+import Empty from '@/components/Empty.vue'
+
 withDefaults(defineProps<{
   loading?: boolean
   empty?: boolean
@@ -53,8 +50,6 @@ withDefaults(defineProps<{
   submitting?: boolean
   showEnd?: boolean
   loadingText?: string
-  emptyText?: string
-  emptyHint?: string
   errorTitle?: string
   retryText?: string
   loadMoreText?: string
@@ -70,8 +65,6 @@ withDefaults(defineProps<{
   submitting: false,
   showEnd: false,
   loadingText: '加载中',
-  emptyText: '暂无数据',
-  emptyHint: '',
   errorTitle: '加载失败',
   retryText: '重新加载',
   loadMoreText: '加载更多',
@@ -89,6 +82,7 @@ defineEmits<{
 <style scoped lang="scss">
 @import '@/styles/theme.scss';
 .paged-state { position: relative; min-height: 1rpx; }
+.paged-state__empty-panel { min-height: 280rpx; text-align: center; }
 .paged-state__panel {
   min-height: 280rpx;
   padding: 54rpx 32rpx;
@@ -130,16 +124,6 @@ defineEmits<{
   font-size: 34rpx;
   font-weight: 700;
 }
-.paged-state__empty {
-  width: 82rpx;
-  height: 66rpx;
-  margin-bottom: 20rpx;
-  padding: 18rpx 14rpx;
-  border: 3rpx solid $rl-border-strong;
-  border-radius: 12rpx;
-}
-.paged-state__empty-line { height: 4rpx; margin-bottom: 10rpx; border-radius: 2rpx; background: $rl-border-strong; }
-.paged-state__empty-line.short { width: 60%; }
 .paged-state__button,
 .paged-state__more {
   min-width: 176rpx;

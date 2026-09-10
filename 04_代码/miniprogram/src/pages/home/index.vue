@@ -12,7 +12,7 @@
       <template v-else-if="user.role === 'SUB'">
         <text class="mini-page-desc">子账号仅可扫码出货，不可改单</text>
         <button class="btn-p" @click="goScanSo()">出货扫码</button>
-        <view v-if="!openSos.length"><Empty text="暂无进行中出货单" /></view>
+        <view v-if="!openSos.length"><Empty /></view>
         <ListCard
           v-for="s in openSos" :key="s.id"
           :title="s.no"
@@ -118,7 +118,7 @@
           <button v-if="scanMode==='direct'" class="btn-p" @click="goBind">扫描 SN 激活</button>
           <template v-else>
             <button class="btn-p" @click="goCreateSo">创建销售单</button>
-            <view v-if="!openSos.length"><Empty text="暂无进行中出货单" /></view>
+            <view v-if="!openSos.length"><Empty /></view>
             <ListCard
               v-for="s in openSos" :key="s.id"
               :title="s.no"

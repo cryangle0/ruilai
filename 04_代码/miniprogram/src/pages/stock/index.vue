@@ -22,7 +22,7 @@
         </view>
         <view v-if="tab === 'product'">
           <SpecFilter v-model:size="size" v-model:belt="belt" />
-          <view v-if="!filteredProducts.length"><Empty text="暂无汇总" /></view>
+          <view v-if="!filteredProducts.length"><Empty /></view>
           <ListCard
             v-for="r in filteredProducts"
             :key="r.key"
@@ -35,7 +35,7 @@
         <view v-else-if="tab === 'sn'">
           <SearchBar v-model="q" placeholder="搜 SN" />
           <SpecFilter v-model:size="size" v-model:belt="belt" />
-          <view v-if="!filteredSns.length"><Empty text="无 SN" /></view>
+          <view v-if="!filteredSns.length"><Empty /></view>
           <view
             v-for="s in sortedSns"
             :key="s.sn"
@@ -69,7 +69,7 @@
           <view class="filter-panel">
             <DateBar embedded v-model:from="from" v-model:to="to" />
           </view>
-          <view v-if="!filteredLogs.length"><Empty text="暂无流水" /></view>
+          <view v-if="!filteredLogs.length"><Empty /></view>
           <ListCard
             v-for="h in filteredLogs"
             :key="h.id"
