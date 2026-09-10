@@ -84,7 +84,7 @@ export function exceptionDimension(row: Record<string, any>) {
 }
 
 export function exceptionApiDimension(tab: string) {
-  if (tab === 'activate-direct' || tab === 'activate-dist') return 'activate'
+  if (tab === 'activate-direct' || tab === 'activate-dist') return tab
   if (tab === 'scan') return 'scan'
   return 'stock'
 }
@@ -360,6 +360,10 @@ export function exceptionExplainText(row: Record<string, any>) {
   return exceptionDimension(row) === 'activate-dist'
     ? String(row.explainL2 || row.explainTxt || '')
     : String(row.explainTxt || row.explainL2 || '')
+}
+
+export function canExplainException(row: Record<string, any>) {
+  return isOpenException(row) && !exceptionExplainText(row).trim()
 }
 
 const STOCK_DETAIL_KEY = 'rl_stock_detail'

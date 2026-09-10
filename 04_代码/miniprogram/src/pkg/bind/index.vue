@@ -210,8 +210,9 @@ async function submit() {
     lat: gps.value.lat,
     customer: { phone: phone.value, addr: addr.value, name: name.value, gender: gender.value, age: age.value, note: note.value },
   }
-  const previews = await Promise.all(snRows.value.map((item) => miniApi.bind({ ...payload, sn: item.sn, dryRun: true })))
-  const issues = [...new Set(previews.flatMap((preview) => (preview.data as any).issues || []))]
+  const sns = snRows.value.map((item) => item.sn)
+  const preview = await miniApi.bindBatch({ ...payload, sns, dryRun: true })
+  const issues = [...new Set((preview.data as any).issues || [])]
   if (issues.length) {
     const box = await uni.showModal({
       title: '存在预警，是否仍激活？',
@@ -221,11 +222,8 @@ async function submit() {
     })
     if (!box.confirm) return
   }
-  const results = []
-  for (const item of snRows.value) {
-    results.push(await miniApi.bind({ ...payload, sn: item.sn }))
-  }
-  const doneIssues = [...new Set(results.flatMap((res) => (res.data as any).issues || []))]
+  const result = await miniApi.bindBatch({ ...payload, sns })
+  const doneIssues = [...new Set((result.data as any).issues || [])]
   uni.showModal({
     title: doneIssues.length ? '已激活（有预警）' : '激活成功',
     content: doneIssues.length ? doneIssues.join('\n') : `${snRows.value.length} 个 SN 已绑定客户`,

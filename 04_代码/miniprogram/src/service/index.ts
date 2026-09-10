@@ -27,6 +27,7 @@ export const miniApi = {
   scan: (id: string, sn: string) => http.post(`/api/sales/${id}/scan`, { sn }),
   confirm: (id: string) => http.post(`/api/sales/${id}/confirm`),
   bind: (data: object) => http.post('/api/sales/direct-bind', data),
+  bindBatch: (data: object) => http.post('/api/sales/direct-bind-batch', data),
 
   stock: (params?: Record<string, unknown>) => http.get<any[]>('/api/stock/summary', params),
   stockLogs: (params?: Record<string, unknown>) => http.get<any[]>('/api/stock/logs', params),

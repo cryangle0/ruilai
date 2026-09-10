@@ -125,6 +125,22 @@ public class TradeController {
         return R.ok(salesService.directBind(sn, customer, hint, LogService.clientIp(), lng, lat, dryRun));
     }
 
+    @PostMapping("/sales/direct-bind-batch")
+    public R<Map<String, Object>> bindBatch(@RequestBody Map<String, Object> body) {
+        String hint = String.valueOf(body.getOrDefault("ipRegion", ""));
+        Double lng = toDouble(body.get("lng"));
+        Double lat = toDouble(body.get("lat"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> customer = (Map<String, Object>) body.getOrDefault("customer", Map.of());
+        List<String> sns = body.get("sns") instanceof List<?> values
+                ? values.stream().map(String::valueOf).toList()
+                : List.of();
+        boolean dryRun = Boolean.TRUE.equals(body.get("dryRun"))
+                || "true".equals(String.valueOf(body.get("dryRun")));
+        return R.ok(salesService.directBindBatch(
+                sns, customer, hint, LogService.clientIp(), lng, lat, dryRun));
+    }
+
     @GetMapping("/returns")
     public R<PageResult<ReturnOrder>> returns(@RequestParam(defaultValue = "1") long page,
                                               @RequestParam(defaultValue = "20") long pageSize,

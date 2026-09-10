@@ -331,6 +331,16 @@ test('sales customers keep date filters and never merge a new scan into an old r
   assert.doesNotMatch(view, /仅重复/)
 })
 
+test('activation customer order numbers are visible and zero exception badges are absent', () => {
+  const customers = source('src/views/risk/CustomerView.vue')
+  const exceptions = source('src/views/risk/ExceptionView.vue')
+  assert.match(customers, /prop="orderNo"\s+label="单号"/)
+  assert.match(customers, /<span>单号<\/span>\{\{\s*form\.orderNo/)
+  assert.match(exceptions, /badge:\s*counts\['activate-direct'\]\s*\|\|\s*undefined/)
+  assert.match(exceptions, /badge:\s*counts\['activate-dist'\]\s*\|\|\s*undefined/)
+  assert.match(exceptions, /badge:\s*counts\.stock\s*\|\|\s*undefined/)
+})
+
 test('header bell badge matches the design spec instead of a floating pill', () => {
   const layout = source('src/layouts/AppLayout.vue')
   assert.match(layout, /\.bell-dot\s*\{[\s\S]*?box-sizing:\s*border-box/)

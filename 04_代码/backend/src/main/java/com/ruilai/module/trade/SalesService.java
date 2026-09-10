@@ -345,6 +345,12 @@ public class SalesService {
     @Transactional
     public Map<String, Object> directBind(String sn, Map<String, Object> customer, String hintRegion,
                                           String clientIp, Double lng, Double lat, boolean dryRun) {
+        return directBindBatch(List.of(sn), customer, hintRegion, clientIp, lng, lat, dryRun);
+    }
+
+    @Transactional
+    public Map<String, Object> directBindBatch(List<String> sns, Map<String, Object> customer, String hintRegion,
+                                               String clientIp, Double lng, Double lat, boolean dryRun) {
         LoginUser u = AuthUtil.current();
         if ("SUB".equals(u.getRoleCode())) {
             throw new BizException(ErrCode.FORBIDDEN, "子账号不可直销激活");
@@ -352,113 +358,115 @@ public class SalesService {
         if (customer == null) {
             throw new BizException(ErrCode.BAD_REQUEST, "请填写客户信息");
         }
-        String l1Id = u.isAdmin() ? str(customer == null ? null : customer.get("l1Id")) : u.getAgentId();
-        if ("null".equalsIgnoreCase(l1Id)) {
-            l1Id = null;
+        if (sns == null || sns.isEmpty()) {
+            throw new BizException(ErrCode.BAD_REQUEST, "请至少提交一个 SN");
         }
-        SnCode row = snMapper.selectById(sn);
-        if (row == null) {
-            throw new BizException(ErrCode.NOT_FOUND, "SN 不存在");
+        List<String> codes = sns.stream().map(SalesService::str).map(String::trim)
+                .filter(StringUtils::hasText).toList();
+        if (codes.isEmpty()) {
+            throw new BizException(ErrCode.BAD_REQUEST, "请至少提交一个 SN");
         }
-        if (row.getFrozen() != null && row.getFrozen() == 1) {
-            throw new BizException(ErrCode.BAD_REQUEST, "已冻结 SN 不可激活");
+        if (new HashSet<>(codes).size() != codes.size()) {
+            throw new BizException(ErrCode.BAD_REQUEST, "提交的 SN 不可重复");
         }
-        boolean l2Stock = "L2".equals(u.getRoleCode());
-        if (l2Stock) {
-            if (!"l2".equals(row.getStatus()) || !u.getAgentId().equals(row.getL2Id())) {
-                throw new BizException(ErrCode.BAD_REQUEST, "SN 不在本二级仓库");
-            }
-        } else if (!"l1".equals(row.getStatus())
-                || (StringUtils.hasText(l1Id) && !l1Id.equals(row.getL1Id()))) {
-            throw new BizException(ErrCode.BAD_REQUEST, "SN 不在本一级仓库");
-        }
-        AgentL1 agent = l1Mapper.selectById(row.getL1Id());
-        AgentL2 l2 = row.getL2Id() == null ? null : l2Mapper.selectById(row.getL2Id());
-        String warnMode = stockWarnService.resolve(row.getL1Id(), row.getL2Id()).mode();
-        List<String> fence = l2Stock && l2 != null && l2.getAreas() != null && !l2.getAreas().isEmpty()
-                ? l2.getAreas()
-                : (agent == null ? List.of() : agent.getDirectAreas());
-        List<String> saleAreas = agent == null ? List.of() : (agent.getSaleAreas() == null ? List.of() : agent.getSaleAreas());
 
-        Region loc = gateway.resolveActivateLocation(clientIp, hintRegion, lng, lat);
+        // All stock checks happen before warning/exception, order, customer, event or SN writes.
+        List<SnCode> rows = new ArrayList<>(codes.size());
+        boolean l2Stock = "L2".equals(u.getRoleCode());
+        String requestedL1 = u.isAdmin() ? str(customer.get("l1Id")) : u.getAgentId();
+        for (String code : codes) {
+            SnCode row = snMapper.selectById(code);
+            if (row == null) {
+                throw new BizException(ErrCode.NOT_FOUND, "SN 不存在：" + code);
+            }
+            if (row.getFrozen() != null && row.getFrozen() == 1) {
+                throw new BizException(ErrCode.BAD_REQUEST, "已冻结 SN 不可激活：" + code);
+            }
+            if (l2Stock) {
+                if (!"l2".equals(row.getStatus()) || !u.getAgentId().equals(row.getL2Id())) {
+                    throw new BizException(ErrCode.BAD_REQUEST, "SN 不在本二级仓库：" + code);
+                }
+            } else if (!"l1".equals(row.getStatus())
+                    || (StringUtils.hasText(requestedL1) && !requestedL1.equals(row.getL1Id()))) {
+                throw new BizException(ErrCode.BAD_REQUEST, "SN 不在本一级仓库：" + code);
+            }
+            if (!rows.isEmpty() && (!str(rows.get(0).getL1Id()).equals(str(row.getL1Id()))
+                    || !str(rows.get(0).getL2Id()).equals(str(row.getL2Id())))) {
+                throw new BizException(ErrCode.BAD_REQUEST, "一批 SN 必须属于同一销售代理");
+            }
+            rows.add(row);
+        }
+        SnCode first = rows.get(0);
+        String l1Id = first.getL1Id();
+
         String phone = str(customer.get("phone"));
         if (!StringUtils.hasText(phone)) {
             throw new BizException(ErrCode.BAD_REQUEST, "请填写手机号");
         }
-        Region phoneReg = gateway.locatePhone(phone);
         String addr = str(customer.get("addr"));
-        Region addrReg = gateway.geocodeAddress(addr);
 
-        List<String> issues = new ArrayList<>();
+        // Location and duplicate checks are calculated from the database snapshot before this batch.
+        AgentL1 agent = l1Mapper.selectById(first.getL1Id());
+        AgentL2 l2 = first.getL2Id() == null ? null : l2Mapper.selectById(first.getL2Id());
+        String warnMode = stockWarnService.resolve(first.getL1Id(), first.getL2Id()).mode();
+        List<String> fence = l2Stock && l2 != null && l2.getAreas() != null && !l2.getAreas().isEmpty()
+                ? l2.getAreas()
+                : (agent == null ? List.of() : agent.getDirectAreas());
+        List<String> saleAreas = agent == null ? List.of()
+                : (agent.getSaleAreas() == null ? List.of() : agent.getSaleAreas());
+
+        Region loc = gateway.resolveActivateLocation(clientIp, hintRegion, lng, lat);
+        Region phoneReg = gateway.locatePhone(phone);
+        Region addrReg = gateway.geocodeAddress(addr);
+        List<ActivationWarning> warnings = new ArrayList<>();
         Map<String, Object> locMap = loc.toMap();
         locMap.put("ip", clientIp);
         if (!loc.ok()) {
-            issues.add("未能解析激活位置（请配置高德/腾讯 Key 或授权定位）");
+            warnings.add(new ActivationWarning(null, "未能解析激活位置（请配置高德/腾讯 Key 或授权定位）"));
         } else if (fence != null && !fence.isEmpty() && !gateway.inFence(loc, fence)) {
-            String msg = "直售跨区激活：定位 " + loc.display() + " 不在授权围栏 " + String.join("、", fence);
-            issues.add(msg);
-            if (!dryRun) {
-                exceptionService.raise("IP异常", sn, msg, "activate", warnMode, row.getL2Id());
-            }
+            warnings.add(new ActivationWarning("IP异常",
+                    "直售跨区激活：定位 " + loc.display() + " 不在授权围栏 " + String.join("、", fence)));
         }
         if (phoneReg.ok() && fence != null && !fence.isEmpty() && !gateway.inFence(phoneReg, fence)
                 && !GeoFence.provinceInSaleAreas(phoneReg, saleAreas)) {
-            String msg = "手机归属 " + phoneReg.display() + " 不在授权区域";
-            issues.add(msg);
-            if (!dryRun) {
-                exceptionService.raise("归属地异常", sn, msg, "activate", warnMode, row.getL2Id());
-            }
+            warnings.add(new ActivationWarning("归属地异常", "手机归属 " + phoneReg.display() + " 不在授权区域"));
         }
         if (phoneReg.ok() && loc.ok() && !gateway.phoneMatchesAddress(phoneReg, loc)) {
-            String msg = "手机归属" + phoneReg.display() + " · IP地区" + loc.display() + "不一致";
-            issues.add(msg);
-            if (!dryRun) {
-                exceptionService.raise("归属地异常", sn, msg, "activate", warnMode, row.getL2Id());
-            }
+            warnings.add(new ActivationWarning("归属地异常",
+                    "手机归属" + phoneReg.display() + " · IP地区" + loc.display() + "不一致"));
         }
         if (phoneReg.ok() && addrReg.ok() && !gateway.phoneMatchesAddress(phoneReg, addrReg)) {
-            String msg = "手机归属" + phoneReg.display() + " 与填写地址" + addrReg.display() + "不一致";
-            issues.add(msg);
-            if (!dryRun) {
-                exceptionService.raise("归属地异常", sn, msg, "activate", warnMode, row.getL2Id());
-            }
+            warnings.add(new ActivationWarning("归属地异常",
+                    "手机归属" + phoneReg.display() + " 与填写地址" + addrReg.display() + "不一致"));
         }
-        if (StringUtils.hasText(phone)) {
-            List<Customer> samePhone = customerMapper.selectList(
-                    Wrappers.<Customer>lambdaQuery().eq(Customer::getPhone, phone));
-            boolean duplicateCustomer = samePhone.stream()
-                    .anyMatch(existing -> !sameCustomerIdentity(existing, customer));
-            if (duplicateCustomer) {
-                String msg = "手机号 " + phone + " 已激活过";
-                issues.add("手机号重复激活");
-                if (!dryRun) {
-                    exceptionService.raise("客户信息重复", sn, msg, "activate", warnMode, row.getL2Id());
-                }
-            }
+
+        List<Customer> phoneSnapshot = customerMapper.selectList(
+                Wrappers.<Customer>lambdaQuery().eq(Customer::getPhone, phone));
+        if (phoneSnapshot != null && !phoneSnapshot.isEmpty()) {
+            warnings.add(new ActivationWarning("客户信息重复", "手机号 " + phone + " 已激活过"));
         }
         if (StringUtils.hasText(addr) && AddressMatch.hasStreet(addr)) {
-            var w = Wrappers.<Customer>lambdaQuery().isNotNull(Customer::getAddr);
-            if (StringUtils.hasText(row.getL1Id())) {
-                w.eq(Customer::getL1Id, row.getL1Id());
+            var addressQuery = Wrappers.<Customer>lambdaQuery().isNotNull(Customer::getAddr);
+            if (StringUtils.hasText(l1Id)) {
+                addressQuery.eq(Customer::getL1Id, l1Id);
             }
-            List<Customer> sameAddr = customerMapper.selectList(w);
-            Customer hit = sameAddr == null ? null : sameAddr.stream()
-                    .filter(existing -> !StringUtils.hasText(phone) || !phone.equals(existing.getPhone()))
+            List<Customer> addressSnapshot = customerMapper.selectList(addressQuery);
+            Customer hit = addressSnapshot == null ? null : addressSnapshot.stream()
                     .filter(existing -> AddressMatch.likelySame(addr, existing.getAddr()))
-                    .findFirst()
-                    .orElse(null);
+                    .findFirst().orElse(null);
             if (hit != null) {
-                String msg = "地址疑似同一地点：已有客户 " + hit.getPhone();
-                issues.add(msg);
-                if (!dryRun) {
-                    exceptionService.raise("客户信息重复", sn, msg, "activate", warnMode, row.getL2Id());
-                }
+                warnings.add(new ActivationWarning("客户信息重复",
+                        "地址疑似同一地点：已有客户 " + hit.getPhone()));
             }
         }
 
+        List<String> issues = warnings.stream().map(ActivationWarning::detail).distinct().toList();
         if (dryRun) {
             Map<String, Object> preview = new LinkedHashMap<>();
-            preview.put("sn", sn);
+            preview.put("sns", codes);
+            if (codes.size() == 1) {
+                preview.put("sn", codes.get(0));
+            }
             preview.put("issues", issues);
             preview.put("dryRun", true);
             preview.put("location", locMap);
@@ -466,7 +474,7 @@ public class SalesService {
             return preview;
         }
 
-        Map<String, Object> user = customer == null ? new HashMap<>() : new HashMap<>(customer);
+        Map<String, Object> user = new HashMap<>(customer);
         user.put("phone", phone);
         user.put("addr", addr);
         user.put("phoneLoc", phoneReg.ok() ? phoneReg.display() : str(customer.get("phoneLoc")));
@@ -475,40 +483,96 @@ public class SalesService {
         user.put("phoneLocate", phoneReg.toMap());
         user.put("addrLocate", addrReg.toMap());
 
-        row.setStatus("bound");
-        row.setSoldAt(ChinaTime.now());
-        row.setBindAt(ChinaTime.now());
-        row.setBindIpRegion(loc.display());
-        row.setUserJson(user);
-        eventWriter.append(row, "销售到C端",
-                phone + " · " + loc.display() + " · " + addr, "bind");
-        writeStockLog(row, l2Stock ? "l2" : "l1", l2Stock ? row.getL2Id() : row.getL1Id(),
-                -1, "终端销售出库", sn);
-        snMapper.updateById(row);
+        SalesOrder so = buildDirectOrder(rows, codes, user);
+        for (SnCode row : rows) {
+            for (ActivationWarning warning : warnings) {
+                if (warning.type() != null) {
+                    exceptionService.raise(warning.type(), row.getSn(), warning.detail(),
+                            "activate", warnMode, row.getL2Id());
+                }
+            }
+            row.setStatus("bound");
+            row.setSoldAt(ChinaTime.now());
+            row.setBindAt(ChinaTime.now());
+            row.setBindIpRegion(loc.display());
+            row.setUserJson(user);
+            eventWriter.append(row, "销售到C端",
+                    phone + " · " + loc.display() + " · " + addr, "bind");
+            writeStockLog(row, l2Stock ? "l2" : "l1", l2Stock ? row.getL2Id() : row.getL1Id(),
+                    -1, "终端销售出库", so.getNo());
+            snMapper.updateById(row);
+        }
+        soMapper.insert(so);
+        Customer savedCustomer = insertCustomer(user, first, codes, so.getNo());
+        logService.record("直销激活 " + String.join("、", codes) + " → " + so.getNo(), "op", true);
 
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("sns", codes);
+        if (codes.size() == 1) {
+            out.put("sn", codes.get(0));
+        }
+        out.put("issues", issues);
+        out.put("order", so);
+        out.put("customer", savedCustomer);
+        out.put("location", locMap);
+        out.put("phoneLoc", phoneReg.toMap());
+        return out;
+    }
+
+    private SalesOrder buildDirectOrder(List<SnCode> rows, List<String> codes, Map<String, Object> user) {
+        SnCode first = rows.get(0);
         SalesOrder so = new SalesOrder();
         so.setId(Ids.next("SO"));
         so.setNo(orderNos.next("SO"));
         so.setChannel("direct");
-        so.setL1Id(row.getL1Id());
-        so.setL2Id(row.getL2Id());
-        so.setProductId(row.getProductId());
-        so.setPlanTotal(1);
-        so.setPlanBySize(Map.of(row.getSizeCode() == null ? "-" : row.getSizeCode(), 1));
-        so.setScanned(List.of(sn));
+        so.setL1Id(first.getL1Id());
+        so.setL2Id(first.getL2Id());
+        boolean oneProduct = rows.stream().map(SnCode::getProductId).distinct().count() == 1;
+        so.setProductId(oneProduct ? first.getProductId() : null);
+        so.setPlanTotal(codes.size());
+        Map<String, Object> bySize = new LinkedHashMap<>();
+        rows.forEach(row -> bySize.merge(row.getSizeCode() == null ? "-" : row.getSizeCode(), 1,
+                (left, right) -> ((Number) left).intValue() + ((Number) right).intValue()));
+        so.setPlanBySize(bySize);
+        Map<String, Map<String, Object>> grouped = new LinkedHashMap<>();
+        for (SnCode row : rows) {
+            String key = str(row.getProductId()) + "|" + str(row.getSizeCode()) + "|" + str(row.getBelt());
+            Map<String, Object> line = grouped.computeIfAbsent(key, ignored -> {
+                Map<String, Object> value = new LinkedHashMap<>();
+                value.put("productId", row.getProductId());
+                value.put("size", row.getSizeCode());
+                value.put("belt", row.getBelt());
+                value.put("qty", 0);
+                return value;
+            });
+            line.put("qty", ((Number) line.get("qty")).intValue() + 1);
+        }
+        so.setLines(new ArrayList<>(grouped.values()));
+        so.setScanned(new ArrayList<>(codes));
         so.setStatus("done");
         so.setCustomer(user);
-        soMapper.insert(so);
+        return so;
+    }
 
-        upsertCustomer(user, row, sn);
-        logService.record("直销激活 " + sn, "op", true);
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("sn", sn);
-        out.put("issues", issues);
-        out.put("order", so);
-        out.put("location", locMap);
-        out.put("phoneLoc", phoneReg.toMap());
-        return out;
+    private Customer insertCustomer(Map<String, Object> customer, SnCode row, List<String> sns, String orderNo) {
+        Customer c = new Customer();
+        c.setId(Ids.next("CU"));
+        c.setPhone(str(customer.get("phone")));
+        c.setName(str(customer.get("name")));
+        c.setGender(str(customer.get("gender")));
+        c.setAge(str(customer.get("age")));
+        c.setPhoneLoc(str(customer.get("phoneLoc")));
+        c.setAddr(str(customer.get("addr")));
+        c.setNote(str(customer.get("note")));
+        c.setSns(new ArrayList<>(sns));
+        c.setOrderNo(orderNo);
+        c.setL1Id(row.getL1Id());
+        c.setL2Id(row.getL2Id());
+        customerMapper.insert(c);
+        return c;
+    }
+
+    private record ActivationWarning(String type, String detail) {
     }
 
     private void enrich(SalesOrder so) {

@@ -2,8 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { inputEventValue } from '../src/utils/inputValue.ts'
+import { scanOrPrompt } from '../src/utils/scan.ts'
 import {
   aggregateStockRows,
+  canExplainException,
   compactSnRanges,
   collectAllPages,
   consumeNavigationIntent,
@@ -75,9 +77,16 @@ test('exception display dimensions map real backend values', () => {
   assert.equal(exceptionDimension({ dim: 'stock', type: '库存预警' }), 'stock')
 })
 
-test('distributed activation requests activate dimension before local classification', () => {
-  assert.equal(exceptionApiDimension('activate-direct'), 'activate')
-  assert.equal(exceptionApiDimension('activate-dist'), 'activate')
+test('exception explanation controls follow persisted server status and explanation', () => {
+  assert.equal(canExplainException({ status: '待处理' }), true)
+  assert.equal(canExplainException({ status: '待处理', explainTxt: '已核实' }), false)
+  assert.equal(canExplainException({ status: '会签中', explainL2: '二级已说明' }), false)
+  assert.equal(canExplainException({ status: '已处理' }), false)
+})
+
+test('exception list requests preserve the same server scope used by badge counts', () => {
+  assert.equal(exceptionApiDimension('activate-direct'), 'activate-direct')
+  assert.equal(exceptionApiDimension('activate-dist'), 'activate-dist')
   assert.equal(exceptionApiDimension('stock'), 'stock')
 })
 
@@ -106,6 +115,34 @@ test('sales scan cards show product and progress', () => {
     scanned: ['S1'],
     planTotal: 2,
   }), { product: '锐涞套件/M×2', progress: '1/2' })
+})
+
+test('cancelled or failed scanning returns without opening an editable prompt', async () => {
+  const originalUni = (globalThis as any).uni
+  let promptCalls = 0
+  ;(globalThis as any).uni = {
+    scanCode: ({ fail }: any) => fail(new Error('scan cancelled')),
+    showModal: async () => {
+      promptCalls += 1
+      return { confirm: false, content: '' }
+    },
+  }
+  try {
+    await assert.rejects(scanOrPrompt(), /scan cancelled/)
+    assert.equal(promptCalls, 0)
+  } finally {
+    ;(globalThis as any).uni = originalUni
+  }
+})
+
+test('activation submits one preview and one commit for the complete SN batch', () => {
+  const bind = readFileSync(new URL('../src/pkg/bind/index.vue', import.meta.url), 'utf8')
+  const service = readFileSync(new URL('../src/service/index.ts', import.meta.url), 'utf8')
+  assert.match(service, /bindBatch:.*\/api\/sales\/direct-bind-batch/)
+  assert.match(bind, /miniApi\.bindBatch\(\{\s*\.\.\.payload,\s*sns,\s*dryRun:\s*true\s*\}\)/s)
+  assert.match(bind, /miniApi\.bindBatch\(\{\s*\.\.\.payload,\s*sns\s*\}\)/s)
+  assert.doesNotMatch(bind, /Promise\.all\(snRows\.value\.map/)
+  assert.doesNotMatch(bind, /for \(const item of snRows\.value\)/)
 })
 
 test('input events keep typed text instead of wiping the native value', () => {

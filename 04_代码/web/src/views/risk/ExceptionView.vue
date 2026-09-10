@@ -167,9 +167,9 @@ const explainText = ref('')
 const l1s = ref<any[]>([])
 const l2s = ref<any[]>([])
 const tabItems = computed(() => [
-  { id: 'activate-direct', title: '直售激活异常', badge: counts['activate-direct'] || 0 },
-  { id: 'activate-dist', title: '分销激活异常', badge: counts['activate-dist'] || 0 },
-  { id: 'stock', title: '销售库存异常', badge: counts.stock || 0 },
+  { id: 'activate-direct', title: '直售激活异常', badge: counts['activate-direct'] || undefined },
+  { id: 'activate-dist', title: '分销激活异常', badge: counts['activate-dist'] || undefined },
+  { id: 'stock', title: '销售库存异常', badge: counts.stock || undefined },
 ])
 const statusOpts = computed(() => dimTab.value === 'stock' ? ['待处理', '已处理'] : ['待处理', '已完成'])
 /** 原型 exceptionExplainLabel：分销=二级解释，其余=一级解释 */

@@ -45,6 +45,7 @@
     </SearchPanel>
     <KpiCards :items="kpiItems" />
     <DataTableShell :data="list" :loading="loading" :total="total" v-model:page="page" v-model:pageSize="pageSize" @row-click="(r:any)=>openView(r)">
+      <el-table-column prop="orderNo" label="单号" min-width="150" />
       <el-table-column label="SN" min-width="160">
         <template #default="{row}"><code>{{ (row.sns||[]).join(' ') || '—' }}</code></template>
       </el-table-column>
@@ -68,6 +69,7 @@
 
     <el-dialog v-model="viewOpen" :title="form.phone || form.name ? `客户详情 · ${form.phone || form.name}` : '客户详情'" width="720px">
       <div class="detail-grid">
+        <div><span>单号</span>{{ form.orderNo || '—' }}</div>
         <div><span>姓名</span>{{ form.name || '—' }}</div>
         <div><span>性别</span>{{ form.gender || '—' }}</div>
         <div><span>年龄</span>{{ form.age || '—' }}</div>

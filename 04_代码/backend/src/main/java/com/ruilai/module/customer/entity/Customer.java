@@ -23,6 +23,7 @@ public class Customer extends StringEntity {
     private String note;
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<String> sns;
+    private String orderNo;
     private String l1Id;
     private String l2Id;
 

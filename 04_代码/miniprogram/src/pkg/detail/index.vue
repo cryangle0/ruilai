@@ -197,7 +197,7 @@
               @row-click="onRelatedSnClick"
             />
           </DetailSection>
-          <view v-if="exceptionOpen" class="explain-card">
+          <view v-if="exceptionCanExplain" class="explain-card">
             <view class="field">
               <input
                 class="inp"
@@ -239,6 +239,7 @@ import { PO_STATUS, SO_STATUS, RT_STATUS, SN_STATUS } from '@/utils/constants'
 import { formatDateTime } from '@/utils/dates'
 import {
   agentDisplay,
+  canExplainException,
   cendCustomer,
   consumeStockDraft,
   decodeQueryValue,
@@ -511,7 +512,7 @@ const returnSnRows = computed(() => (data.value.snDetail || []).map((row: any) =
 })))
 
 const exceptionDim = computed(() => exceptionDimLabel(data.value))
-const exceptionOpen = computed(() => ['待处理', '会签中', 'pending', 'cosigning'].includes(String(data.value.status || '')))
+const exceptionCanExplain = computed(() => canExplainException(data.value))
 const exceptionIsSn = computed(() => String(data.value.target || '').startsWith('RL'))
 const exceptionKv = computed(() => {
   const d = data.value

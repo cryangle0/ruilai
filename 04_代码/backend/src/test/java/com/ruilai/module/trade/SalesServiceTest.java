@@ -19,6 +19,7 @@ import com.ruilai.module.system.LogService;
 import com.ruilai.module.trade.entity.SalesOrder;
 import com.ruilai.module.trade.mapper.SalesOrderMapper;
 import com.ruilai.module.trade.mapper.StockLogMapper;
+import com.ruilai.common.thirdparty.Region;
 import com.ruilai.common.thirdparty.ThirdPartyGateway;
 import com.ruilai.common.util.OrderNoGenerator;
 import org.junit.jupiter.api.AfterEach;
@@ -288,6 +289,60 @@ class SalesServiceTest {
     void directBindRejectsNullCustomerAsBusinessError() {
         assertThatThrownBy(() -> service.directBind("S1", null, "", "", null, null, false))
                 .isInstanceOf(BizException.class).hasMessageContaining("客户");
+    }
+
+    @Test
+    void directBindBatchCreatesOneOrderAndOneCustomerForEverySubmittedSn() {
+        when(snMapper.selectById("S1")).thenReturn(sn("S1", "P1", "M", "腰带M"));
+        when(snMapper.selectById("S2")).thenReturn(sn("S2", "P1", "L", "腰带L"));
+        when(customerMapper.selectList(any())).thenReturn(List.of());
+        when(gateway.resolveActivateLocation("", "", null, null))
+                .thenReturn(Region.of("浙江省", "杭州市", "330100", "test"));
+        when(gateway.locatePhone("13800000000"))
+                .thenReturn(Region.of("浙江省", "杭州市", "330100", "test"));
+        when(gateway.geocodeAddress("杭州市文一路1号"))
+                .thenReturn(Region.of("浙江省", "杭州市", "330100", "test"));
+        when(stockWarnService.resolve("L1A", null))
+                .thenReturn(new StockWarnService.WarnMode(1.5, "strict", 1, 1.5));
+        when(orderNos.next("SO")).thenReturn("SO-BATCH-1");
+
+        Map<String, Object> result = service.directBindBatch(
+                List.of("S1", "S2"),
+                Map.of("phone", "13800000000", "addr", "杭州市文一路1号", "name", "张三"),
+                "", "", null, null, false);
+
+        ArgumentCaptor<SalesOrder> order = ArgumentCaptor.forClass(SalesOrder.class);
+        verify(soMapper).insert(order.capture());
+        assertThat(order.getValue().getScanned()).containsExactly("S1", "S2");
+        assertThat(order.getValue().getPlanTotal()).isEqualTo(2);
+        assertThat(order.getValue().getNo()).isEqualTo("SO-BATCH-1");
+
+        ArgumentCaptor<Customer> customer = ArgumentCaptor.forClass(Customer.class);
+        verify(customerMapper).insert(customer.capture());
+        assertThat(customer.getValue().getSns()).containsExactly("S1", "S2");
+        assertThat(customer.getValue().getOrderNo()).isEqualTo("SO-BATCH-1");
+        assertThat(result.get("order")).isSameAs(order.getValue());
+        verify(snMapper, times(2)).updateById(any(SnCode.class));
+    }
+
+    @Test
+    void directBindBatchPrevalidatesEverySnBeforeAnyWrite() {
+        when(snMapper.selectById("S1")).thenReturn(sn("S1", "P1", "M", "腰带M"));
+        when(snMapper.selectById("MISSING")).thenReturn(null);
+
+        assertThatThrownBy(() -> service.directBindBatch(
+                List.of("S1", "MISSING"),
+                Map.of("phone", "13800000000", "addr", "杭州市文一路1号"),
+                "", "", null, null, false))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("MISSING");
+
+        verify(soMapper, never()).insert(any(SalesOrder.class));
+        verify(customerMapper, never()).insert(any(Customer.class));
+        verify(snMapper, never()).updateById(any(SnCode.class));
+        verify(stockLogMapper, never()).insert(any(com.ruilai.module.trade.entity.StockLog.class));
+        verify(eventWriter, never()).append(any(), any(), any(), any());
+        verify(exceptionService, never()).raise(any(), any(), any(), any(), any(), any());
     }
 
     @Test

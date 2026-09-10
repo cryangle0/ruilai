@@ -10,17 +10,6 @@ export function scanSn(): Promise<string> {
 }
 
 export async function scanOrPrompt(placeholder = '输入 SN'): Promise<string> {
-  try {
-    return await scanSn()
-  } catch {
-    const { confirm, content } = await uni.showModal({
-      title: '手动录入 SN',
-      editable: true,
-      placeholderText: placeholder,
-    })
-    if (!confirm) throw new Error('cancel')
-    const sn = String(content || '').trim().toUpperCase()
-    if (!sn) throw new Error('empty')
-    return sn
-  }
+  void placeholder
+  return scanSn()
 }
