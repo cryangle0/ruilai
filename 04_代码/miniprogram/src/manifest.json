@@ -2,8 +2,8 @@
   "name": "锐涞经销商",
   "appid": "wx242669dc618156c6",
   "description": "锐涞经销商管理系统 · 代理端",
-  "versionName": "0.2.9",
-  "versionCode": "29",
+  "versionName": "0.3.0",
+  "versionCode": "30",
   "transformPx": false,
   "mp-weixin": {
     "appid": "wx242669dc618156c6",
