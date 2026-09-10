@@ -51,7 +51,12 @@
                     :disabled="qtyOf(standardQty, row.key) === 0"
                     @click="adjustStandard(row.key, -1)"
                   >−</button>
-                  <text class="step-num">{{ qtyOf(standardQty, row.key) }}</text>
+                  <input
+                    class="step-num step-input"
+                    type="number"
+                    :value="qtyOf(standardQty, row.key)"
+                    @input="setStandardQty(row.key, $event)"
+                  />
                   <button class="step-btn plus-btn" @click="adjustStandard(row.key, 1)">＋</button>
                 </view>
               </view>
@@ -103,7 +108,7 @@
             <view class="sum-row">非标套件总计 <text>{{ customTotal }}</text> 件</view>
           </view>
 
-          <view v-if="kind !== 'sales' && selectedProduct.type === 'kit'" class="card bundle-card">
+          <view v-if="selectedProduct.type === 'kit'" class="card bundle-card">
             <view class="section-title"><text>可随售单品</text></view>
             <text v-if="bundleRows.length" class="bundle-tip">按规格填写数量，将作为独立 SN 行随本采购单入库。</text>
             <view v-for="single in bundleRows" :key="single.id" class="bundle-group">
@@ -117,7 +122,12 @@
                     :disabled="bundleQtyOf(single.id, singleSize) === 0"
                     @click="adjustBundle(single.id, singleSize, -1)"
                   >−</button>
-                  <text class="step-num">{{ bundleQtyOf(single.id, singleSize) }}</text>
+                  <input
+                    class="step-num step-input"
+                    type="number"
+                    :value="bundleQtyOf(single.id, singleSize)"
+                    @input="setBundleQty(single.id, singleSize, $event)"
+                  />
                   <button class="step-btn plus-btn" @click="adjustBundle(single.id, singleSize, 1)">＋</button>
                 </view>
               </view>
@@ -155,6 +165,7 @@ import {
   bundleProducts,
   componentNames,
   nonstandardOptions,
+  normalizeQuantityInput,
   payloadTotal,
   productBelts,
   productSizes,
@@ -291,6 +302,10 @@ function adjustStandard(key: string, delta: number) {
   standardQty.value[key] = Math.max(0, qtyOf(standardQty.value, key) + delta)
 }
 
+function setStandardQty(key: string, event: unknown) {
+  standardQty.value[key] = normalizeQuantityInput(event)
+}
+
 function bundleQtyOf(product: string, itemSize: string) {
   return qtyOf(bundleQty.value[product] || {}, itemSize)
 }
@@ -298,6 +313,11 @@ function bundleQtyOf(product: string, itemSize: string) {
 function adjustBundle(product: string, itemSize: string, delta: number) {
   if (!bundleQty.value[product]) bundleQty.value[product] = {}
   bundleQty.value[product][itemSize] = Math.max(0, bundleQtyOf(product, itemSize) + delta)
+}
+
+function setBundleQty(product: string, itemSize: string, event: unknown) {
+  if (!bundleQty.value[product]) bundleQty.value[product] = {}
+  bundleQty.value[product][itemSize] = normalizeQuantityInput(event)
 }
 
 function beltDisplay(value: string) {
@@ -470,12 +490,14 @@ async function submitPurchase() {
 }
 .step-num {
   width: 68rpx;
+  height: 52rpx;
   text-align: center;
   font-size: 26rpx;
   font-weight: 700;
   color: #1A2B4A;
   font-variant-numeric: tabular-nums;
 }
+.step-input { padding: 0; line-height: 52rpx; }
 .sum-row {
   display: flex;
   justify-content: flex-end;

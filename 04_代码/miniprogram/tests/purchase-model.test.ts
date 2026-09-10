@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   buildPurchasePayload,
   nonstandardOptions,
+  normalizeQuantityInput,
   standardOptions,
 } from '../src/pkg/purchase/model.ts'
 
@@ -37,6 +38,27 @@ test('configured standard kit combinations remain complete and ordered', () => {
   const rows = standardOptions(kit)
   assert.equal(rows.length, 5)
   assert.deepEqual(rows.map((row) => row.key), ['S-SS', 'S-S', 'M-M', 'L-L', 'L-LL'])
+})
+
+test('component labels determine belt and band values regardless of editor order', () => {
+  const reversed = {
+    id: 'P-REVERSED',
+    type: 'kit',
+    extra: {
+      components: [
+        { name: '弹力带', sizes: ['SS', 'S', 'M', 'L', 'LL'] },
+        { name: '腰带', sizes: ['腰带S', '腰带M', '腰带L'] },
+      ],
+    },
+  }
+
+  assert.deepEqual(standardOptions(reversed).map((row) => [row.size, row.belt]), [
+    ['SS', '腰带S'],
+    ['S', '腰带S'],
+    ['M', '腰带M'],
+    ['L', '腰带L'],
+    ['LL', '腰带L'],
+  ])
 })
 
 test('nonstandard combinations use maintained sizes and exclude standard rows', () => {
@@ -95,4 +117,12 @@ test('single quantities are sent as SN-bearing standard lines', () => {
     { productId: 'P-SINGLE', belt: '', size: 'M', qty: 2 },
   ])
   assert.deepEqual(payload.parts, [])
+})
+
+test('keyboard quantity input normalizes integers without requiring stepper clicks', () => {
+  assert.equal(normalizeQuantityInput('12'), 12)
+  assert.equal(normalizeQuantityInput({ detail: { value: '7' } }), 7)
+  assert.equal(normalizeQuantityInput('-3'), 0)
+  assert.equal(normalizeQuantityInput('2.9'), 2)
+  assert.equal(normalizeQuantityInput('not-a-number'), 0)
 })

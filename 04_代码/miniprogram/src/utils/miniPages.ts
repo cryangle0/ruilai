@@ -236,6 +236,21 @@ export function saleProductRows(sale: Record<string, any>) {
   ]
 }
 
+export function saleProductSections(sale: Record<string, any>) {
+  const rows = saleProductRows(sale)
+  const lines = Array.isArray(sale.lines) ? sale.lines : []
+  if (!lines.length) {
+    return { standard: rows, nonstandard: [], single: [], part: [] }
+  }
+  const lineRows = rows.slice(0, lines.length)
+  return {
+    standard: lineRows.filter((_, index) => (lines[index]?.category || 'standard') === 'standard'),
+    nonstandard: lineRows.filter((_, index) => lines[index]?.category === 'nonstandard'),
+    single: lineRows.filter((_, index) => lines[index]?.category === 'single'),
+    part: rows.slice(lines.length),
+  }
+}
+
 export function factoryDateText(sn?: string, factoryAt?: string | number | null) {
   const match = String(sn || '').match(/^RL(\d{4})(\d{2})(\d{2})/i)
   if (match) {

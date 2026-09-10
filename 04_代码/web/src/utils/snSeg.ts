@@ -5,6 +5,19 @@ export function extractSegLines(text: string) {
     .filter((c) => c && /RL/i.test(c))
 }
 
+export async function buildSnSegTemplate(): Promise<Uint8Array> {
+  const XLSX = await import('xlsx')
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ['SN号段（每行一个）'],
+    ['RL202609100001-RL202609100010'],
+  ])
+  sheet['!cols'] = [{ wch: 36 }]
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, sheet, 'SN号段')
+  const output = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })
+  return new Uint8Array(output)
+}
+
 export async function readSegFile(file: File): Promise<string> {
   const name = file.name.toLowerCase()
   if (name.endsWith('.csv')) {

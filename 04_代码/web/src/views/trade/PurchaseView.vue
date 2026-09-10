@@ -30,8 +30,8 @@
       <el-table-column label="一级" min-width="120"><template #default="{row}">{{ nameOf(row.l1Id) }}</template></el-table-column>
       <el-table-column label="标准行" min-width="140"><template #default="{row}">{{ fmtLines(row.lines) }}</template></el-table-column>
       <el-table-column label="非标" min-width="140"><template #default="{row}">{{ fmtCustom(row.customLines) }}</template></el-table-column>
-      <el-table-column label="单品" min-width="160">
-        <template #default="{row}">{{ fmtParts(row.parts) }}</template>
+      <el-table-column label="配件" min-width="160">
+        <template #default="{row}">{{ fmtParts(row) }}</template>
       </el-table-column>
       <el-table-column label="状态" width="90">
         <template #default="{row}">
@@ -77,7 +77,7 @@ const kpiItems = computed(() => [
 const tabItems = computed(() => [
   { id: 'all', title: '全部' },
   { id: 'pending', title: '待处理', badge: counts.pending || undefined },
-  { id: 'cosigning', title: '会签中' },
+  { id: 'cosigning', title: '会签中', badge: counts.cosigning || undefined },
   { id: 'approved', title: '已完成' },
   { id: 'rejected', title: '已驳回' },
 ])
@@ -142,16 +142,29 @@ function reset() {
   resetPage(); load()
 }
 function fmtLines(lines?: any[]) {
-  if (!lines?.length) return '—'
-  return lines.map((l) => `${l.size || ''}×${l.qty}`).join('，')
+  const rows = (lines || []).filter((line) => line.category !== 'single')
+  if (!rows.length) return '—'
+  return rows.map((l) => `${l.size || ''}×${l.qty}`).join('，')
 }
 function fmtCustom(lines?: any[]) {
   if (!lines?.length) return '—'
   return lines.map((l) => `${l.size || ''}+${l.belt || ''}×${l.qty}`).join('，')
 }
-function fmtParts(parts?: any[]) {
-  if (!parts?.length) return '—'
-  return parts.map((x) => `${prodName(x.partId)}/${x.spec}×${x.qty}`).join('，')
+function fmtParts(row: any) {
+  const accessories = [
+    ...(row.parts || []).map((part: any) => ({
+      name: part.productName || prodName(part.partId || part.productId),
+      spec: part.spec || part.size,
+      qty: part.qty,
+    })),
+    ...(row.lines || []).filter((line: any) => line.category === 'single').map((line: any) => ({
+      name: line.productName || prodName(line.productId),
+      spec: line.size,
+      qty: line.qty,
+    })),
+  ]
+  if (!accessories.length) return '—'
+  return accessories.map((x) => `${x.name}/${x.spec || '—'}×${x.qty}`).join('，')
 }
 async function openRow(row: any) {
   current.value = await api.purchase(row.id)

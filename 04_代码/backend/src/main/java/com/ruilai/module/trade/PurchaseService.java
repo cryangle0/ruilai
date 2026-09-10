@@ -37,8 +37,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -100,8 +103,8 @@ public class PurchaseService {
             AgentL1 agent = l1Mapper.selectById(row.getL1Id());
             row.setL1Name(agent == null ? row.getL1Id() : agent.getName());
         }
-        nameProductLines(row.getLines());
-        nameProductLines(row.getCustomLines());
+        nameProductLines(row.getLines(), "standard");
+        nameProductLines(row.getCustomLines(), "nonstandard");
         if (row.getParts() != null) {
             for (Map<String, Object> part : row.getParts()) {
                 String id = str(part.get("partId"), str(part.get("productId"), ""));
@@ -116,7 +119,7 @@ public class PurchaseService {
         }
     }
 
-    private void nameProductLines(List<Map<String, Object>> lines) {
+    private void nameProductLines(List<Map<String, Object>> lines, String kitCategory) {
         if (lines == null) {
             return;
         }
@@ -128,6 +131,7 @@ public class PurchaseService {
             Product product = productMapper.selectById(id);
             if (product != null) {
                 line.put("productName", product.getName());
+                line.put("category", "single".equals(product.getType()) ? "single" : kitCategory);
             }
         }
     }
@@ -232,12 +236,12 @@ public class PurchaseService {
         if (po.getSegments() == null || po.getSegments().isEmpty()) {
             return 0;
         }
+        Map<String, List<String>> validated = validateInbound(po);
         int total = 0;
         Map<String, Integer> byProduct = new HashMap<>();
-        for (Map.Entry<String, Object> e : po.getSegments().entrySet()) {
+        for (Map.Entry<String, List<String>> e : validated.entrySet()) {
             LineHint hint = hintOf(e.getKey(), po);
-            List<String> sns = flattenRanges(e.getValue());
-            for (String sn : sns) {
+            for (String sn : e.getValue()) {
                 applySn(sn, po, hint);
                 total++;
                 String pk = hint.productId + "|" + hint.size;
@@ -259,6 +263,80 @@ public class PurchaseService {
             stockLogMapper.insert(log);
         });
         return total;
+    }
+
+    private Map<String, List<String>> validateInbound(PurchaseOrder po) {
+        Map<String, Integer> expected = new LinkedHashMap<>();
+        mergeExpected(expected, po.getLines());
+        mergeExpected(expected, po.getCustomLines());
+
+        Map<String, List<String>> validated = new LinkedHashMap<>();
+        Set<String> seen = new HashSet<>();
+        int actualTotal = 0;
+        for (Map.Entry<String, Object> entry : po.getSegments().entrySet()) {
+            String key = entry.getKey();
+            if (!expected.containsKey(key)) {
+                throw new BizException(ErrCode.BAD_REQUEST, "号段对应的商品行不存在：" + key);
+            }
+            List<String> lineSns = new ArrayList<>();
+            List<?> ranges = entry.getValue() instanceof List<?> list
+                    ? list
+                    : java.util.Collections.singletonList(entry.getValue());
+            for (Object raw : ranges) {
+                String range = String.valueOf(raw == null ? "" : raw).trim();
+                List<String> expanded;
+                try {
+                    expanded = SnRanges.expandOneStrict(range);
+                } catch (IllegalArgumentException ex) {
+                    throw new BizException(ErrCode.BAD_REQUEST,
+                            "商品行 " + key + " 的号段 " + range + "：" + ex.getMessage());
+                }
+                for (String sn : expanded) {
+                    if (!seen.add(sn)) {
+                        throw new BizException(ErrCode.BAD_REQUEST,
+                                "商品行 " + key + " 的号段包含重复 SN：" + sn);
+                    }
+                    SnCode existing = snMapper.selectById(sn);
+                    if (existing != null && !"warehouse".equals(existing.getStatus())) {
+                        throw new BizException(ErrCode.BAD_REQUEST,
+                                "商品行 " + key + " 的 SN " + sn + " 已在其他订单或库存中重复使用");
+                    }
+                    lineSns.add(sn);
+                }
+            }
+            validated.put(key, lineSns);
+            actualTotal += lineSns.size();
+        }
+
+        for (Map.Entry<String, Integer> line : expected.entrySet()) {
+            int actual = validated.getOrDefault(line.getKey(), List.of()).size();
+            if (actual != line.getValue()) {
+                throw new BizException(ErrCode.BAD_REQUEST,
+                        "商品行 " + line.getKey() + " 号段数量不一致：需要 "
+                                + line.getValue() + "，已填 " + actual);
+            }
+        }
+        int expectedTotal = expected.values().stream().mapToInt(Integer::intValue).sum();
+        if (actualTotal != expectedTotal) {
+            throw new BizException(ErrCode.BAD_REQUEST,
+                    "采购商品总数量与号段总数量不一致：需要 " + expectedTotal + "，已填 " + actualTotal);
+        }
+        return validated;
+    }
+
+    private void mergeExpected(Map<String, Integer> expected, List<Map<String, Object>> lines) {
+        if (lines == null) {
+            return;
+        }
+        for (Map<String, Object> line : lines) {
+            expected.merge(lineKey(line), lineQty(List.of(line)), Integer::sum);
+        }
+    }
+
+    private String lineKey(Map<String, Object> line) {
+        return str(line.get("productId"), "") + "_"
+                + str(line.get("size"), "") + "_"
+                + str(line.get("belt"), "");
     }
 
     private void applySn(String sn, PurchaseOrder po, LineHint hint) {
@@ -298,15 +376,6 @@ public class PurchaseService {
         }
         eventWriter.append(row, "采购审核入库", po.getNo() + " · 进入一级库存", "purchase");
         snWriter.update(row);
-    }
-
-    private List<String> flattenRanges(Object raw) {
-        List<String> out = new ArrayList<>();
-        List<?> items = raw instanceof List<?> list ? list : List.of(raw);
-        for (Object r : items) {
-            out.addAll(SnRanges.expand(String.valueOf(r)));
-        }
-        return out;
     }
 
     private LineHint hintOf(String key, PurchaseOrder po) {

@@ -287,6 +287,38 @@ class SalesServiceTest {
     }
 
     @Test
+    void saleDetailClassifiesStandardNonstandardAndSingleLines() {
+        Product kit = product("KIT", "康复弹力套件",
+                List.of("M", "L"), List.of("腰带M", "腰带S"));
+        kit.setExtra(Map.of(
+                "sizes", List.of("M", "L"),
+                "belts", List.of("腰带M", "腰带S"),
+                "stdCombos", List.of(Map.of("size", "M", "belt", "腰带M"))));
+        Product single = product("SINGLE", "护膝单品", List.of("M"), List.of());
+        single.setType("single");
+        when(productMapper.selectById("KIT")).thenReturn(kit);
+        when(productMapper.selectById("SINGLE")).thenReturn(single);
+
+        SalesOrder order = new SalesOrder();
+        order.setId("SO-CATEGORIES");
+        order.setL1Id("L1A");
+        order.setChannel("direct");
+        order.setLines(new ArrayList<>(List.of(
+                line("KIT", "M", "腰带M", 1),
+                line("KIT", "L", "腰带S", 2),
+                line("SINGLE", "M", "", 3))));
+        order.setScanned(List.of());
+        when(soMapper.selectById("SO-CATEGORIES")).thenReturn(order);
+
+        SalesOrder detail = service.get("SO-CATEGORIES");
+
+        assertThat(detail.getLines()).extracting(row -> row.get("category"))
+                .containsExactly("standard", "nonstandard", "single");
+        assertThat(detail.getLines()).extracting(row -> row.get("productName"))
+                .containsExactly("康复弹力套件", "康复弹力套件", "护膝单品");
+    }
+
+    @Test
     void directBindRejectsNullCustomerAsBusinessError() {
         assertThatThrownBy(() -> service.directBind("S1", null, "", "", null, null, false))
                 .isInstanceOf(BizException.class).hasMessageContaining("客户");

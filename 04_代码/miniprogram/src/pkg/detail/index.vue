@@ -33,8 +33,14 @@
               </template>
             </DetailKv>
           </DetailSection>
-          <DetailSection title="商品明细">
-            <DetailTable :columns="saleProductCols" :rows="saleRows" empty-text="无商品明细" />
+          <DetailSection title="标准品">
+            <DetailTable :columns="saleProductCols" :rows="saleSections.standard" empty-text="无标准品" />
+          </DetailSection>
+          <DetailSection title="非标品">
+            <DetailTable :columns="saleProductCols" :rows="saleSections.nonstandard" empty-text="无非标品" />
+          </DetailSection>
+          <DetailSection title="单品">
+            <DetailTable :columns="saleProductCols" :rows="saleSections.single" empty-text="无单品" />
           </DetailSection>
           <DetailSection title="SN码" :count="saleSnRows.length">
             <DetailTable :columns="snCols" :rows="saleSnRows" min-width="680rpx" empty-text="暂无已扫 SN" />
@@ -255,6 +261,7 @@ import {
   returnProductRows,
   returnTypeLabel,
   saleProductRows,
+  saleProductSections,
   saveStockFilter,
   stockLevelLabel,
   stockRowMatches,
@@ -323,9 +330,15 @@ const snCols = [
   { key: 'user', title: '客户', wrap: true },
 ]
 
-const purchaseStandardRows = computed(() => purchaseLineRows(data.value.lines, data.value.segments || {}))
+const purchaseStandardRows = computed(() => purchaseLineRows(
+  (data.value.lines || []).filter((line: any) => line.category !== 'single'),
+  data.value.segments || {},
+))
 const purchaseCustomRows = computed(() => purchaseLineRows(data.value.customLines, data.value.segments || {}))
-const purchaseParts = computed(() => purchasePartRows(data.value.parts))
+const purchaseParts = computed(() => purchasePartRows([
+  ...(data.value.parts || []),
+  ...(data.value.lines || []).filter((line: any) => line.category === 'single'),
+]))
 const purchaseKv = computed(() => {
   const d = data.value
   const items = [
@@ -350,6 +363,7 @@ const salesKv = computed(() => {
   ]
 })
 const saleRows = computed(() => saleProductRows(data.value))
+const saleSections = computed(() => saleProductSections(data.value))
 const saleSnRows = computed(() => (data.value.snRows || []).map((row: any) => ({
   sn: row.sn,
   size: row.size || '—',

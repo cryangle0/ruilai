@@ -22,30 +22,35 @@ public final class SnRanges {
         }
         Set<String> out = new LinkedHashSet<>();
         for (String part : text.split("[,;，；\\n]+")) {
-            List<String> one = expandOne(part.trim());
-            if (one != null) {
-                out.addAll(one);
-            }
+            out.addAll(expandOne(part.trim()));
         }
         return new ArrayList<>(out);
     }
 
     public static List<String> expandOne(String seg) {
+        try {
+            return expandOneStrict(seg);
+        } catch (IllegalArgumentException ignored) {
+            return List.of();
+        }
+    }
+
+    public static List<String> expandOneStrict(String seg) {
         if (seg == null || seg.isBlank()) {
-            return null;
+            throw new IllegalArgumentException("号段不能为空");
         }
         Matcher m = ONE.matcher(seg.trim());
         if (!m.matches()) {
-            return null;
+            throw new IllegalArgumentException("号段格式无效");
         }
         String start = m.group(1).toUpperCase(Locale.ROOT);
         String end = (m.group(2) == null ? m.group(1) : m.group(2)).toUpperCase(Locale.ROOT);
         if (start.length() < 5 || end.length() < 5) {
-            return null;
+            throw new IllegalArgumentException("号段格式无效");
         }
         String pref = start.substring(0, start.length() - 4);
-        if (!end.startsWith(pref)) {
-            return null;
+        if (!end.startsWith(pref) || end.length() != start.length()) {
+            throw new IllegalArgumentException("号段起止前缀不一致");
         }
         int sNum;
         int eNum;
@@ -53,10 +58,13 @@ public final class SnRanges {
             sNum = Integer.parseInt(start.substring(start.length() - 4));
             eNum = Integer.parseInt(end.substring(end.length() - 4));
         } catch (NumberFormatException e) {
-            return null;
+            throw new IllegalArgumentException("号段格式无效", e);
         }
-        if (eNum < sNum || eNum - sNum > 5000) {
-            return null;
+        if (eNum < sNum) {
+            throw new IllegalArgumentException("号段不能倒序");
+        }
+        if (eNum - sNum > 5000) {
+            throw new IllegalArgumentException("单个号段不能超过 5001 个 SN");
         }
         List<String> list = new ArrayList<>(eNum - sNum + 1);
         for (int i = sNum; i <= eNum; i++) {

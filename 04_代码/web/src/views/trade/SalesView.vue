@@ -81,11 +81,26 @@
           <div><span>计划/已扫</span>{{ (detail.scanned||[]).length }}/{{ detail.planTotal||0 }}</div>
           <div><span>时间</span>{{ formatDateTime(detail.createdAt) }}</div>
         </div>
-        <h4>商品明细</h4>
-        <el-table :data="productRows" size="small" border>
+        <h4>标准品</h4>
+        <el-table :data="productSections.standard" size="small" border>
           <el-table-column prop="productName" label="商品" min-width="140" />
           <el-table-column prop="size" label="弹力带" width="80" />
           <el-table-column prop="belt" label="腰带" width="90" />
+          <el-table-column prop="plan" label="计划" width="70" align="right" />
+          <el-table-column prop="scanned" label="已扫" width="70" align="right" />
+        </el-table>
+        <h4>非标品</h4>
+        <el-table :data="productSections.nonstandard" size="small" border>
+          <el-table-column prop="productName" label="商品" min-width="140" />
+          <el-table-column prop="size" label="弹力带" width="80" />
+          <el-table-column prop="belt" label="腰带" width="90" />
+          <el-table-column prop="plan" label="计划" width="70" align="right" />
+          <el-table-column prop="scanned" label="已扫" width="70" align="right" />
+        </el-table>
+        <h4>单品</h4>
+        <el-table :data="productSections.single" size="small" border>
+          <el-table-column prop="productName" label="单品" min-width="140" />
+          <el-table-column prop="size" label="规格" width="100" />
           <el-table-column prop="plan" label="计划" width="70" align="right" />
           <el-table-column prop="scanned" label="已扫" width="70" align="right" />
         </el-table>
@@ -142,6 +157,7 @@ const productRows = computed(() => {
   const lines = s.lines || []
   const parts = (s.parts || []).map((p: any) => ({
     productName: `${p.partName || p.partId || '配件'}（配件）`,
+    category: 'part',
     size: '—',
     belt: p.spec || '—',
     plan: p.qty || 0,
@@ -151,6 +167,7 @@ const productRows = computed(() => {
     return [
       ...lines.map((l: any) => ({
         productName: s.productName || l.productName || l.productId || '—',
+        category: l.category || 'standard',
         size: l.size,
         belt: l.belt || '—',
         plan: l.qty || 0,
@@ -163,6 +180,7 @@ const productRows = computed(() => {
   return [
     ...Object.keys(plan).map((size) => ({
       productName: s.productName || s.productId || '—',
+      category: 'standard',
       size,
       belt: scanned.find((x: any) => x.size === size)?.belt || '—',
       plan: Number(plan[size] || 0),
@@ -171,6 +189,11 @@ const productRows = computed(() => {
     ...parts,
   ]
 })
+const productSections = computed(() => ({
+  standard: productRows.value.filter((row) => row.category === 'standard'),
+  nonstandard: productRows.value.filter((row) => row.category === 'nonstandard'),
+  single: productRows.value.filter((row) => row.category === 'single'),
+}))
 function nameOf(id?: string) { return l1s.value.find((a) => a.id === id)?.name || id || '' }
 
 async function load() {

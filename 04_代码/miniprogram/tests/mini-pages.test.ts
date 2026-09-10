@@ -28,6 +28,7 @@ import {
   returnProductRows,
   returnTypeLabel,
   saleProductRows,
+  saleProductSections,
   factoryDateText,
   sameStockBelt,
   snRowMatches,
@@ -309,6 +310,21 @@ test('purchase and sale detail helpers keep prototype tables', () => {
   assert.equal(factoryDateText('RL202607200009', '2026-07-20T00:00:00'), '2026-07-20')
   assert.equal(timelineTone({ title: '异常：扫码尺码不匹配', type: 'exception' }), 'danger')
   assert.equal(timelineTone({ title: '直售客户退货', type: 'return' }), 'warn')
+})
+
+test('sales detail separates standard nonstandard and single product rows', () => {
+  const sections = saleProductSections({
+    lines: [
+      { productName: '康复弹力套件', category: 'standard', size: 'SS', belt: '腰带S', qty: 1 },
+      { productName: '康复弹力套件', category: 'nonstandard', size: 'M', belt: '腰带S', qty: 2 },
+      { productName: '护膝单品', category: 'single', size: 'L', belt: '', qty: 3 },
+    ],
+    snRows: [],
+  })
+
+  assert.deepEqual(sections.standard.map((row) => [row.size, row.belt]), [['SS', '腰带S']])
+  assert.deepEqual(sections.nonstandard.map((row) => [row.size, row.belt]), [['M', '腰带S']])
+  assert.deepEqual(sections.single.map((row) => [row.product, row.size]), [['护膝单品', 'L']])
 })
 
 test('batch eight after-sales pages keep status, multi-SN and customer contracts', () => {

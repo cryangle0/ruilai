@@ -52,10 +52,16 @@ function componentsOf(product: PurchaseProduct) {
   return Array.isArray(meta.components) ? meta.components : []
 }
 
+function componentOf(product: PurchaseProduct, name: RegExp, fallbackIndex: number) {
+  const components = componentsOf(product)
+  return components.find((component: any) => name.test(String(component?.name || '')))
+    || components[fallbackIndex]
+}
+
 export function productSizes(product: PurchaseProduct): string[] {
   const meta = productMeta(product)
   if (product.type === 'kit') {
-    const component = componentsOf(product)[1]
+    const component = componentOf(product, /弹力带/, 1)
     return cleanStrings(component?.sizes || component?.pool || meta.sizes)
   }
   return cleanStrings(meta.sizes || product.sizes)
@@ -63,16 +69,17 @@ export function productSizes(product: PurchaseProduct): string[] {
 
 export function productBelts(product: PurchaseProduct): string[] {
   const meta = productMeta(product)
-  const component = componentsOf(product)[0]
+  const component = componentOf(product, /腰带/, 0)
   return cleanStrings(component?.sizes || component?.pool || meta.belts)
 }
 
 export function componentNames(product: PurchaseProduct) {
   const meta = productMeta(product)
-  const components = componentsOf(product)
+  const belt = componentOf(product, /腰带/, 0)
+  const band = componentOf(product, /弹力带/, 1)
   return {
-    belt: String(components[0]?.name || meta.compAName || '腰带'),
-    band: String(components[1]?.name || meta.compBName || '弹力带'),
+    belt: String(belt?.name || meta.compAName || '腰带'),
+    band: String(band?.name || meta.compBName || '弹力带'),
   }
 }
 
@@ -138,6 +145,13 @@ export function bundleProducts(product: PurchaseProduct, products: PurchaseProdu
 function positiveQty(value: unknown) {
   const number = Number(value) || 0
   return number > 0 ? Math.floor(number) : 0
+}
+
+export function normalizeQuantityInput(input: unknown) {
+  const value = input && typeof input === 'object' && 'detail' in input
+    ? (input as { detail?: { value?: unknown } }).detail?.value
+    : input
+  return positiveQty(value)
 }
 
 export function buildPurchasePayload(input: BuildPayloadInput) {

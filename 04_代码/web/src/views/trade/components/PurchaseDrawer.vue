@@ -9,7 +9,7 @@
         <div v-if="form.status==='rejected'" class="span-2"><span>驳回原因</span>{{ form.rejectReason || '未填写' }}</div>
       </div>
       <h4>标准品</h4>
-      <el-table :data="form.lines||[]" size="small" border show-summary :summary-method="lineSummary">
+      <el-table :data="purchaseStandardLines" size="small" border show-summary :summary-method="lineSummary">
         <el-table-column label="商品" min-width="140"><template #default="{row}">{{ prodName(row.productId) }}</template></el-table-column>
         <el-table-column prop="size" label="弹力带" width="80" />
         <el-table-column prop="belt" label="腰带" width="90" />
@@ -26,10 +26,11 @@
         <el-table-column label="号段"><template #default="{row}">{{ segsOf(row).join('；') || '—' }}</template></el-table-column>
         <el-table-column label="号段数量" width="90"><template #default="{row}">{{ segsQty(row) }}</template></el-table-column>
       </el-table>
-      <h4>单品</h4>
-      <el-table :data="form.parts||[]" size="small" border>
-        <el-table-column label="单品"><template #default="{row}">{{ prodName(row.partId) }}</template></el-table-column>
-        <el-table-column prop="spec" label="规格" /><el-table-column prop="qty" label="数量" width="80" />
+      <h4>配件</h4>
+      <el-table :data="purchaseAccessoryRows" size="small" border>
+        <el-table-column label="配件"><template #default="{row}">{{ row.productName || prodName(row.partId || row.productId) }}</template></el-table-column>
+        <el-table-column label="规格"><template #default="{row}">{{ row.spec || row.size || '—' }}</template></el-table-column>
+        <el-table-column prop="qty" label="数量" width="80" />
       </el-table>
     </template>
     <template v-else-if="form && form.id && mode==='audit'">
@@ -130,6 +131,12 @@ const title = computed(() => {
 })
 const partProducts = computed(() => products.value.filter((p) => p.type === 'part'))
 const customProducts = computed(() => products.value.filter((p) => p.type !== 'part'))
+const purchaseStandardLines = computed(() =>
+  (form.value?.lines || []).filter((line: any) => line.category !== 'single'))
+const purchaseAccessoryRows = computed(() => [
+  ...(form.value?.parts || []),
+  ...(form.value?.lines || []).filter((line: any) => line.category === 'single'),
+])
 function l1Name(id?: string) { return props.l1s.find((a) => a.id === id)?.name || id || '—' }
 function prodName(id?: string) { return products.value.find((p) => p.id === id)?.name || id || '—' }
 function poStatus(s: string) {

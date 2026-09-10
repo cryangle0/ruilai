@@ -594,6 +594,7 @@ public class SalesService {
                 Product p = StringUtils.hasText(productId) ? productMapper.selectById(productId) : null;
                 if (p != null) {
                     line.put("productName", p.getName());
+                    line.put("category", productCategory(p, line));
                 }
             }
         }
@@ -636,6 +637,29 @@ public class SalesService {
             }
         }
         so.setSnRows(rows);
+    }
+
+    private static String productCategory(Product product, Map<String, Object> line) {
+        if ("single".equals(product.getType())) {
+            return "single";
+        }
+        if (!"kit".equals(product.getType())) {
+            return "part";
+        }
+        Map<String, Object> extra = product.getExtra();
+        Object combos = extra == null ? null : extra.get("stdCombos");
+        if (combos instanceof List<?> rows && !rows.isEmpty()) {
+            String size = str(line.get("size"));
+            String belt = str(line.get("belt"));
+            boolean standard = rows.stream()
+                    .filter(Map.class::isInstance)
+                    .map(Map.class::cast)
+                    .anyMatch(row -> size.equals(str(row.get("size")))
+                            && belt.equals(str(row.get("belt"))));
+            return standard ? "standard" : "nonstandard";
+        }
+        String supplied = str(line.get("category"));
+        return "nonstandard".equals(supplied) ? supplied : "standard";
     }
 
     private String detailOf(SalesOrder so) {

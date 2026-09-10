@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { exceptionRequestScope } from '../src/utils/exceptionScope.ts'
+import { buildSnSegTemplate, extractSegLines, readSegFile } from '../src/utils/snSeg.ts'
 
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -97,9 +98,10 @@ test('issues 11 through 15 simplify and rebalance the SN list controls', () => {
   assert.doesNotMatch(view, /<el-option label="个性化"/)
   assert.match(view, /<el-option label="再入库" value="再入库"/)
   assert.match(view, /visibleTags\(row\.tags\)/)
-  assert.match(view, /label="商品" width="148"/)
-  assert.match(view, /label="标签" width="168"/)
-  assert.doesNotMatch(view, /label="商品" min-width/)
+  assert.match(view, /label="商品" min-width="148"/)
+  assert.match(view, /label="一级" min-width="148"/)
+  assert.match(view, /label="二级" min-width="148"/)
+  assert.match(view, /label="标签" min-width="148"/)
 })
 
 test('issues 16 through 18 use traceable dates and lifecycle compatibility', () => {
@@ -161,7 +163,8 @@ test('issues 21 through 23 share list styling and current-month defaults', () =>
   const returns = source('src/views/risk/ReturnView.vue')
   const sidebar = source('src/layouts/components/Sidebar.vue')
   assert.match(purchase, /标准\/非标\/单品/)
-  assert.doesNotMatch(purchase, /label="配件"/)
+  assert.match(purchase, /label="配件"/)
+  assert.match(purchase, /id:\s*'cosigning'[\s\S]*badge:\s*counts\.cosigning \|\| undefined/)
   assert.match(purchase, /detail:\s*\{\s*pendingPo:\s*counts\.pending\s*\+\s*counts\.cosigning/)
   assert.match(returns, /detail:\s*\{\s*pendingReturn:\s*kindCounts\.factoryPending/)
   assert.match(sidebar, /badges\.pendingPo\s*=\s*pending\.total\s*\+\s*cosigning\.total/)
@@ -402,4 +405,30 @@ test('mini program drawers keep form rows inside the sheet', () => {
   assert.doesNotMatch(drawer, /\.body \{[^}]*padding:\s*0 32rpx/)
   assert.match(app, /overflow-x:\s*hidden/)
   assert.match(field, /@include rl-hug-x/)
+})
+
+test('SN import template round-trips through the production Excel parser', async () => {
+  const bytes = await buildSnSegTemplate()
+  const file = {
+    name: 'SN段号导入模板.xlsx',
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+  }
+  const parsed = await readSegFile(file)
+  assert.deepEqual(extractSegLines(parsed), ['RL202609100001-RL202609100010'])
+})
+
+test('trade pages expose bundled singles and distinct detail sections', () => {
+  const products = source('src/views/goods/ProductView.vue')
+  const purchase = source('src/views/trade/PurchaseView.vue')
+  const sales = source('src/views/trade/SalesView.vue')
+  const miniPurchase = source('../miniprogram/src/pkg/purchase/index.vue')
+
+  assert.match(products, /<el-form-item label="可随售单品">/)
+  assert.match(purchase, /line\.category === 'single'/)
+  assert.match(sales, /<h4>标准品<\/h4>[\s\S]*<h4>非标品<\/h4>[\s\S]*<h4>单品<\/h4>/)
+  assert.match(sales, /prop="size" label="弹力带"/)
+  assert.match(sales, /prop="belt" label="腰带"/)
+  assert.match(miniPurchase, /v-if="selectedProduct\.type === 'kit'" class="card bundle-card"/)
+  assert.match(miniPurchase, /@input="setStandardQty\(row\.key, \$event\)"/)
+  assert.match(miniPurchase, /@input="setBundleQty\(single\.id, singleSize, \$event\)"/)
 })

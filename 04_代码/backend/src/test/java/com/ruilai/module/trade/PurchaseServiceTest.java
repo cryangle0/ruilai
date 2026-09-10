@@ -5,6 +5,7 @@ import com.ruilai.common.util.OrderNoGenerator;
 import com.ruilai.module.risk.StockWarnService;
 import com.ruilai.module.sn.SnEventWriter;
 import com.ruilai.module.sn.SnWriter;
+import com.ruilai.module.sn.entity.SnCode;
 import com.ruilai.module.sn.mapper.SnCodeMapper;
 import com.ruilai.module.system.LogService;
 import com.ruilai.module.trade.entity.PurchaseOrder;
@@ -113,6 +114,26 @@ class PurchaseServiceTest {
     }
 
     @Test
+    void getMarksBundledSinglesForAccessoryPresentation() {
+        PurchaseOrder po = new PurchaseOrder();
+        po.setId("PO-SINGLE");
+        po.setL1Id("L1A");
+        po.setLines(List.of(line("SINGLE", "M", "", 2)));
+        when(poMapper.selectById("PO-SINGLE")).thenReturn(po);
+        com.ruilai.module.product.entity.Product single = new com.ruilai.module.product.entity.Product();
+        single.setId("SINGLE");
+        single.setName("护膝单品");
+        single.setType("single");
+        when(productMapper.selectById("SINGLE")).thenReturn(single);
+
+        PurchaseOrder detail = service.get("PO-SINGLE");
+
+        assertThat(detail.getLines().get(0))
+                .containsEntry("productName", "护膝单品")
+                .containsEntry("category", "single");
+    }
+
+    @Test
     void cosignPersistsAuditedCustomSpecs() {
         PurchaseOrder po = new PurchaseOrder();
         po.setId("PO2");
@@ -168,5 +189,121 @@ class PurchaseServiceTest {
 
         assertThat(result.getStatus()).isEqualTo("cosigning");
         verify(poMapper).updateById(po);
+    }
+
+    @Test
+    void finalCosignRejectsDescendingRangeBeforeWritingInventory() {
+        PurchaseOrder po = finalCosignOrder(List.of(line("P1", "M", "腰带M", 2)));
+        when(poMapper.selectById("PO-RANGE")).thenReturn(po);
+
+        assertThatThrownBy(() -> service.cosign("PO-RANGE",
+                Map.of("P1_M_腰带M", List.of("RL202609080002-RL202609080001"))))
+                .isInstanceOf(com.ruilai.common.web.BizException.class)
+                .hasMessageContaining("倒序")
+                .hasMessageContaining("RL202609080002-RL202609080001");
+
+        verify(snMapper, never()).insert(any(SnCode.class));
+        verify(stockLogMapper, never()).insert(any(com.ruilai.module.trade.entity.StockLog.class));
+        verify(poMapper, never()).updateById(po);
+    }
+
+    @Test
+    void finalCosignRejectsRepeatedNumberAcrossSegmentsBeforeWritingInventory() {
+        PurchaseOrder po = finalCosignOrder(List.of(line("P1", "M", "腰带M", 3)));
+        when(poMapper.selectById("PO-RANGE")).thenReturn(po);
+
+        assertThatThrownBy(() -> service.cosign("PO-RANGE", Map.of(
+                "P1_M_腰带M", List.of(
+                        "RL202609080001-RL202609080002",
+                        "RL202609080002"))))
+                .isInstanceOf(com.ruilai.common.web.BizException.class)
+                .hasMessageContaining("重复")
+                .hasMessageContaining("RL202609080002");
+
+        verify(snMapper, never()).insert(any(SnCode.class));
+        verify(stockLogMapper, never()).insert(any(com.ruilai.module.trade.entity.StockLog.class));
+    }
+
+    @Test
+    void finalCosignRejectsSnAlreadyOutsideFactoryWarehouse() {
+        PurchaseOrder po = finalCosignOrder(List.of(line("P1", "M", "腰带M", 1)));
+        when(poMapper.selectById("PO-RANGE")).thenReturn(po);
+        SnCode occupied = new SnCode();
+        occupied.setSn("RL202609080001");
+        occupied.setStatus("l2");
+        when(snMapper.selectById("RL202609080001")).thenReturn(occupied);
+
+        assertThatThrownBy(() -> service.cosign("PO-RANGE",
+                Map.of("P1_M_腰带M", List.of("RL202609080001"))))
+                .isInstanceOf(com.ruilai.common.web.BizException.class)
+                .hasMessageContaining("RL202609080001")
+                .hasMessageContaining("重复");
+
+        verify(snMapper, never()).insert(any(SnCode.class));
+        verify(snWriter, never()).update(any(SnCode.class));
+        verify(stockLogMapper, never()).insert(any(com.ruilai.module.trade.entity.StockLog.class));
+    }
+
+    @Test
+    void finalCosignAcceptsSnCurrentlyInFactoryWarehouse() {
+        PurchaseOrder po = finalCosignOrder(List.of(line("P1", "M", "腰带M", 1)));
+        when(poMapper.selectById("PO-RANGE")).thenReturn(po);
+        SnCode warehouse = new SnCode();
+        warehouse.setSn("RL202609080001");
+        warehouse.setStatus("warehouse");
+        warehouse.setFrozen(1);
+        when(snMapper.selectById("RL202609080001")).thenReturn(warehouse);
+
+        PurchaseOrder result = service.cosign("PO-RANGE",
+                Map.of("P1_M_腰带M", List.of("RL202609080001")));
+
+        assertThat(result.getStatus()).isEqualTo("approved");
+        assertThat(warehouse.getStatus()).isEqualTo("l1");
+        assertThat(warehouse.getL1Id()).isEqualTo("L1A");
+        verify(snWriter).update(warehouse);
+        verify(poMapper).updateById(po);
+    }
+
+    @Test
+    void finalCosignRejectsPerLineMismatchEvenWhenOverallTotalMatches() {
+        PurchaseOrder po = finalCosignOrder(List.of(
+                line("P1", "M", "腰带M", 2),
+                line("P1", "L", "腰带L", 1)));
+        when(poMapper.selectById("PO-RANGE")).thenReturn(po);
+
+        assertThatThrownBy(() -> service.cosign("PO-RANGE", Map.of(
+                "P1_M_腰带M", List.of("RL202609080001"),
+                "P1_L_腰带L", List.of("RL202609080002-RL202609080003"))))
+                .isInstanceOf(com.ruilai.common.web.BizException.class)
+                .hasMessageContaining("P1")
+                .hasMessageContaining("M")
+                .hasMessageContaining("需要 2")
+                .hasMessageContaining("已填 1");
+
+        verify(snMapper, never()).insert(any(SnCode.class));
+        verify(stockLogMapper, never()).insert(any(com.ruilai.module.trade.entity.StockLog.class));
+        verify(poMapper, never()).updateById(po);
+    }
+
+    private PurchaseOrder finalCosignOrder(List<Map<String, Object>> lines) {
+        PurchaseOrder po = new PurchaseOrder();
+        po.setId("PO-RANGE");
+        po.setNo("PO-RANGE-1");
+        po.setL1Id("L1A");
+        po.setStatus("cosigning");
+        po.setLines(lines);
+        po.setCustomLines(List.of());
+        po.setParts(List.of());
+        po.setSegments(Map.of());
+        po.setCosign(new HashMap<>(Map.of("admin2", true)));
+        return po;
+    }
+
+    private Map<String, Object> line(String productId, String size, String belt, int qty) {
+        return new HashMap<>(Map.of(
+                "productId", productId,
+                "size", size,
+                "belt", belt,
+                "qty", qty));
     }
 }

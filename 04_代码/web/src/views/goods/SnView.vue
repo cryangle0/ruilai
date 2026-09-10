@@ -6,6 +6,7 @@
         <p>未处理激活异常的 SN 置顶 · 点击行查看生命周期/编辑</p>
       </div>
       <div class="page-actions" v-if="canManageSn">
+        <el-button @click="downloadTemplate">下载导入模板</el-button>
         <el-button @click="impOpen=true">Excel导入段号</el-button>
       </div>
     </div>
@@ -66,19 +67,19 @@
       </div>
     </SearchPanel>
     <DataTableShell :data="list" :loading="loading" :total="total" v-model:page="page" v-model:pageSize="pageSize" @row-click="open">
-      <el-table-column prop="sn" label="SN" width="156" show-overflow-tooltip />
-      <el-table-column prop="productName" label="商品" width="148" show-overflow-tooltip />
-      <el-table-column prop="sizeCode" label="尺寸" width="72" />
-      <el-table-column prop="belt" label="腰带" width="96" />
-      <el-table-column label="渠道" width="76">
+      <el-table-column prop="sn" label="SN" min-width="156" show-overflow-tooltip />
+      <el-table-column prop="productName" label="商品" min-width="148" show-overflow-tooltip />
+      <el-table-column prop="sizeCode" label="尺寸" min-width="72" />
+      <el-table-column prop="belt" label="腰带" min-width="90" />
+      <el-table-column label="渠道" min-width="76">
         <template #default="{row}">
           <span v-if="row.status==='bound'" class="tag" :class="row.l2Id?'tag-blue':'tag-orange'">{{ row.l2Id ? '分销' : '直售' }}</span>
           <span v-else>—</span>
         </template>
       </el-table-column>
-      <el-table-column label="一级" min-width="132" show-overflow-tooltip><template #default="{row}">{{ nameL1(row.l1Id) }}</template></el-table-column>
-      <el-table-column label="二级" min-width="132" show-overflow-tooltip><template #default="{row}">{{ nameL2(row.l2Id) }}</template></el-table-column>
-      <el-table-column label="状态" width="168">
+      <el-table-column label="一级" min-width="148" show-overflow-tooltip><template #default="{row}">{{ nameL1(row.l1Id) }}</template></el-table-column>
+      <el-table-column label="二级" min-width="148" show-overflow-tooltip><template #default="{row}">{{ nameL2(row.l2Id) }}</template></el-table-column>
+      <el-table-column label="状态" min-width="156">
         <template #default="{row}">
           <span class="tag" :class="stTone(row.status)">{{ statusLabel(row.status) }}</span>
           <span
@@ -89,7 +90,7 @@
           >异常未处理</span>
         </template>
       </el-table-column>
-      <el-table-column label="标签" width="168">
+      <el-table-column label="标签" min-width="148">
         <template #default="{row}">
           <span v-for="t in visibleTags(row.tags)" :key="t" class="tag tag-orange" style="margin-right:4px">{{ t }}</span>
           <span v-if="!visibleTags(row.tags).length">—</span>
@@ -282,7 +283,7 @@ import DataTableShell from '@/components/common/DataTableShell.vue'
 import { api } from '@/api'
 import { usePager } from '@/composables/usePager'
 import { BAND_SIZES, BELTS } from '@/utils/regions'
-import { extractSegLines, readSegFile } from '@/utils/snSeg'
+import { buildSnSegTemplate, extractSegLines, readSegFile } from '@/utils/snSeg'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -444,6 +445,17 @@ async function applySegFile(file: File) {
   } catch (e: any) {
     ElMessage.error(e?.message || '文件解析失败')
   }
+}
+async function downloadTemplate() {
+  const bytes = await buildSnSegTemplate()
+  const url = URL.createObjectURL(new Blob([bytes], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'SN段号导入模板.xlsx'
+  anchor.click()
+  URL.revokeObjectURL(url)
 }
 function onSegUpload(file: UploadFile) {
   if (!file.raw || file.status === 'fail') return

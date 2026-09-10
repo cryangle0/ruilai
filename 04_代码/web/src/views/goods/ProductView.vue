@@ -37,7 +37,7 @@
         <el-form-item label="商品名称"><el-input v-model="form.name" :placeholder="form.type==='single'?'如：护膝单品':'如：弹力带+腰带套件'" /></el-form-item>
         <el-form-item v-if="!(creatingKit)" label="说明"><el-input v-model="form.note" /></el-form-item>
         <template v-if="form.type==='kit'">
-          <el-form-item v-if="form.id" label="可随售单品">
+          <el-form-item label="可随售单品">
             <div class="perm-check-grid">
               <label v-for="p in singles" :key="p.id" class="perm-check">
                 <el-checkbox :model-value="bundleOn(p.id)" @change="(v:boolean)=>toggleBundle(p.id, v)" />
@@ -272,11 +272,12 @@ function refreshStd() {
   const a = comps.value[0]
   const b = comps.value[1]
   if (!a || !b) { stdCombos.value = []; return }
-  const classic = /腰带/.test(a.name) && /弹力带/.test(b.name)
-  if (classic) {
-    stdCombos.value = STANDARD_KITS.filter((k) => a.sizes.includes(k.belt) && b.sizes.includes(k.size)).map((k) => ({
+  const beltComp = comps.value.find((component) => /腰带/.test(component.name))
+  const bandComp = comps.value.find((component) => /弹力带/.test(component.name))
+  if (beltComp && bandComp) {
+    stdCombos.value = STANDARD_KITS.filter((k) => beltComp.sizes.includes(k.belt) && bandComp.sizes.includes(k.size)).map((k) => ({
       ...k,
-      picks: { [a.id]: k.belt, [b.id]: k.size },
+      picks: { [beltComp.id]: k.belt, [bandComp.id]: k.size },
     }))
     return
   }
@@ -292,12 +293,14 @@ async function save() {
     extra.components = comps.value.map(({ _add, ...c }) => c)
     extra.compAName = comps.value[0]?.name
     extra.compBName = comps.value[1]?.name
-    extra.belts = comps.value[0]?.sizes || []
-    extra.sizes = comps.value[1]?.sizes || []
+    const beltComp = comps.value.find((component) => /腰带/.test(component.name)) || comps.value[0]
+    const bandComp = comps.value.find((component) => /弹力带/.test(component.name)) || comps.value[1]
+    extra.belts = beltComp?.sizes || []
+    extra.sizes = bandComp?.sizes || []
     extra.stdCombos = stdCombos.value.map((k) => ({
       ...k,
-      belt: k.picks?.[comps.value[0]?.id] || k.belt,
-      size: k.picks?.[comps.value[1]?.id] || k.size,
+      belt: k.picks?.[beltComp?.id] || k.belt,
+      size: k.picks?.[bandComp?.id] || k.size,
       label: comboLabel(k),
     }))
   } else if (form.value.type === 'single') {
