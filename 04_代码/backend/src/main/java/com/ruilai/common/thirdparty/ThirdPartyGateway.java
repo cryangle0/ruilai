@@ -27,18 +27,16 @@ public class ThirdPartyGateway {
     private final AmapGeoClient amap;
     private final TencentGeoClient tencent;
     private final CloudMarketLocator cloudMarket;
-    private final AliyunPhoneClient aliyunPhone;
-    private final OfflinePhoneLocator offlinePhone;
     private final StringRedisTemplate redis;
 
     public Map<String, Object> capabilities() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("geoProvider", props.getGeo().getProvider());
         m.put("geoConfigured", props.geoConfigured());
-        m.put("ipProvider", props.ipMarketConfigured() ? "cloud-market" : props.getGeo().getProvider());
-        m.put("ipConfigured", props.ipMarketConfigured() || props.geoConfigured());
+        m.put("ipProvider", props.ipMarketConfigured() ? "cloud-market" : "unconfigured");
+        m.put("ipConfigured", props.ipMarketConfigured());
         m.put("phoneProvider", phoneProviderName());
-        m.put("phoneConfigured", props.phoneConfigured());
+        m.put("phoneConfigured", props.phoneMarketConfigured());
         m.put("allowClientHint", props.allowClientHint());
         return m;
     }
@@ -48,22 +46,11 @@ public class ThirdPartyGateway {
             return Region.empty("skip-private-ip");
         }
         String cacheKey = RedisKeys.geoIp(ip);
-        Region cached = readCache(cacheKey);
+        Region cached = readCache(cacheKey, "cloud-market-ip");
         if (cached != null) {
             return cached;
         }
-        Region r = Region.empty("ip");
-        if (cloudMarket.ipEnabled()) {
-            r = cloudMarket.locateIp(ip);
-        }
-        if (!r.ok()) {
-            r = useTencent() ? tencent.locateIp(ip) : amap.locateIp(ip);
-            if (!r.ok() && useTencent()) {
-                r = amap.locateIp(ip);
-            } else if (!r.ok() && !useTencent()) {
-                r = tencent.locateIp(ip);
-            }
-        }
+        Region r = cloudMarket.locateIp(ip);
         writeCache(cacheKey, r);
         return r;
     }
@@ -105,46 +92,20 @@ public class ThirdPartyGateway {
         }
         String digits = phone.replaceAll("\\D", "");
         String cacheKey = RedisKeys.geoPhone(digits);
-        Region cached = readCache(cacheKey);
+        Region cached = readCache(cacheKey, "cloud-market-phone");
         if (cached != null) {
             return cached;
         }
-        Region r = Region.empty("phone");
-        if (cloudMarket.phoneEnabled()) {
-            r = cloudMarket.locatePhone(digits);
-        }
-        if (!r.ok() && aliyunPhone.enabled()) {
-            r = aliyunPhone.locate(digits);
-        }
-        if (!r.ok()) {
-            r = offlinePhone.locate(digits);
-        }
+        Region r = cloudMarket.locatePhone(digits);
         writeCache(cacheKey, r);
         return r;
     }
 
     /**
-     * 激活定位：优先 GPS 精确围栏，其次真实 IP，再次客户端提示（仅无 Key 或显式允许）。
+     * 直售第一重校验必须使用扫码请求的真实 IP，不能被 GPS 或客户端提示替代。
      */
     public Region resolveActivateLocation(String clientIp, String hintRegion, Double lng, Double lat) {
-        Region gps = locateGps(lng, lat);
-        if (gps.ok()) {
-            return gps;
-        }
-        Region ip = locateIp(clientIp);
-        if (ip.ok()) {
-            return ip;
-        }
-        if (props.allowClientHint() && StringUtils.hasText(hintRegion) && !"null".equals(hintRegion)) {
-            Region fromHint = RegionNames.fromAddressText(hintRegion);
-            if (!fromHint.ok()) {
-                fromHint = Region.of(hintRegion, "", "", "client-hint");
-            } else {
-                fromHint = Region.of(fromHint.province(), fromHint.city(), fromHint.adcode(), "client-hint");
-            }
-            return fromHint;
-        }
-        return Region.empty("activate");
+        return locateIp(clientIp);
     }
 
     public boolean inFence(Region loc, List<String> fence) {
@@ -164,13 +125,7 @@ public class ThirdPartyGateway {
     }
 
     private String phoneProviderName() {
-        if (props.phoneMarketConfigured()) {
-            return "cloud-market";
-        }
-        if (props.phoneAliyunConfigured()) {
-            return "aliyun-market";
-        }
-        return "offline";
+        return props.phoneMarketConfigured() ? "cloud-market" : "unconfigured";
     }
 
     private boolean useTencent() {
@@ -178,6 +133,10 @@ public class ThirdPartyGateway {
     }
 
     private Region readCache(String key) {
+        return readCache(key, null);
+    }
+
+    private Region readCache(String key, String requiredSource) {
         try {
             String raw = redis.opsForValue().get(key);
             if (!StringUtils.hasText(raw)) {
@@ -185,6 +144,9 @@ public class ThirdPartyGateway {
             }
             String[] p = raw.split("\\|", -1);
             if (p.length < 4) {
+                return null;
+            }
+            if (StringUtils.hasText(requiredSource) && !requiredSource.equals(p[3])) {
                 return null;
             }
             return Region.of(p[0], p[1], p[2], p[3]);

@@ -42,6 +42,10 @@ public class LogService {
             return "";
         }
         HttpServletRequest req = attrs.getRequest();
+        String realIp = req.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
         String forwarded = req.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
             return forwarded.split(",")[0].trim();

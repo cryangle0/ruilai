@@ -423,12 +423,16 @@ public class SalesService {
         Map<String, Object> locMap = loc.toMap();
         locMap.put("ip", clientIp);
         if (!loc.ok()) {
-            warnings.add(new ActivationWarning(null, "未能解析激活位置（请配置高德/腾讯 Key 或授权定位）"));
+            warnings.add(new ActivationWarning("IP异常",
+                    "腾讯云市场未能解析扫码 IP，无法完成 IP 授权区域校验"));
         } else if (fence != null && !fence.isEmpty() && !gateway.inFence(loc, fence)) {
             warnings.add(new ActivationWarning("IP异常",
                     "直售跨区激活：定位 " + loc.display() + " 不在授权围栏 " + String.join("、", fence)));
         }
-        if (phoneReg.ok() && fence != null && !fence.isEmpty() && !gateway.inFence(phoneReg, fence)
+        if (!phoneReg.ok()) {
+            warnings.add(new ActivationWarning("归属地异常",
+                    "腾讯云市场未能解析手机号归属地，无法完成手机号授权区域校验"));
+        } else if (fence != null && !fence.isEmpty() && !gateway.inFence(phoneReg, fence)
                 && !GeoFence.provinceInSaleAreas(phoneReg, saleAreas)) {
             warnings.add(new ActivationWarning("归属地异常", "手机归属 " + phoneReg.display() + " 不在授权区域"));
         }

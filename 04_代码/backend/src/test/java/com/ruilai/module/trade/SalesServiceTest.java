@@ -325,6 +325,29 @@ class SalesServiceTest {
     }
 
     @Test
+    void directBindReportsBothChecksWhenCloudMarketCannotResolve() {
+        when(snMapper.selectById("S1")).thenReturn(sn("S1", "P1", "M", "腰带M"));
+        when(customerMapper.selectList(any())).thenReturn(List.of());
+        when(gateway.resolveActivateLocation("117.8.161.46", "浙江杭州", 120.1, 30.2))
+                .thenReturn(Region.empty("cloud-market-ip"));
+        when(gateway.locatePhone("13800138000"))
+                .thenReturn(Region.empty("cloud-market-phone"));
+        when(gateway.geocodeAddress("杭州市文一路1号"))
+                .thenReturn(Region.of("浙江省", "杭州市", "330100", "test"));
+        when(stockWarnService.resolve("L1A", null))
+                .thenReturn(new StockWarnService.WarnMode(1.5, "strict", 1, 1.5));
+
+        Map<String, Object> result = service.directBindBatch(
+                List.of("S1"),
+                Map.of("phone", "13800138000", "addr", "杭州市文一路1号"),
+                "浙江杭州", "117.8.161.46", 120.1, 30.2, true);
+
+        assertThat((List<String>) result.get("issues")).contains(
+                "腾讯云市场未能解析扫码 IP，无法完成 IP 授权区域校验",
+                "腾讯云市场未能解析手机号归属地，无法完成手机号授权区域校验");
+    }
+
+    @Test
     void directBindBatchCreatesOneOrderAndOneCustomerForEverySubmittedSn() {
         when(snMapper.selectById("S1")).thenReturn(sn("S1", "P1", "M", "腰带M"));
         when(snMapper.selectById("S2")).thenReturn(sn("S2", "P1", "L", "腰带L"));
