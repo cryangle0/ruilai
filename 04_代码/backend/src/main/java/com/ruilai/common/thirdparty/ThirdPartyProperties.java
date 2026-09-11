@@ -12,44 +12,74 @@ public class ThirdPartyProperties {
 
     @Data
     public static class Geo {
-        /** amap | tencent */
+        /** amap | tencent — GPS / 地址正逆地理；IP 走 geo.ip 云市场 */
         private String provider = "amap";
         private String amapKey = "";
         private String tencentKey = "";
         /**
          * 无 Key 时允许客户端提示 IP 地区（小程序演示开关）。
-         * 配了真实 Key 后默认忽略客户端提示。
+         * 配了真实 Key 或云市场 IP 后默认忽略客户端提示。
          */
         private Boolean allowClientHint;
+        private final MarketEndpoint ip = new MarketEndpoint();
     }
 
     @Data
     public static class Phone {
-        /** aliyun-market | offline */
-        private String provider = "aliyun-market";
+        /** cloud-market | aliyun-market | offline */
+        private String provider = "auto";
         private String appCode = "";
         private String appKey = "";
         private String appSecret = "";
         private String endpoint = "https://jisushouji.market.alicloudapi.com/shouji/query";
         private String param = "shouji";
+        private final MarketEndpoint market = new MarketEndpoint();
+    }
+
+    @Data
+    public static class MarketEndpoint {
+        private String secretId = "";
+        private String secretKey = "";
+        private String endpoint = "";
+        private String param = "";
     }
 
     public boolean geoConfigured() {
         if ("tencent".equalsIgnoreCase(geo.provider)) {
-            return geo.tencentKey != null && !geo.tencentKey.isBlank();
+            return hasText(geo.tencentKey);
         }
-        return geo.amapKey != null && !geo.amapKey.isBlank();
+        return hasText(geo.amapKey);
+    }
+
+    public boolean ipMarketConfigured() {
+        return configured(geo.ip);
+    }
+
+    public boolean phoneMarketConfigured() {
+        return configured(phone.market);
+    }
+
+    public boolean phoneAliyunConfigured() {
+        return hasText(phone.appCode) || hasText(phone.appKey);
     }
 
     public boolean phoneConfigured() {
-        return (phone.appCode != null && !phone.appCode.isBlank())
-                || (phone.appKey != null && !phone.appKey.isBlank());
+        return phoneMarketConfigured() || phoneAliyunConfigured();
     }
 
     public boolean allowClientHint() {
         if (geo.allowClientHint != null) {
             return geo.allowClientHint;
         }
-        return !geoConfigured();
+        return !geoConfigured() && !ipMarketConfigured();
+    }
+
+    private static boolean configured(MarketEndpoint endpoint) {
+        return endpoint != null && hasText(endpoint.secretId) && hasText(endpoint.secretKey)
+                && hasText(endpoint.endpoint);
+    }
+
+    private static boolean hasText(String s) {
+        return s != null && !s.isBlank();
     }
 }

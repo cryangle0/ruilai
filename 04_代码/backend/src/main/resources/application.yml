@@ -64,10 +64,20 @@ ruilai:
     provider: ${RUILAI_GEO_PROVIDER:amap}
     amap-key: ${RUILAI_AMAP_KEY:}
     tencent-key: ${RUILAI_TENCENT_MAP_KEY:}
+    ip:
+      secret-id: ${RUILAI_IP_SECRET_ID:}
+      secret-key: ${RUILAI_IP_SECRET_KEY:}
+      endpoint: ${RUILAI_IP_ENDPOINT:https://ap-shanghai.cloudmarket-apigw.com/service-cfkjfrwr/cloud_ip_search}
+      param: ${RUILAI_IP_PARAM:ip}
   phone:
-    provider: ${RUILAI_PHONE_PROVIDER:aliyun-market}
+    provider: ${RUILAI_PHONE_PROVIDER:auto}
     app-code: ${RUILAI_PHONE_APPCODE:}
     app-key: ${RUILAI_PHONE_APPKEY:}
     app-secret: ${RUILAI_PHONE_APPSECRET:}
     endpoint: ${RUILAI_PHONE_ENDPOINT:https://jisushouji.market.alicloudapi.com/shouji/query}
     param: ${RUILAI_PHONE_PARAM:shouji}
+    market:
+      secret-id: ${RUILAI_PHONE_SECRET_ID:}
+      secret-key: ${RUILAI_PHONE_SECRET_KEY:}
+      endpoint: ${RUILAI_PHONE_MARKET_ENDPOINT:https://ap-shanghai.cloudmarket-apigw.com/service-av27cw4h/mobile}
+      param: ${RUILAI_PHONE_MARKET_PARAM:mobile}

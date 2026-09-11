@@ -19,7 +19,7 @@ public class AliyunPhoneClient {
     private final ObjectMapper objectMapper;
 
     public boolean enabled() {
-        return props.phoneConfigured();
+        return props.phoneAliyunConfigured();
     }
 
     public Region locate(String phone) {
